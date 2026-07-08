@@ -1,0 +1,36 @@
+name: CI
+
+# Runs on pushes and PRs to main/develop
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: "postgresql://user:password@localhost:5432/test"
+      AUTH_SECRET: "test-secret"
+      NEXT_PUBLIC_SITE_URL: "http://localhost:3000"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
