@@ -108,7 +108,15 @@ test: add festival card unit tests
 ## Branch Naming
 
 ```
-feature/add-festival-search
+dev-a/ui/add-festival-search
+dev-a/ui/festival-cards
+dev-b/api/festival-crud
+dev-b/api/auth-setup
 bugfix/fix-timezone-offset
 release/v1.2.0
 ```
+
+- `dev-a/ui/*` — Developer A (frontend/UI work)
+- `dev-b/api/*` — Developer B (backend/API work)
+- `bugfix/*` — Bug fixes (any developer)
+- `release/*` — Release candidates

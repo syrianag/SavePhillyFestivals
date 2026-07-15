@@ -30,13 +30,31 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Branch Strategy
 
-| Branch | Purpose |
-|---|---|
-| `main` | Production-ready code. Protected — no direct pushes. |
-| `develop` | Integration branch. Default working branch. |
-| `feature/*` | New features (branch from `develop`, merge to `develop`) |
-| `bugfix/*` | Bug fixes during development (branch from `develop`, merge to `develop`) |
-| `release/*` | Release candidates (branch from `develop`, merge to `main` & `develop`) |
+| Branch | Purpose | Who |
+|---|---|---|
+| `main` | Production-ready code. Protected — no direct pushes. | Both |
+| `develop` | Integration branch. Always branch from here. | Both |
+| `dev-a/ui/*` | Frontend features (e.g., `dev-a/ui/festival-cards`) | Developer A |
+| `dev-b/api/*` | Backend features (e.g., `dev-b/api/festival-crud`) | Developer B |
+| `release/*` | Release candidates (branch from `develop`, merge to `main` & `develop`) | Both |
+
+### Daily Workflow
+
+1. **Pull latest:** `git checkout develop && git pull`
+2. **Create feature branch:** `git checkout -b dev-a/ui/<task-name>`
+3. **Work & commit:** `git add . && git commit -m "feat: description"`
+4. **Push:** `git push -u origin dev-a/ui/<task-name>`
+5. **Open a Pull Request** on GitHub from your branch → `develop`
+6. **Teammate reviews** — once approved, squash merge into `develop`
+7. **Delete the branch** after merging
+
+### Golden Rules
+
+- Never push directly to `main`
+- Always branch from `develop`, not `main`
+- Always pull latest `develop` before starting a new branch
+- Name branches `dev-a/ui/*` or `dev-b/api/*`
+- Delete branches after merging
 
 ## Team
 
