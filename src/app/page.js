@@ -1,11 +1,80 @@
-import { FeaturedFestivalCard } from "@/components/shared/FeaturedFestivalCard";
 import { FestivalCard } from "@/components/shared/FestivalCard";
 import { SearchBar } from "@/components/shared/SearchBar";
-import { festivals, articles } from "@/lib/festivals";
+import { Button } from "@/components/ui/button";
+import { CalendarDays, MapIcon, Sparkles } from "lucide-react";
+
+const festivals = [
+  {
+    id: 1,
+    title: "52nd Street Summer Block Party",
+    date: "Dec 19, 2025",
+    location: "West Philadelphia",
+    category: "Music",
+    badge: "Featured",
+    image: null,
+  },
+  {
+    id: 2,
+    title: "Taste of Kensington",
+    date: "Dec 20, 2025",
+    location: "Kensington",
+    category: "Food",
+    badge: "Featured",
+    image: null,
+  },
+  {
+    id: 3,
+    title: "Taste of Kensington",
+    date: "Dec 21, 2025",
+    location: "Kensington",
+    category: "Food",
+    badge: "Featured",
+    image: null,
+  },
+  {
+    id: 4,
+    title: "Taste of Kensington",
+    date: "Dec 22, 2025",
+    location: "Kensington",
+    category: "Caribbean",
+    image: null,
+  },
+  {
+    id: 5,
+    title: "Community Mural Festival",
+    date: "Jan 10, 2026",
+    location: "North Philly",
+    category: "Art",
+    image: null,
+  },
+  {
+    id: 6,
+    title: "South Philly Sabor",
+    date: "Jan 18, 2026",
+    location: "South Philly",
+    category: "Food",
+    image: null,
+  },
+  {
+    id: 7,
+    title: "Dance at the Art Museum",
+    date: "Jan 25, 2026",
+    location: "Center City",
+    category: "Cultural",
+    image: null,
+  },
+  {
+    id: 8,
+    title: "Winter Farmers Market",
+    date: "Feb 1, 2026",
+    location: "West Philadelphia",
+    category: "Community",
+    badge: "Featured",
+    image: null,
+  },
+];
 
 export default function Home() {
-  const featured = festivals.filter((f) => f.badge === "Featured");
-
   return (
     <>
       <section className="mx-auto max-w-[1440px] px-4 pb-8 pt-12 md:px-[81px] md:pb-12 md:pt-20">
@@ -14,129 +83,43 @@ export default function Home() {
             <SearchBar />
           </div>
         </div>
-
-        <div className="mt-10 flex items-center gap-3 border-b border-[#848484] pb-6 md:mt-[83px] md:pb-[59px]">
-          <button className="flex items-center gap-3 border-b-4 border-black pb-2 font-ui text-sm font-medium text-black md:text-base">
-            Featured
-          </button>
-          <button className="flex items-center gap-3 pb-2 font-ui text-sm font-medium text-black md:text-base">
-            Map
-          </button>
-          <button className="flex items-center gap-3 pb-2 font-ui text-sm font-medium text-black md:text-base">
-            Calendar
-          </button>
-        </div>
       </section>
 
-      <section className="overflow-hidden pb-12">
-        <div className="flex gap-4 overflow-x-auto pb-4 px-4 md:gap-[38px] md:pl-[81px] md:pr-[81px]">
-          {featured.map((f, i) => (
-            <FeaturedFestivalCard
-              key={f.id}
-              title={f.title}
-              date={f.date}
-              location={f.location}
-              description={f.description}
-              bgColor={f.bgColor}
-              badge={f.badge}
-              isLight={f.bgColor === "#F6C847"}
-            />
-          ))}
-        </div>
-
-        <div className="mt-4 hidden items-center justify-end gap-[6px] px-4 md:flex md:px-[81px]">
-          <span className="size-[9px] rounded-full bg-[#3D3D3D]" />
-          <span className="size-[9px] rounded-full bg-[#D9D9D9]" />
-          <span className="size-[9px] rounded-full bg-[#D9D9D9]" />
-          <span className="size-[9px] rounded-full bg-[#D9D9D9]" />
-          <span className="size-[9px] rounded-full bg-[#D9D9D9]" />
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-[1440px] px-4 py-12 md:px-[81px] md:py-16">
-        <div className="mx-auto max-w-[892px] text-center">
-          <h2 className="font-heading text-3xl font-bold leading-tight text-black md:text-[40px] md:leading-[47px]">
-            About Philly Fests
-          </h2>
-          <p className="mt-4 font-serif text-xl leading-snug text-[#45556C] md:mt-6 md:text-[28px] md:leading-[34px]">
-            We&apos;re grateful for the support of our incredible community
-            partners who make these festivals possible. Every neighborhood in
-            Philadelphia has its own rhythm — summer block parties, cultural
-            festivals, art walks, food fairs. Philly Festivals brings these
-            celebrations together in one place.
-          </p>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-[1440px] px-4 pb-8 md:px-[81px]">
-        <h3 className="font-body text-base font-normal text-black md:text-lg">
-          Coming up this month
-        </h3>
-
-        <div className="mt-6 flex gap-4 overflow-x-auto pb-4 md:mt-10 md:gap-10">
-          {festivals.map((festival) => (
-            <FestivalCard
-              key={festival.id}
-              variant="compact"
-              title={festival.title}
-              date={festival.date}
-              location={festival.location}
-              category={festival.category}
-              badge={festival.badge}
-            />
-          ))}
-        </div>
-
-        <div className="mt-10 flex justify-center">
-          <button
-            className="flex h-[36px] items-center justify-center rounded-[18px] bg-[#424242] px-[17px] font-ui text-base font-medium text-white"
-            style={{ letterSpacing: "-0.198857px" }}
-          >
-            Learn more
-          </button>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-[1440px] px-4 pb-12 md:px-[81px] md:pb-16">
-        <div
-          className="flex flex-col overflow-hidden rounded-2xl md:flex-row md:items-center"
-          style={{ backgroundColor: "#1E7BF6" }}
-        >
-          <div className="w-full shrink-0 bg-[#1E7BF6] px-4 py-6 md:w-[439px] md:px-[21px] md:py-9">
-            <p className="font-serif text-xl leading-snug text-[#F6C847] md:text-[28px] md:leading-[34px]">
-              Explore hidden gems and local favorites with our trusted guided
-              tours!
-            </p>
+      <section className="py-8 md:py-12">
+        <div className="mx-auto max-w-7xl px-4">
+          <div className="mb-6 flex items-center gap-4 border-b border-border">
+            <button className="flex items-center gap-2 border-b-2 border-foreground pb-3 font-body text-sm font-semibold text-foreground">
+              <Sparkles className="size-4" />
+              Featured
+            </button>
+            <button className="flex items-center gap-2 pb-3 font-body text-sm text-brand-text-gray transition-colors hover:text-foreground">
+              <MapIcon className="size-4" />
+              Map
+            </button>
+            <button className="flex items-center gap-2 pb-3 font-body text-sm text-brand-text-gray transition-colors hover:text-foreground">
+              <CalendarDays className="size-4" />
+              Calendar
+            </button>
           </div>
-          <div className="h-[120px] flex-1 bg-gradient-to-br from-gray-200 to-gray-300 md:h-[195px]" />
-        </div>
-      </section>
 
-      <section className="mx-auto max-w-[1440px] px-4 pb-12 md:px-[81px] md:pb-16">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-10">
-          {articles.map((article) => (
-            <div
-              key={article.id}
-              className="flex items-center gap-[10px] overflow-hidden rounded-[20px] px-[17px] py-[18px]"
-              style={{ backgroundColor: article.bgColor }}
-            >
-              <div className="h-[79px] w-[76px] shrink-0 rounded-[20px] bg-white" />
-              <div>
-                <h4
-                  className="font-body text-sm font-semibold leading-[17px]"
-                  style={{ color: article.textColor }}
-                >
-                  {article.title}
-                </h4>
-                <p
-                  className="mt-2 font-body text-xs leading-[14px]"
-                  style={{ color: article.textColor }}
-                >
-                  {article.description}
-                </p>
-              </div>
-            </div>
-          ))}
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {festivals.map((festival) => (
+              <FestivalCard
+                key={festival.id}
+                title={festival.title}
+                date={festival.date}
+                location={festival.location}
+                category={festival.category}
+                badge={festival.badge}
+              />
+            ))}
+          </div>
+
+          <div className="mt-10 text-center">
+            <Button variant="outline" size="lg" className="rounded-full px-8">
+              Load more festivals
+            </Button>
+          </div>
         </div>
       </section>
     </>
