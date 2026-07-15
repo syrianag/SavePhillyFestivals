@@ -4,6 +4,7 @@ import Image from "next/image";
 
 export function FestivalCard({
   className,
+  variant = "default",
   image,
   title,
   date,
@@ -12,6 +13,42 @@ export function FestivalCard({
   badge,
   ...props
 }) {
+  if (variant === "compact") {
+    return (
+      <div
+        data-slot="festival-card"
+        className={cn(
+          "flex w-[193px] flex-col overflow-hidden rounded-xl",
+          className
+        )}
+        {...props}
+      >
+        <div className="h-[120px] w-full bg-gradient-to-br from-brand-light-teal to-brand-teal" />
+        <div className="flex h-[102px] flex-col gap-0.5 bg-[#EBEBEB] px-[11px] pb-[7px] pt-[13px]">
+          <h3 className="font-body text-base font-normal leading-[19px] text-black">
+            {title}
+          </h3>
+          {location && (
+            <span className="flex items-center gap-[6px] font-body text-sm font-semibold leading-[17px] text-[#848484]">
+              <MapPin className="size-[10px] text-[#848484]" />
+              {location}
+            </span>
+          )}
+          {date && (
+            <span className="font-body text-xs font-normal leading-[14px] text-[#848484]">
+              {date}
+            </span>
+          )}
+          {category && (
+            <span className="mt-auto font-body text-sm font-semibold leading-[17px] text-[#848484]">
+              {category}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       data-slot="festival-card"

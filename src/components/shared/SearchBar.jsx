@@ -40,17 +40,22 @@ export function SearchBar({ className, onSearch, onFilter, ...props }) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <div className="flex items-center gap-1.5 rounded-full border border-border bg-[#EEEDED] px-3 py-1.5 font-body text-xs text-foreground">
-          <Calendar className="size-3.5 text-brand-text-gray" />
-          <select className="bg-transparent focus:outline-none">
+        <div className="flex h-[33px] items-center gap-2 rounded-[16.5px] border border-[#AEAEAE] bg-transparent px-[13px] py-[6px]">
+          <select
+            className="bg-transparent font-ui text-base font-medium text-[#848484] focus:outline-none"
+            style={{ letterSpacing: "-0.198857px", lineHeight: "19px" }}
+          >
             <option>Date</option>
             <option>This Week</option>
             <option>This Month</option>
             <option>Next Month</option>
           </select>
         </div>
-        <div className="flex items-center gap-1.5 rounded-full border border-border bg-[#EEEDED] px-3 py-1.5 font-body text-xs text-foreground">
-          <select className="bg-transparent focus:outline-none">
+        <div className="flex h-[33px] items-center gap-2 rounded-[16.5px] border border-[#AEAEAE] bg-transparent px-[13px] py-[6px]">
+          <select
+            className="bg-transparent font-ui text-base font-medium text-[#848484] focus:outline-none"
+            style={{ letterSpacing: "-0.198857px", lineHeight: "19px" }}
+          >
             <option>Type</option>
             <option>Music</option>
             <option>Food</option>
@@ -59,8 +64,11 @@ export function SearchBar({ className, onSearch, onFilter, ...props }) {
             <option>Community</option>
           </select>
         </div>
-        <div className="flex items-center gap-1.5 rounded-full border border-border bg-[#EEEDED] px-3 py-1.5 font-body text-xs text-foreground">
-          <select className="bg-transparent focus:outline-none">
+        <div className="flex h-[33px] items-center gap-2 rounded-[16.5px] border border-[#AEAEAE] bg-transparent px-[13px] py-[6px]">
+          <select
+            className="bg-transparent font-ui text-base font-medium text-[#848484] focus:outline-none"
+            style={{ letterSpacing: "-0.198857px", lineHeight: "19px" }}
+          >
             <option>Area</option>
             <option>West Philadelphia</option>
             <option>Kensington</option>

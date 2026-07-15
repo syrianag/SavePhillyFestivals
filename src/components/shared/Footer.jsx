@@ -2,11 +2,28 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Globe, Camera, AtSign } from "lucide-react";
 
-const footerLinks = [
-  { href: "/about", label: "About" },
-  { href: "/contact", label: "Contact" },
-  { href: "/privacy", label: "Privacy" },
-  { href: "/terms", label: "Terms" },
+const footerSections = [
+  {
+    title: "Explore",
+    links: [
+      { href: "/", label: "Discover Festivals" },
+      { href: "/tours", label: "Tours" },
+    ],
+  },
+  {
+    title: "Producers",
+    links: [
+      { href: "/producer", label: "Submit Festivals" },
+      { href: "/resources", label: "Resources" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { href: "/about", label: "About us" },
+      { href: "/contact", label: "Contact us" },
+    ],
+  },
 ];
 
 export function Footer({ className, ...props }) {
@@ -18,7 +35,7 @@ export function Footer({ className, ...props }) {
       )}
       {...props}
     >
-      <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-12 md:flex-row md:items-start md:justify-between">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-10 px-4 py-12 md:flex-row md:items-start md:justify-between md:px-[81px]">
         <div className="max-w-xs">
           <Link
             href="/"
@@ -26,51 +43,78 @@ export function Footer({ className, ...props }) {
           >
             Philly Fests
           </Link>
-          <p className="mt-2 text-xs text-white/60">
-            Discover and manage Philadelphia festivals.
-          </p>
         </div>
 
-        <nav className="flex flex-wrap gap-x-6 gap-y-2">
-          {footerLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-white/70 transition-colors hover:text-white"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        {footerSections.map((section) => (
+          <div key={section.title}>
+            <h4 className="mb-3 font-body text-sm font-semibold text-white">
+              {section.title}
+            </h4>
+            <ul className="space-y-2">
+              {section.links.map((link) => (
+                <li key={link.label}>
+                  <Link
+                    href={link.href}
+                    className="text-white/60 transition-colors hover:text-white"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
 
-        <div className="flex gap-4">
-          <a
-            href="#"
-            aria-label="Facebook"
-            className="text-white/60 transition-colors hover:text-white"
-          >
-            <Globe className="size-5" />
-          </a>
-          <a
-            href="#"
-            aria-label="Instagram"
-            className="text-white/60 transition-colors hover:text-white"
-          >
-            <Camera className="size-5" />
-          </a>
-          <a
-            href="#"
-            aria-label="Twitter"
-            className="text-white/60 transition-colors hover:text-white"
-          >
-            <AtSign className="size-5" />
-          </a>
+        <div>
+          <h4 className="mb-3 font-body text-sm font-semibold text-white">
+            Subscribe
+          </h4>
+          <p className="mb-3 text-xs text-white/60">
+            Join our community!
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="email"
+              placeholder="Email address"
+              className="rounded-md border border-white/20 bg-transparent px-3 py-1.5 text-xs text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-white/30"
+            />
+            <button className="rounded-md bg-white/20 px-3 py-1.5 text-xs text-white hover:bg-white/30">
+              Subscribe
+            </button>
+          </div>
+          <div className="mt-4 flex gap-3">
+            <a
+              href="#"
+              aria-label="Facebook"
+              className="text-white/40 transition-colors hover:text-white"
+            >
+              <Globe className="size-4" />
+            </a>
+            <a
+              href="#"
+              aria-label="Instagram"
+              className="text-white/40 transition-colors hover:text-white"
+            >
+              <Camera className="size-4" />
+            </a>
+            <a
+              href="#"
+              aria-label="Twitter"
+              className="text-white/40 transition-colors hover:text-white"
+            >
+              <AtSign className="size-4" />
+            </a>
+          </div>
         </div>
       </div>
 
-      <div className="border-t border-white/10 px-4 py-4 text-center text-xs text-white/40">
-        &copy; {new Date().getFullYear()} Save Philly Festivals. All rights
-        reserved.
+      <div className="border-t border-white/10 px-4 py-4 text-center text-xs text-white/40 md:px-[81px]">
+        <Link href="/" className="font-logo text-base font-bold tracking-tight text-white/60">
+          Philly Fests
+        </Link>
+        <span className="mx-2">Terms &amp; Privacy</span>
+        &copy; {new Date().getFullYear()} Philly Festivals - Todos os direitos
+        reservados.
       </div>
     </footer>
   );
