@@ -2,6 +2,8 @@ import "./globals.css";
 
 import { Albert_Sans, Maven_Pro, Nunito, Montaga, Inter, DM_Sans } from "next/font/google";
 import { RootLayout as LayoutShell } from "@/components/layouts/RootLayout";
+import Providers from "@/components/layouts/Providers";
+import { auth } from "@/lib/auth";
 
 const albertSans = Albert_Sans({
   subsets: ["latin"],
@@ -44,14 +46,19 @@ export const metadata = {
   description: "Discover and manage Philadelphia festivals",
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const session = await auth();
+  const isStaff = session?.user?.role === "admin" || session?.user?.role === "super_admin";
+
   return (
     <html
       lang="en"
       className={`${albertSans.variable} ${mavenPro.variable} ${nunito.variable} ${montaga.variable} ${inter.variable} ${dmSans.variable}`}
     >
       <body className="antialiased">
-        <LayoutShell>{children}</LayoutShell>
+        <Providers>
+          <LayoutShell isStaff={isStaff}>{children}</LayoutShell>
+        </Providers>
       </body>
     </html>
   );

@@ -1,80 +1,41 @@
+import { prisma } from "@/lib/db";
+import { FESTIVAL_STATUS } from "@/lib/constants";
 import { FestivalCard } from "@/components/shared/FestivalCard";
 import { SearchBar } from "@/components/shared/SearchBar";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, MapIcon, Sparkles } from "lucide-react";
 
-const festivals = [
-  {
-    id: 1,
-    title: "52nd Street Summer Block Party",
-    date: "Dec 19, 2025",
-    location: "West Philadelphia",
-    category: "Music",
-    badge: "Featured",
-    image: null,
-  },
-  {
-    id: 2,
-    title: "Taste of Kensington",
-    date: "Dec 20, 2025",
-    location: "Kensington",
-    category: "Food",
-    badge: "Featured",
-    image: null,
-  },
-  {
-    id: 3,
-    title: "Taste of Kensington",
-    date: "Dec 21, 2025",
-    location: "Kensington",
-    category: "Food",
-    badge: "Featured",
-    image: null,
-  },
-  {
-    id: 4,
-    title: "Taste of Kensington",
-    date: "Dec 22, 2025",
-    location: "Kensington",
-    category: "Caribbean",
-    image: null,
-  },
-  {
-    id: 5,
-    title: "Community Mural Festival",
-    date: "Jan 10, 2026",
-    location: "North Philly",
-    category: "Art",
-    image: null,
-  },
-  {
-    id: 6,
-    title: "South Philly Sabor",
-    date: "Jan 18, 2026",
-    location: "South Philly",
-    category: "Food",
-    image: null,
-  },
-  {
-    id: 7,
-    title: "Dance at the Art Museum",
-    date: "Jan 25, 2026",
-    location: "Center City",
-    category: "Cultural",
-    image: null,
-  },
-  {
-    id: 8,
-    title: "Winter Farmers Market",
-    date: "Feb 1, 2026",
-    location: "West Philadelphia",
-    category: "Community",
-    badge: "Featured",
-    image: null,
-  },
-];
+async function getFestivals() {
+  const festivals = await prisma.festival.findMany({
+    where: { status: FESTIVAL_STATUS.APPROVED },
+    orderBy: { start_date: "asc" },
+    take: 8,
+    include: {
+      categories: { include: { category: true } },
+    },
+  });
 
-export default function Home() {
+  return festivals.map((festival) => ({
+    id: festival.id,
+    slug: festival.slug,
+    title: festival.name,
+    date: festival.start_date
+      ? new Date(festival.start_date).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "TBD",
+    location: festival.city || "Philadelphia",
+    category: festival.categories[0]?.category?.name || "Festival",
+    badge: null,
+    image: festival.image_url,
+  }));
+}
+
+export default async function Home() {
+  const festivals = await getFestivals();
+
   return (
     <>
       <section className="mx-auto max-w-[1440px] px-4 pb-8 pt-12 md:px-[81px] md:pb-12 md:pt-20">
@@ -103,23 +64,39 @@ export default function Home() {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {festivals.map((festival) => (
-              <FestivalCard
-                key={festival.id}
-                title={festival.title}
-                date={festival.date}
-                location={festival.location}
-                category={festival.category}
-                badge={festival.badge}
-              />
-            ))}
+            {festivals.length > 0 ? (
+              festivals.map((festival) => (
+                <FestivalCard
+                  key={festival.id}
+                  slug={festival.slug}
+                  title={festival.title}
+                  date={festival.date}
+                  location={festival.location}
+                  category={festival.category}
+                  badge={festival.badge}
+                  image={festival.image}
+                />
+              ))
+            ) : (
+              <div className="col-span-full py-12 text-center">
+                <p className="text-muted-foreground">
+                  No festivals yet. Be the first to{" "}
+                  <a href="/producer/submit" className="text-primary hover:underline">
+                    submit a festival
+                  </a>
+                  !
+                </p>
+              </div>
+            )}
           </div>
 
-          <div className="mt-10 text-center">
-            <Button variant="outline" size="lg" className="rounded-full px-8">
-              Load more festivals
-            </Button>
-          </div>
+          {festivals.length >= 8 && (
+            <div className="mt-10 text-center">
+              <Button variant="outline" size="lg" className="rounded-full px-8">
+                Load more festivals
+              </Button>
+            </div>
+          )}
         </div>
       </section>
     </>

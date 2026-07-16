@@ -15,6 +15,13 @@ export const createFestivalSchema = z.object({
   contact_name: z.string().optional(),
   contact_email: z.string().email().optional().or(z.literal("")),
   contact_phone: z.string().optional(),
+  story: z.string().optional(),
+  mission: z.string().optional(),
+  history: z.string().optional(),
+  host_name: z.string().optional(),
+  host_title: z.string().optional(),
+  host_about: z.string().optional(),
+  host_social: z.string().url().optional().or(z.literal("")),
   start_date: z.string().datetime().optional(),
   end_date: z.string().datetime().optional(),
 });

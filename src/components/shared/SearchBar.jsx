@@ -2,10 +2,18 @@
 
 import { cn } from "@/lib/utils";
 import { Calendar, Search, SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
 
 export function SearchBar({ className, onSearch, onFilter, ...props }) {
   const [query, setQuery] = useState("");
+  const [categories, setCategories] = React.useState([]);
+
+  React.useEffect(() => {
+    fetch("/api/categories")
+      .then((res) => res.json())
+      .then(setCategories)
+      .catch(() => {});
+  }, []);
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -57,11 +65,11 @@ export function SearchBar({ className, onSearch, onFilter, ...props }) {
             style={{ letterSpacing: "-0.198857px", lineHeight: "19px" }}
           >
             <option>Type</option>
-            <option>Music</option>
-            <option>Food</option>
-            <option>Art</option>
-            <option>Cultural</option>
-            <option>Community</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.slug}>
+                {cat.name}
+              </option>
+            ))}
           </select>
         </div>
         <div className="flex h-[33px] items-center gap-2 rounded-[16.5px] border border-[#AEAEAE] bg-transparent px-[13px] py-[6px]">

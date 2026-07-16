@@ -80,7 +80,12 @@ export async function getFestivalBySlug(slug) {
 }
 
 export async function createFestival(data) {
-  const slug = data.slug || generateSlug(data.name);
+  let slug = data.slug || generateSlug(data.name);
+
+  const existing = await prisma.festival.findUnique({ where: { slug } });
+  if (existing) {
+    slug = `${slug}-${Date.now()}`;
+  }
 
   return prisma.festival.create({
     data: {
@@ -105,10 +110,13 @@ export async function deleteFestival(id) {
 }
 
 export async function approveFestival(id, status, reason) {
+  const data = { status };
+  if (reason) {
+    data.rejection_reason = reason;
+  }
   const festival = await prisma.festival.update({
     where: { id },
-    data: { status },
+    data,
   });
-
   return { festival, reason };
 }
