@@ -1,12 +1,12 @@
 import { NavBar } from "@/components/shared/NavBar";
 import { Footer } from "@/components/shared/Footer";
 
-export function RootLayout({ children }) {
+export function RootLayout({ children, isStaff }) {
   return (
     <div className="flex min-h-screen flex-col">
       <NavBar />
-      <main className="flex-1">{children}</main>
-      <Footer />
+      <main className="flex-1 pb-16">{children}</main>
+      {!isStaff && <Footer />}
     </div>
   );
 }
