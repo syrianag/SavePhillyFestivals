@@ -1,17 +1,74 @@
+"use client";
+
+import { useState, useMemo } from "react";
 import { FeaturedFestivalCard } from "@/components/shared/FeaturedFestivalCard";
 import { FestivalCard } from "@/components/shared/FestivalCard";
 import { SearchBar } from "@/components/shared/SearchBar";
 import { festivals, articles } from "@/lib/festivals";
 
+function filterByDate(list, dateFilter) {
+  if (!dateFilter) return list;
+  const now = new Date();
+  return list.filter((f) => {
+    const d = new Date(f.rawDate);
+    if (dateFilter === "this-week") {
+      const weekEnd = new Date(now);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      return d >= now && d <= weekEnd;
+    }
+    if (dateFilter === "this-month") {
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }
+    if (dateFilter === "next-month") {
+      const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      return d.getMonth() === next.getMonth() && d.getFullYear() === next.getFullYear();
+    }
+    return true;
+  });
+}
+
 export default function Home() {
-  const featured = festivals.filter((f) => f.badge === "Featured");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState({ date: "", type: "", area: "" });
+
+  const featured = useMemo(() => festivals.filter((f) => f.badge === "Featured"), []);
+
+  const filteredFestivals = useMemo(() => {
+    let result = festivals;
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (f) =>
+          f.title.toLowerCase().includes(q) ||
+          f.location.toLowerCase().includes(q) ||
+          f.category.toLowerCase().includes(q)
+      );
+    }
+
+    if (filters.type) {
+      result = result.filter((f) => f.category === filters.type);
+    }
+
+    if (filters.area) {
+      result = result.filter((f) => f.location.toLowerCase().includes(filters.area.toLowerCase()));
+    }
+
+    result = filterByDate(result, filters.date);
+
+    return result;
+  }, [searchQuery, filters]);
 
   return (
     <>
       <section className="mx-auto max-w-[1440px] px-4 pb-8 pt-12 md:px-[81px] md:pb-12 md:pt-20">
         <div className="mx-auto max-w-4xl text-center">
           <div className="mx-auto mt-8 max-w-[513px]">
-            <SearchBar />
+            <SearchBar
+              onSearch={setSearchQuery}
+              filters={filters}
+              onFilterChange={setFilters}
+            />
           </div>
         </div>
 
@@ -30,7 +87,7 @@ export default function Home() {
 
       <section className="overflow-hidden pb-12">
         <div className="flex gap-4 overflow-x-auto pb-4 px-4 md:gap-[38px] md:pl-[81px] md:pr-[81px]">
-          {featured.map((f, i) => (
+          {featured.map((f) => (
             <FeaturedFestivalCard
               key={f.id}
               title={f.title}
@@ -70,21 +127,27 @@ export default function Home() {
 
       <section className="mx-auto max-w-[1440px] px-4 pb-8 md:px-[81px]">
         <h3 className="font-body text-base font-normal text-black md:text-lg">
-          Coming up this month
+          {filters.type ? `${filters.type} Festivals` : "Coming up this month"}
         </h3>
 
         <div className="mt-6 flex gap-4 overflow-x-auto pb-4 md:mt-10 md:gap-10">
-          {festivals.map((festival) => (
-            <FestivalCard
-              key={festival.id}
-              variant="compact"
-              title={festival.title}
-              date={festival.date}
-              location={festival.location}
-              category={festival.category}
-              badge={festival.badge}
-            />
-          ))}
+          {filteredFestivals.length > 0 ? (
+            filteredFestivals.map((festival) => (
+              <FestivalCard
+                key={festival.id}
+                variant="compact"
+                title={festival.title}
+                date={festival.date}
+                location={festival.location}
+                category={festival.category}
+                badge={festival.badge}
+              />
+            ))
+          ) : (
+            <p className="py-8 font-body text-[#848484]">
+              No festivals found matching your filters.
+            </p>
+          )}
         </div>
 
         <div className="mt-10 flex justify-center">

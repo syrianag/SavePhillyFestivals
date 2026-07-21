@@ -2,6 +2,7 @@ import "./globals.css";
 
 import { Albert_Sans, Maven_Pro, Nunito, Montaga, Inter, DM_Sans } from "next/font/google";
 import { RootLayout as LayoutShell } from "@/components/layouts/RootLayout";
+import { ScheduleProvider } from "@/features/schedule/schedule-context";
 
 const albertSans = Albert_Sans({
   subsets: ["latin"],
@@ -51,7 +52,9 @@ export default function RootLayout({ children }) {
       className={`${albertSans.variable} ${mavenPro.variable} ${nunito.variable} ${montaga.variable} ${inter.variable} ${dmSans.variable}`}
     >
       <body className="antialiased">
-        <LayoutShell>{children}</LayoutShell>
+        <ScheduleProvider>
+          <LayoutShell>{children}</LayoutShell>
+        </ScheduleProvider>
       </body>
     </html>
   );
