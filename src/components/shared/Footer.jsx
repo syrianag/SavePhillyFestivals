@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import Image from "next/image";
 import { Globe, Camera, AtSign } from "lucide-react";
 
 const footerSections = [
@@ -39,9 +40,15 @@ export function Footer({ className, ...props }) {
         <div className="max-w-xs">
           <Link
             href="/"
-            className="font-logo text-2xl font-bold tracking-tight text-white"
+            className="flex items-center"
           >
-            Philly Fests
+            <Image
+              src="/logos/PF-Logo-TM.png"
+              alt="Save Philly Festivals"
+              width={200}
+              height={72}
+              className="max-h-[72px] w-auto"
+            />
           </Link>
         </div>
 
@@ -109,8 +116,14 @@ export function Footer({ className, ...props }) {
       </div>
 
       <div className="border-t border-white/10 px-4 py-4 text-center text-xs text-white/40 md:px-[81px]">
-        <Link href="/" className="font-logo text-base font-bold tracking-tight text-white/60">
-          Philly Fests
+        <Link href="/" className="flex items-center">
+          <Image
+            src="/logos/PF-Logo-TM.png"
+            alt="Save Philly Festivals"
+            width={24}
+            height={24}
+            className="h-6 w-auto opacity-60"
+          />
         </Link>
         <span className="mx-2">Terms &amp; Privacy</span>
         &copy; {new Date().getFullYear()} Philly Festivals - Todos os direitos

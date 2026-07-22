@@ -31,6 +31,14 @@ model Festival {
   host_title    String?
   host_about    String?
   host_social   String?
+  social_instagram String?
+  social_facebook  String?
+  social_twitter   String?
+  social_tiktok    String?
+  social_youtube   String?
+  festival_age         String?
+  festival_age_details String?
+  org_type             String?
   story         String?
   mission       String?
   history       String?

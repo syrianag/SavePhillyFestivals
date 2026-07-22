@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu, X, LogOut } from "lucide-react";
 import { useState } from "react";
@@ -17,6 +18,7 @@ const publicLinks = [
 const staffLinks = [
   { href: "/", label: "Dashboard" },
   { href: "/admin/festivals", label: "Festivals" },
+  { href: "/admin/view-festivals", label: "View Festivals" },
   { href: "/admin/pending", label: "Pending Review" },
   { href: "/admin/submit", label: "Submit Festival" },
   { href: "/admin/settings", label: "Settings" },
@@ -42,26 +44,19 @@ export function NavBar() {
   return (
     <header className="sticky top-0 z-50 border-b border-[#E2E8F0] bg-background">
       <div className="mx-auto flex h-[77px] items-center justify-between px-4 md:px-[81px]">
-        <div className="flex flex-col">
-          <Link
-            href="/"
-            className="font-logo text-3xl font-bold tracking-tight text-foreground"
-          >
-            Philly Fests
-          </Link>
-          {(isStaff || isProducer) ? (
-            <span className="font-body text-xs font-medium text-muted-foreground">
-              {session.user.email}
-            </span>
-          ) : (
-            <Link
-              href="/login"
-              className="rounded-lg bg-foreground px-4 py-1.5 font-body text-xs font-semibold text-background hover:bg-foreground/80 transition-colors"
-            >
-              Login
-            </Link>
-          )}
-        </div>
+        <Link
+          href="/"
+          className="flex items-center shrink-0"
+        >
+          <Image
+            src="/logos/PF-Logo-TM.png"
+            alt="Save Philly Festivals"
+            width={200}
+            height={72}
+            className="max-h-[72px] w-auto"
+            priority
+          />
+        </Link>
 
         <nav className="hidden items-center gap-[31.73px] md:flex">
           {navLinks.map((link) => (
@@ -90,6 +85,21 @@ export function NavBar() {
           )}
         </nav>
 
+        <div className="hidden items-center gap-4 md:flex">
+          {(isStaff || isProducer) ? (
+            <span className="font-body text-xs font-medium text-muted-foreground">
+              {session.user.email}
+            </span>
+          ) : (
+            <Link
+              href="/login"
+              className="rounded-md bg-foreground px-3 py-1 font-body text-xs font-semibold text-background hover:bg-foreground/80 transition-colors"
+            >
+              Login
+            </Link>
+          )}
+        </div>
+
         <button
           className="flex md:hidden"
           onClick={() => setMobileOpen(!mobileOpen)}
@@ -117,20 +127,25 @@ export function NavBar() {
             </Link>
           ))}
           {(isStaff || isProducer) ? (
-            <button
-              onClick={() => {
-                setMobileOpen(false);
-                signOut({ callbackUrl: "/" });
-              }}
-              className="block py-2 font-body text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Sign Out
-            </button>
+            <>
+              <span className="block py-2 font-body text-xs font-medium text-muted-foreground">
+                {session.user.email}
+              </span>
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  signOut({ callbackUrl: "/" });
+                }}
+                className="block py-2 font-body text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Sign Out
+              </button>
+            </>
           ) : (
             <Link
               href="/login"
               onClick={() => setMobileOpen(false)}
-              className="mt-2 block rounded-lg bg-foreground px-4 py-2 text-center font-body text-sm font-semibold text-background hover:bg-foreground/80 transition-colors"
+              className="mt-3 block rounded-md bg-foreground px-3 py-1.5 text-center font-body text-xs font-semibold text-background hover:bg-foreground/80 transition-colors"
             >
               Login
             </Link>

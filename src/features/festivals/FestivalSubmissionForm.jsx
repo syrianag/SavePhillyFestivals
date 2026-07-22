@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,121 +12,146 @@ import { createFestivalSchema } from "./festival-schemas";
 
 const steps = [
   { id: 1, title: "Basic Details" },
-  { id: 2, title: "Host Info" },
-  { id: 3, title: "Your Story" },
-  { id: 4, title: "Review & Submit" },
+  { id: 2, title: "Social Media & Festival Info" },
+  { id: 3, title: "Host Info" },
+  { id: 4, title: "Your Story" },
+  { id: 5, title: "Review & Submit" },
+];
+
+const FESTIVAL_AGE_OPTIONS = [
+  { value: "first_year", label: "This is our first year" },
+  { value: "1_3_years", label: "1–3 years" },
+  { value: "4_7_years", label: "4–7 years" },
+  { value: "8_15_years", label: "8–15 years" },
+  { value: "15_plus_years", label: "15+ years" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+];
+
+const ORG_TYPE_OPTIONS = [
+  { value: "non_profit", label: "Non-profit organization" },
+  { value: "for_profit", label: "For-profit business" },
+  { value: "llc", label: "LLC" },
+  { value: "community_group", label: "Community group" },
+  { value: "government", label: "Government agency" },
+  { value: "school", label: "School / University" },
+  { value: "individual", label: "Individual / Sole proprietor" },
+  { value: "other", label: "Other" },
 ];
 
 export default function FestivalSubmissionForm() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    location: "",
-    city: "Philadelphia",
-    state: "PA",
-    zip_code: "",
-    website_url: "",
-    contact_name: "",
-    contact_email: "",
-    contact_phone: "",
-    start_date: "",
-    end_date: "",
-    story: "",
-    mission: "",
-    history: "",
-    host_name: "",
-    host_title: "",
-    host_about: "",
-    host_social: "",
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+    getValues,
+    trigger,
+  } = useForm({
+    resolver: zodResolver(createFestivalSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      location: "",
+      city: "Philadelphia",
+      state: "PA",
+      zip_code: "",
+      website_url: "",
+      contact_name: "",
+      contact_email: "",
+      contact_phone: "",
+      start_date: "",
+      end_date: "",
+      story: "",
+      mission: "",
+      history: "",
+      host_name: "",
+      host_title: "",
+      host_about: "",
+      host_social: "",
+      social_instagram: "",
+      social_facebook: "",
+      social_twitter: "",
+      social_tiktok: "",
+      social_youtube: "",
+      festival_age: "",
+      festival_age_details: "",
+      org_type: "",
+    },
   });
 
-  function updateFormData(field, value) {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }));
-    }
-  }
+  const formData = watch();
 
-  function validateStep(step) {
-    const stepErrors = {};
+  const STEP_FIELDS = {
+    1: ["name", "contact_email"],
+    2: [],
+    3: [],
+    4: [],
+    5: [],
+  };
 
-    if (step === 1) {
-      if (!formData.name.trim()) stepErrors.name = "Festival name is required";
-      if (!formData.contact_email.trim()) {
-        stepErrors.contact_email = "Contact email is required";
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email)) {
-        stepErrors.contact_email = "Invalid email address";
-      }
-    }
-
-    setErrors(stepErrors);
-    return Object.keys(stepErrors).length === 0;
-  }
-
-  function nextStep() {
-    if (validateStep(currentStep)) {
+  async function nextStep() {
+    const valid = await trigger(STEP_FIELDS[currentStep]);
+    if (valid) {
       setCurrentStep((prev) => Math.min(prev + 1, steps.length));
     }
   }
 
   function prevStep() {
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
+    setCurrentStep((prev) => Math.max(prev - 1, steps.length));
   }
 
-  async function handleSubmit() {
+  async function onSubmit() {
     setLoading(true);
-    setErrors({});
+    setSubmitError(null);
+
+    const values = getValues();
 
     const submitData = {
-      name: formData.name,
-      description: formData.description,
-      location: formData.location,
-      city: formData.city,
-      state: formData.state,
-      zip_code: formData.zip_code || undefined,
-      website_url: formData.website_url || undefined,
-      contact_name: formData.contact_name || undefined,
-      contact_email: formData.contact_email,
-      contact_phone: formData.contact_phone || undefined,
-      story: formData.story || undefined,
-      mission: formData.mission || undefined,
-      history: formData.history || undefined,
-      host_name: formData.host_name || undefined,
-      host_title: formData.host_title || undefined,
-      host_about: formData.host_about || undefined,
-      host_social: formData.host_social || undefined,
-      start_date: formData.start_date
-        ? new Date(formData.start_date).toISOString()
+      name: values.name,
+      description: values.description,
+      location: values.location,
+      city: values.city,
+      state: values.state,
+      zip_code: values.zip_code || undefined,
+      website_url: values.website_url || undefined,
+      contact_name: values.contact_name || undefined,
+      contact_email: values.contact_email,
+      contact_phone: values.contact_phone || undefined,
+      story: values.story || undefined,
+      mission: values.mission || undefined,
+      history: values.history || undefined,
+      host_name: values.host_name || undefined,
+      host_title: values.host_title || undefined,
+      host_about: values.host_about || undefined,
+      host_social: values.host_social || undefined,
+      social_instagram: values.social_instagram || undefined,
+      social_facebook: values.social_facebook || undefined,
+      social_twitter: values.social_twitter || undefined,
+      social_tiktok: values.social_tiktok || undefined,
+      social_youtube: values.social_youtube || undefined,
+      festival_age: values.festival_age || undefined,
+      festival_age_details: values.festival_age_details || undefined,
+      org_type: values.org_type || undefined,
+      start_date: values.start_date
+        ? new Date(values.start_date).toISOString()
         : undefined,
-      end_date: formData.end_date
-        ? new Date(formData.end_date).toISOString()
+      end_date: values.end_date
+        ? new Date(values.end_date).toISOString()
         : undefined,
     };
-
-    const validation = createFestivalSchema.safeParse(submitData);
-
-    if (!validation.success) {
-      const fieldErrors = {};
-      validation.error.issues.forEach((issue) => {
-        const field = issue.path[0];
-        fieldErrors[field] = issue.message;
-      });
-      setErrors(fieldErrors);
-      setLoading(false);
-      return;
-    }
 
     try {
       const response = await fetch("/api/festivals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(validation.data),
+        body: JSON.stringify(submitData),
       });
 
       if (!response.ok) {
@@ -157,7 +184,7 @@ export default function FestivalSubmissionForm() {
       const isStaffArea = window.location.pathname.startsWith("/admin");
       router.push(isStaffArea ? "/" : "/producer/success");
     } catch (err) {
-      setErrors({ submit: err.message });
+      setSubmitError(err.message);
     } finally {
       setLoading(false);
     }
@@ -200,12 +227,11 @@ export default function FestivalSubmissionForm() {
                 <Label htmlFor="name">Festival Name *</Label>
                 <Input
                   id="name"
-                  value={formData.name}
-                  onChange={(e) => updateFormData("name", e.target.value)}
+                  {...register("name")}
                   placeholder="e.g., South Philly Summer Fest"
                 />
                 {errors.name && (
-                  <p className="text-sm text-destructive">{errors.name}</p>
+                  <p className="text-sm text-destructive">{errors.name.message}</p>
                 )}
               </div>
 
@@ -215,8 +241,7 @@ export default function FestivalSubmissionForm() {
                   <Input
                     id="start_date"
                     type="datetime-local"
-                    value={formData.start_date}
-                    onChange={(e) => updateFormData("start_date", e.target.value)}
+                    {...register("start_date")}
                   />
                 </div>
                 <div className="space-y-2">
@@ -224,8 +249,7 @@ export default function FestivalSubmissionForm() {
                   <Input
                     id="end_date"
                     type="datetime-local"
-                    value={formData.end_date}
-                    onChange={(e) => updateFormData("end_date", e.target.value)}
+                    {...register("end_date")}
                   />
                 </div>
               </div>
@@ -234,8 +258,7 @@ export default function FestivalSubmissionForm() {
                 <Label htmlFor="location">Venue / Location</Label>
                 <Input
                   id="location"
-                  value={formData.location}
-                  onChange={(e) => updateFormData("location", e.target.value)}
+                  {...register("location")}
                   placeholder="e.g., FDR Park"
                 />
               </div>
@@ -243,26 +266,17 @@ export default function FestivalSubmissionForm() {
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    value={formData.city}
-                    onChange={(e) => updateFormData("city", e.target.value)}
-                  />
+                  <Input id="city" {...register("city")} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="state">State</Label>
-                  <Input
-                    id="state"
-                    value={formData.state}
-                    onChange={(e) => updateFormData("state", e.target.value)}
-                  />
+                  <Input id="state" {...register("state")} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="zip_code">ZIP Code</Label>
                   <Input
                     id="zip_code"
-                    value={formData.zip_code}
-                    onChange={(e) => updateFormData("zip_code", e.target.value)}
+                    {...register("zip_code")}
                     placeholder="19101"
                   />
                 </div>
@@ -273,8 +287,7 @@ export default function FestivalSubmissionForm() {
                 <Input
                   id="website_url"
                   type="url"
-                  value={formData.website_url}
-                  onChange={(e) => updateFormData("website_url", e.target.value)}
+                  {...register("website_url")}
                   placeholder="https://yourfestival.com"
                 />
               </div>
@@ -312,10 +325,7 @@ export default function FestivalSubmissionForm() {
                     <Label htmlFor="contact_name">Your Name</Label>
                     <Input
                       id="contact_name"
-                      value={formData.contact_name}
-                      onChange={(e) =>
-                        updateFormData("contact_name", e.target.value)
-                      }
+                      {...register("contact_name")}
                       placeholder="Jane Smith"
                     />
                   </div>
@@ -324,15 +334,12 @@ export default function FestivalSubmissionForm() {
                     <Input
                       id="contact_email"
                       type="email"
-                      value={formData.contact_email}
-                      onChange={(e) =>
-                        updateFormData("contact_email", e.target.value)
-                      }
+                      {...register("contact_email")}
                       placeholder="jane@example.com"
                     />
                     {errors.contact_email && (
                       <p className="text-sm text-destructive">
-                        {errors.contact_email}
+                        {errors.contact_email.message}
                       </p>
                     )}
                   </div>
@@ -342,10 +349,7 @@ export default function FestivalSubmissionForm() {
                   <Input
                     id="contact_phone"
                     type="tel"
-                    value={formData.contact_phone}
-                    onChange={(e) =>
-                      updateFormData("contact_phone", e.target.value)
-                    }
+                    {...register("contact_phone")}
                     placeholder="(215) 555-0123"
                   />
                 </div>
@@ -356,14 +360,121 @@ export default function FestivalSubmissionForm() {
           {currentStep === 2 && (
             <>
               <p className="text-sm text-muted-foreground">
+                Help attendees find and follow your festival online, and tell us a bit about your festival&apos;s history.
+              </p>
+
+              <div className="space-y-2">
+                <Label>How long has your festival been around?</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {FESTIVAL_AGE_OPTIONS.map((opt) => (
+                    <label
+                      key={opt.value}
+                      className={`flex items-center gap-2 rounded-md border p-3 cursor-pointer transition-colors ${
+                        formData.festival_age === opt.value
+                          ? "border-primary bg-primary/5"
+                          : "border-input hover:bg-muted"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        value={opt.value}
+                        {...register("festival_age")}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="festival_age_details">Additional Details (optional)</Label>
+                <textarea
+                  id="festival_age_details"
+                  rows={3}
+                  {...register("festival_age_details")}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  placeholder="Any milestones, past venues, or notable moments..."
+                />
+              </div>
+
+              <div className="border-t pt-6 space-y-4">
+                <h3 className="font-medium">Social Media Handles</h3>
+                <p className="text-sm text-muted-foreground">
+                  Share your festival&apos;s social media pages so we can link and tag you.
+                </p>
+
+                <div className="space-y-2">
+                  <Label htmlFor="social_instagram">Instagram</Label>
+                  <Input
+                    id="social_instagram"
+                    {...register("social_instagram")}
+                    placeholder="instagram.com/yourfestival"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="social_facebook">Facebook</Label>
+                  <Input
+                    id="social_facebook"
+                    {...register("social_facebook")}
+                    placeholder="facebook.com/yourfestival"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="social_twitter">Twitter / X</Label>
+                  <Input
+                    id="social_twitter"
+                    {...register("social_twitter")}
+                    placeholder="x.com/yourfestival"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="social_tiktok">TikTok</Label>
+                  <Input
+                    id="social_tiktok"
+                    {...register("social_tiktok")}
+                    placeholder="tiktok.com/@yourfestival"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="social_youtube">YouTube</Label>
+                  <Input
+                    id="social_youtube"
+                    {...register("social_youtube")}
+                    placeholder="youtube.com/@yourfestival"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {currentStep === 3 && (
+            <>
+              <p className="text-sm text-muted-foreground">
                 Tell attendees about yourself or your organization. This is optional but helps build trust.
               </p>
+
+              <div className="space-y-2">
+                <Label htmlFor="org_type">Organization Type</Label>
+                <select
+                  id="org_type"
+                  {...register("org_type")}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Select organization type...</option>
+                  {ORG_TYPE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="host_name">Host / Organization Name</Label>
                 <Input
                   id="host_name"
-                  value={formData.host_name}
-                  onChange={(e) => updateFormData("host_name", e.target.value)}
+                  {...register("host_name")}
                   placeholder="e.g., South Philly Arts Collective"
                 />
               </div>
@@ -371,8 +482,7 @@ export default function FestivalSubmissionForm() {
                 <Label htmlFor="host_title">Your Role / Title</Label>
                 <Input
                   id="host_title"
-                  value={formData.host_title}
-                  onChange={(e) => updateFormData("host_title", e.target.value)}
+                  {...register("host_title")}
                   placeholder="e.g., Festival Director"
                 />
               </div>
@@ -381,34 +491,31 @@ export default function FestivalSubmissionForm() {
                 <textarea
                   id="host_about"
                   rows={4}
-                  value={formData.host_about}
-                  onChange={(e) => updateFormData("host_about", e.target.value)}
+                  {...register("host_about")}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   placeholder="Tell attendees a bit about yourself or your organization..."
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="host_social">Social Media Link</Label>
+                <Label htmlFor="host_social">Primary Website / Social Link</Label>
                 <Input
                   id="host_social"
                   type="url"
-                  value={formData.host_social}
-                  onChange={(e) => updateFormData("host_social", e.target.value)}
+                  {...register("host_social")}
                   placeholder="https://instagram.com/yourfestival"
                 />
               </div>
             </>
           )}
 
-          {currentStep === 3 && (
+          {currentStep === 4 && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="description">Festival Description</Label>
                 <textarea
                   id="description"
                   rows={4}
-                  value={formData.description}
-                  onChange={(e) => updateFormData("description", e.target.value)}
+                  {...register("description")}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   placeholder="Tell us about your festival..."
                 />
@@ -419,8 +526,7 @@ export default function FestivalSubmissionForm() {
                 <textarea
                   id="story"
                   rows={4}
-                  value={formData.story}
-                  onChange={(e) => updateFormData("story", e.target.value)}
+                  {...register("story")}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   placeholder="What inspired you to start this festival?"
                 />
@@ -431,8 +537,7 @@ export default function FestivalSubmissionForm() {
                 <textarea
                   id="mission"
                   rows={4}
-                  value={formData.mission}
-                  onChange={(e) => updateFormData("mission", e.target.value)}
+                  {...register("mission")}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   placeholder="What is the mission behind your festival?"
                 />
@@ -443,8 +548,7 @@ export default function FestivalSubmissionForm() {
                 <textarea
                   id="history"
                   rows={4}
-                  value={formData.history}
-                  onChange={(e) => updateFormData("history", e.target.value)}
+                  {...register("history")}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   placeholder="How long has this festival been running? Any milestones?"
                 />
@@ -452,7 +556,7 @@ export default function FestivalSubmissionForm() {
             </>
           )}
 
-          {currentStep === 4 && (
+          {currentStep === 5 && (
             <div className="space-y-6">
               <div className="p-4 bg-muted rounded-lg space-y-4">
                 <h3 className="font-medium">{formData.name || "Untitled Festival"}</h3>
@@ -483,18 +587,50 @@ export default function FestivalSubmissionForm() {
                 )}
               </div>
 
-              {(formData.host_name || formData.host_title) && (
+              {formData.festival_age && (
+                <div className="border-t pt-4 space-y-2">
+                  <h4 className="font-medium text-sm">Festival Info</h4>
+                  <p className="text-sm">
+                    <strong>How long running:</strong>{" "}
+                    {FESTIVAL_AGE_OPTIONS.find((o) => o.value === formData.festival_age)?.label || formData.festival_age}
+                  </p>
+                  {formData.festival_age_details && (
+                    <p className="text-sm text-muted-foreground">{formData.festival_age_details}</p>
+                  )}
+                </div>
+              )}
+
+              {(formData.social_instagram || formData.social_facebook || formData.social_twitter || formData.social_tiktok || formData.social_youtube) && (
+                <div className="border-t pt-4 space-y-2">
+                  <h4 className="font-medium text-sm">Social Media</h4>
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    {formData.social_instagram && <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">Instagram: {formData.social_instagram}</span>}
+                    {formData.social_facebook && <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">Facebook: {formData.social_facebook}</span>}
+                    {formData.social_twitter && <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">Twitter/X: {formData.social_twitter}</span>}
+                    {formData.social_tiktok && <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">TikTok: {formData.social_tiktok}</span>}
+                    {formData.social_youtube && <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1">YouTube: {formData.social_youtube}</span>}
+                  </div>
+                </div>
+              )}
+
+              {(formData.host_name || formData.host_title || formData.org_type) && (
                 <div className="border-t pt-4 space-y-2">
                   <h4 className="font-medium text-sm">Host Information</h4>
+                  {formData.org_type && (
+                    <p className="text-sm">
+                      <strong>Org Type:</strong>{" "}
+                      {ORG_TYPE_OPTIONS.find((o) => o.value === formData.org_type)?.label || formData.org_type}
+                    </p>
+                  )}
                   {formData.host_name && <p className="text-sm"><strong>Name:</strong> {formData.host_name}</p>}
                   {formData.host_title && <p className="text-sm"><strong>Role:</strong> {formData.host_title}</p>}
                   {formData.host_about && <p className="text-sm text-muted-foreground">{formData.host_about}</p>}
                 </div>
               )}
 
-              {errors.submit && (
+              {submitError && (
                 <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-                  {errors.submit}
+                  {submitError}
                 </div>
               )}
 
@@ -519,7 +655,7 @@ export default function FestivalSubmissionForm() {
                 Next
               </Button>
             ) : (
-              <Button type="button" onClick={handleSubmit} disabled={loading}>
+              <Button type="button" onClick={handleSubmit(onSubmit)} disabled={loading}>
                 {loading ? "Submitting..." : "Submit Festival"}
               </Button>
             )}

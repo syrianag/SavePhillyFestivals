@@ -20,3 +20,14 @@ export const savedScheduleSchema = z.object({
   email: z.string().email("Invalid email"),
   schedule_id: z.string().uuid("Invalid schedule ID"),
 });
+
+export const saveScheduleWithOptInSchema = z.object({
+  email: z.string().email("Invalid email"),
+  schedule_id: z.string().uuid("Invalid schedule ID"),
+  receive_updates: z.boolean().optional().default(false),
+});
+
+export const removeSavedScheduleSchema = z.object({
+  email: z.string().email("Invalid email"),
+  schedule_id: z.string().uuid("Invalid schedule ID"),
+});

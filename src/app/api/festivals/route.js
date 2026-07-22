@@ -5,6 +5,7 @@ import { validate } from "@/lib/validate";
 import { handleApiError } from "@/lib/errors";
 import { auth } from "@/lib/auth";
 import { FESTIVAL_STATUS } from "@/lib/constants";
+import { sendSubmissionConfirmation } from "@/lib/mail";
 
 export async function GET(request) {
   try {
@@ -45,7 +46,20 @@ export async function POST(request) {
       );
     }
 
-    const festival = await createFestival(result.data);
+    const session = await auth();
+    const submitData = {
+      ...result.data,
+      submitted_by: session?.user?.email || result.data.submitted_by || null,
+    };
+
+    const festival = await createFestival(submitData);
+
+    if (submitData.contact_email) {
+      await sendSubmissionConfirmation({
+        to: submitData.contact_email,
+        festivalName: festival.name,
+      });
+    }
 
     return NextResponse.json(festival, { status: 201 });
   } catch (error) {

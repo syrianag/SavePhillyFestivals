@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -26,9 +27,16 @@ export default function ProducerLayout({ children }) {
           <div className="flex flex-col">
             <Link
               href="/"
-              className="font-logo text-3xl font-bold tracking-tight text-foreground"
+              className="flex items-center"
             >
-              Philly Fests
+              <Image
+                src="/logos/PF-Logo-TM.png"
+                alt="Save Philly Festivals"
+                width={200}
+                height={72}
+                className="max-h-[72px] w-auto"
+                priority
+              />
             </Link>
             {session?.user && (
               <span className="font-body text-xs font-medium text-muted-foreground">

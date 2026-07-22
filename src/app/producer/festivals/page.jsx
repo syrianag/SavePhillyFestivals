@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Calendar,
   Users,
@@ -13,7 +14,7 @@ import {
   Plus,
   ArrowRight,
 } from "lucide-react";
-import { STATUS_COLORS } from "@/lib/constants";
+import { STATUS_COLORS, STATUS_LABELS } from "@/lib/constants";
 
 export default function ProducerFestivalsPage() {
   const [festivals, setFestivals] = useState([]);
@@ -72,9 +73,12 @@ export default function ProducerFestivalsPage() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
                   {festival.image_url && (
-                    <img
+                    <Image
                       src={festival.image_url}
                       alt={festival.name}
+                      width={64}
+                      height={64}
+                      unoptimized
                       className="h-16 w-16 rounded-lg object-cover"
                     />
                   )}
@@ -85,7 +89,7 @@ export default function ProducerFestivalsPage() {
                         className={`${STATUS_COLORS[festival.status]?.bg} ${STATUS_COLORS[festival.status]?.text}`}
                         variant="outline"
                       >
-                        {festival.status}
+                        {STATUS_LABELS[festival.status] || festival.status}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -103,9 +107,9 @@ export default function ProducerFestivalsPage() {
                       )}
                     </div>
                     {festival.categories.length > 0 && (
-                      <div className="flex gap-1">
-                        {festival.categories.map((cat) => (
-                          <Badge key={cat} variant="secondary" className="text-xs">{cat}</Badge>
+                      <div className="flex flex-wrap gap-1">
+                        {festival.categories.map((cat, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">{cat}</Badge>
                         ))}
                       </div>
                     )}

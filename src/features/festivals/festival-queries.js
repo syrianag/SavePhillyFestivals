@@ -91,7 +91,7 @@ export async function createFestival(data) {
     data: {
       ...data,
       slug,
-      status: FESTIVAL_STATUS.DRAFT,
+      status: FESTIVAL_STATUS.PENDING,
     },
   });
 }
