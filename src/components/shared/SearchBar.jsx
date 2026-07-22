@@ -1,23 +1,19 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Calendar, Search, SlidersHorizontal } from "lucide-react";
-import React, { useState } from "react";
+import { Search, SlidersHorizontal } from "lucide-react";
+import { useState } from "react";
 
-export function SearchBar({ className, onSearch, onFilter, ...props }) {
+export function SearchBar({ className, onSearch, onFilter, filters, onFilterChange, ...props }) {
   const [query, setQuery] = useState("");
-  const [categories, setCategories] = React.useState([]);
-
-  React.useEffect(() => {
-    fetch("/api/categories")
-      .then((res) => res.json())
-      .then(setCategories)
-      .catch(() => {});
-  }, []);
 
   function handleSubmit(e) {
     e.preventDefault();
     onSearch?.(query);
+  }
+
+  function handleSelect(key, value) {
+    onFilterChange?.({ ...filters, [key]: value });
   }
 
   return (
@@ -50,39 +46,46 @@ export function SearchBar({ className, onSearch, onFilter, ...props }) {
       <div className="flex flex-wrap gap-2">
         <div className="flex h-[33px] items-center gap-2 rounded-[16.5px] border border-[#AEAEAE] bg-transparent px-[13px] py-[6px]">
           <select
+            value={filters?.date || ""}
+            onChange={(e) => handleSelect("date", e.target.value)}
             className="bg-transparent font-ui text-base font-medium text-[#848484] focus:outline-none"
             style={{ letterSpacing: "-0.198857px", lineHeight: "19px" }}
           >
-            <option>Date</option>
-            <option>This Week</option>
-            <option>This Month</option>
-            <option>Next Month</option>
+            <option value="">Date</option>
+            <option value="this-week">This Week</option>
+            <option value="this-month">This Month</option>
+            <option value="next-month">Next Month</option>
           </select>
         </div>
         <div className="flex h-[33px] items-center gap-2 rounded-[16.5px] border border-[#AEAEAE] bg-transparent px-[13px] py-[6px]">
           <select
+            value={filters?.type || ""}
+            onChange={(e) => handleSelect("type", e.target.value)}
             className="bg-transparent font-ui text-base font-medium text-[#848484] focus:outline-none"
             style={{ letterSpacing: "-0.198857px", lineHeight: "19px" }}
           >
-            <option>Type</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.slug}>
-                {cat.name}
-              </option>
-            ))}
+            <option value="">Type</option>
+            <option value="Music">Music</option>
+            <option value="Food">Food</option>
+            <option value="Art">Art</option>
+            <option value="Cultural">Cultural</option>
+            <option value="Community">Community</option>
+            <option value="Holidays">Holidays</option>
           </select>
         </div>
         <div className="flex h-[33px] items-center gap-2 rounded-[16.5px] border border-[#AEAEAE] bg-transparent px-[13px] py-[6px]">
           <select
+            value={filters?.area || ""}
+            onChange={(e) => handleSelect("area", e.target.value)}
             className="bg-transparent font-ui text-base font-medium text-[#848484] focus:outline-none"
             style={{ letterSpacing: "-0.198857px", lineHeight: "19px" }}
           >
-            <option>Area</option>
-            <option>West Philadelphia</option>
-            <option>Kensington</option>
-            <option>Center City</option>
-            <option>South Philly</option>
-            <option>North Philly</option>
+            <option value="">Area</option>
+            <option value="West Philadelphia">West Philadelphia</option>
+            <option value="Kensington">Kensington</option>
+            <option value="Center City">Center City</option>
+            <option value="South Philly">South Philly</option>
+            <option value="North Philly">North Philly</option>
           </select>
         </div>
       </div>

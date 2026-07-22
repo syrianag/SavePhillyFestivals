@@ -10,6 +10,7 @@ import { useSession, signOut } from "next-auth/react";
 
 const publicLinks = [
   { href: "/", label: "Discover Festivals" },
+  { href: "/calendar", label: "Calendar" },
   { href: "/about", label: "About" },
   { href: "/tours", label: "Tours" },
   { href: "/producer", label: "For Producers" },

@@ -2,6 +2,7 @@ import "./globals.css";
 
 import { Albert_Sans, Maven_Pro, Nunito, Montaga, Inter, DM_Sans } from "next/font/google";
 import { RootLayout as LayoutShell } from "@/components/layouts/RootLayout";
+import { ScheduleProvider } from "@/features/schedule/schedule-context";
 import Providers from "@/components/layouts/Providers";
 import { auth } from "@/lib/auth";
 
@@ -57,7 +58,9 @@ export default async function RootLayout({ children }) {
     >
       <body className="antialiased">
         <Providers>
-          <LayoutShell isStaff={isStaff}>{children}</LayoutShell>
+          <ScheduleProvider>
+            <LayoutShell isStaff={isStaff}>{children}</LayoutShell>
+          </ScheduleProvider>
         </Providers>
       </body>
     </html>
