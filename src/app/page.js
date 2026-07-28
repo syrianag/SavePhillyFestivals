@@ -4,6 +4,10 @@ import { useState, useMemo } from "react";
 import { FeaturedFestivalCard } from "@/components/shared/FeaturedFestivalCard";
 import { FestivalCard } from "@/components/shared/FestivalCard";
 import { SearchBar } from "@/components/shared/SearchBar";
+import { MapSection } from "@/components/shared/MapSection";
+import { CalendarSection } from "@/components/shared/CalendarSection";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 import { festivals, articles } from "@/lib/festivals";
 
 function filterByDate(list, dateFilter) {
@@ -28,6 +32,7 @@ function filterByDate(list, dateFilter) {
 }
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState("featured");
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({ date: "", type: "", area: "" });
 
@@ -63,6 +68,13 @@ export default function Home() {
     <>
       <section className="mx-auto max-w-[1440px] px-4 pb-8 pt-12 md:px-[81px] md:pb-12 md:pt-20">
         <div className="mx-auto max-w-4xl text-center">
+          <h1 className="font-heading text-3xl font-bold leading-tight text-black md:text-[40px] md:leading-[47px]">
+            Discover Philly Fests
+          </h1>
+          <p className="mt-4 font-serif text-xl leading-snug text-[#45556C] md:mt-6 md:text-[28px] md:leading-[34px]">
+            From South Street block parties to Fairmount Park concerts — find the
+            festivals that make Philadelphia shine.
+          </p>
           <div className="mx-auto mt-8 max-w-[513px]">
             <SearchBar
               onSearch={setSearchQuery}
@@ -73,27 +85,48 @@ export default function Home() {
         </div>
 
         <div className="mt-10 flex items-center gap-3 border-b border-[#848484] pb-6 md:mt-[83px] md:pb-[59px]">
-          <button className="flex items-center gap-3 border-b-4 border-black pb-2 font-ui text-sm font-medium text-black md:text-base">
+          <button
+            onClick={() => setActiveTab("featured")}
+            className={cn(
+              "flex items-center gap-3 pb-2 font-ui text-sm font-medium text-black md:text-base",
+              activeTab === "featured" && "border-b-4 border-black"
+            )}
+          >
             Featured
           </button>
-          <button className="flex items-center gap-3 pb-2 font-ui text-sm font-medium text-black md:text-base">
+          <button
+            onClick={() => setActiveTab("map")}
+            className={cn(
+              "flex items-center gap-3 pb-2 font-ui text-sm font-medium text-black md:text-base",
+              activeTab === "map" && "border-b-4 border-black"
+            )}
+          >
             Map
           </button>
-          <button className="flex items-center gap-3 pb-2 font-ui text-sm font-medium text-black md:text-base">
+          <button
+            onClick={() => setActiveTab("calendar")}
+            className={cn(
+              "flex items-center gap-3 pb-2 font-ui text-sm font-medium text-black md:text-base",
+              activeTab === "calendar" && "border-b-4 border-black"
+            )}
+          >
             Calendar
           </button>
         </div>
       </section>
 
-      <section className="overflow-hidden pb-12">
-        <div className="flex gap-4 overflow-x-auto pb-4 px-4 md:gap-[38px] md:pl-[81px] md:pr-[81px]">
-          {featured.map((f) => (
+      {activeTab === "featured" && (
+        <>
+          <section className="overflow-hidden pb-12">
+            <div className="flex gap-4 overflow-x-auto pb-4 px-4 md:gap-[38px] md:pl-[81px] md:pr-[81px]">
+              {featured.map((f) => (
             <FeaturedFestivalCard
               key={f.id}
               title={f.title}
               date={f.date}
               location={f.location}
               description={f.description}
+              slug={f.slug}
               bgColor={f.bgColor}
               badge={f.badge}
               isLight={f.bgColor === "#F6C847"}
@@ -108,9 +141,9 @@ export default function Home() {
           <span className="size-[9px] rounded-full bg-[#D9D9D9]" />
           <span className="size-[9px] rounded-full bg-[#D9D9D9]" />
         </div>
-      </section>
+            </section>
 
-      <section className="mx-auto max-w-[1440px] px-4 py-12 md:px-[81px] md:py-16">
+            <section className="mx-auto max-w-[1440px] px-4 py-12 md:px-[81px] md:py-16">
         <div className="mx-auto max-w-[892px] text-center">
           <h2 className="font-heading text-3xl font-bold leading-tight text-black md:text-[40px] md:leading-[47px]">
             About Philly Fests
@@ -136,6 +169,7 @@ export default function Home() {
               <FestivalCard
                 key={festival.id}
                 variant="compact"
+                slug={festival.slug}
                 title={festival.title}
                 date={festival.date}
                 location={festival.location}
@@ -151,12 +185,13 @@ export default function Home() {
         </div>
 
         <div className="mt-10 flex justify-center">
-          <button
+          <Link
+            href="/calendar"
             className="flex h-[36px] items-center justify-center rounded-[18px] bg-[#424242] px-[17px] font-ui text-base font-medium text-white"
             style={{ letterSpacing: "-0.198857px" }}
           >
             Learn more
-          </button>
+          </Link>
         </div>
       </section>
 
@@ -202,6 +237,21 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+        </>
+      )}
+
+      {activeTab === "map" && (
+        <section className="mx-auto max-w-[1440px] px-4 pb-12 md:px-[81px]">
+          <MapSection festivals={filteredFestivals} />
+        </section>
+      )}
+
+      {activeTab === "calendar" && (
+        <section className="mx-auto max-w-[1440px] px-4 pb-12 md:px-[81px]">
+          <CalendarSection festivals={filteredFestivals} />
+        </section>
+      )}
     </>
   );
 }

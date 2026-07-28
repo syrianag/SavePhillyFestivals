@@ -126,8 +126,7 @@ export function Footer({ className, ...props }) {
           />
         </Link>
         <span className="mx-2">Terms &amp; Privacy</span>
-        &copy; {new Date().getFullYear()} Philly Festivals - Todos os direitos
-        reservados.
+        &copy; {new Date().getFullYear()} Philly Festivals. All rights reserved.
       </div>
     </footer>
   );

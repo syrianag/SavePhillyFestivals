@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Bookmark, Calendar, MapPin, ArrowRight, X } from "lucide-react";
 import { useSchedule } from "@/features/schedule/schedule-context";
+import Link from "next/link";
 
 function getTextColorForBg(bgColor) {
   if (!bgColor) return "#000000";
@@ -26,6 +27,7 @@ export function FestivalCard({
   badge,
   bgColor,
   tags,
+  slug,
   onRemove,
   showSave = false,
   ...props
@@ -190,13 +192,13 @@ export function FestivalCard({
               </button>
             )}
 
-            <a
-              href="#"
+            <Link
+              href={slug ? `/festivals/${slug}` : "#"}
               className="flex h-9 items-center gap-2 rounded-full bg-[#FF7261] px-4 font-body text-base font-bold text-white transition-opacity hover:opacity-90"
             >
               <ArrowRight className="size-3.5 text-white" />
               Learn more
-            </a>
+            </Link>
           </div>
         </div>
       </div>

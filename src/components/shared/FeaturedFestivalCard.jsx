@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
-import { Calendar, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
+import Link from "next/link";
 
 export function FeaturedFestivalCard({
   className,
@@ -7,6 +8,7 @@ export function FeaturedFestivalCard({
   date,
   location,
   description,
+  slug,
   bgColor,
   badge,
   isLight,
@@ -59,12 +61,13 @@ export function FeaturedFestivalCard({
         )}
 
         <div className="mt-2 flex justify-end md:mt-auto">
-          <button
+          <Link
+            href={slug ? `/festivals/${slug}` : "#"}
             className="flex h-[36px] items-center justify-center rounded-[18px] bg-[#FB439B] px-[17px] font-body text-base font-bold text-white"
             style={{ letterSpacing: "-0.198857px" }}
           >
             Learn more
-          </button>
+          </Link>
         </div>
       </div>
     </div>

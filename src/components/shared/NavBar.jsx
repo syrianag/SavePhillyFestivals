@@ -10,7 +10,6 @@ import { useSession, signOut } from "next-auth/react";
 
 const publicLinks = [
   { href: "/", label: "Discover Festivals" },
-  { href: "/calendar", label: "Calendar" },
   { href: "/about", label: "About" },
   { href: "/tours", label: "Tours" },
   { href: "/producer", label: "For Producers" },
@@ -37,7 +36,7 @@ export function NavBar() {
 
   const isStaff = session?.user?.role === "admin" || session?.user?.role === "super_admin";
   const isProducer = session?.user?.role === "producer";
-  const isProducerArea = pathname.startsWith("/producer");
+  const isProducerArea = pathname.startsWith("/producer") && pathname !== "/producer";
   const navLinks = isStaff ? staffLinks : isProducer ? producerLinks : publicLinks;
 
   if (isProducerArea) return null;

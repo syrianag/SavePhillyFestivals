@@ -8,9 +8,17 @@ export const areas = [
   "North Philly",
 ];
 
+function generateSlug(title) {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
 export const festivals = [
   {
     id: 1,
+    slug: generateSlug("South Street Festival"),
     title: "South Street Festival",
     date: "May 3-4, 2025",
     rawDate: "2025-05-03",
@@ -24,6 +32,7 @@ export const festivals = [
   },
   {
     id: 2,
+    slug: generateSlug("Harvest Moon Festival"),
     title: "Harvest Moon Festival",
     date: "November 23, 2025",
     rawDate: "2025-11-23",
@@ -37,6 +46,7 @@ export const festivals = [
   },
   {
     id: 3,
+    slug: generateSlug("Taste of Kensington"),
     title: "Taste of Kensington",
     date: "December 14, 2025",
     rawDate: "2025-12-14",
@@ -50,6 +60,7 @@ export const festivals = [
   },
   {
     id: 4,
+    slug: generateSlug("52nd Street Summer Block Party"),
     title: "52nd Street Summer Block Party",
     date: "June 15, 2025",
     rawDate: "2025-06-15",
@@ -64,6 +75,7 @@ export const festivals = [
   },
   {
     id: 5,
+    slug: generateSlug("Community Mural Festival"),
     title: "Community Mural Festival",
     date: "July 20, 2025",
     rawDate: "2025-07-20",
@@ -77,6 +89,7 @@ export const festivals = [
   },
   {
     id: 6,
+    slug: generateSlug("South Philly Sabor"),
     title: "South Philly Sabor",
     date: "August 10, 2025",
     rawDate: "2025-08-10",
@@ -90,6 +103,7 @@ export const festivals = [
   },
   {
     id: 7,
+    slug: generateSlug("Dance at the Art Museum"),
     title: "Dance at the Art Museum",
     date: "September 5, 2025",
     rawDate: "2025-09-05",
@@ -103,6 +117,7 @@ export const festivals = [
   },
   {
     id: 8,
+    slug: generateSlug("Winter Farmers Market"),
     title: "Winter Farmers Market",
     date: "January 11, 2026",
     rawDate: "2026-01-11",
@@ -117,6 +132,7 @@ export const festivals = [
   },
   {
     id: 9,
+    slug: generateSlug("Caribbean Summer Fest"),
     title: "Caribbean Summer Fest",
     date: "August 24, 2025",
     rawDate: "2025-08-24",
@@ -130,6 +146,7 @@ export const festivals = [
   },
   {
     id: 10,
+    slug: generateSlug("Philadelphia Christmas Village"),
     title: "Philadelphia Christmas Village",
     date: "December 6, 2025",
     rawDate: "2025-12-06",
@@ -143,6 +160,7 @@ export const festivals = [
   },
   {
     id: 11,
+    slug: generateSlug("Hanukkah in the Park"),
     title: "Hanukkah in the Park",
     date: "December 18, 2025",
     rawDate: "2025-12-18",
@@ -156,6 +174,7 @@ export const festivals = [
   },
   {
     id: 12,
+    slug: generateSlug("New Years Eve on the Parkway"),
     title: "New Year's Eve on the Parkway",
     date: "December 31, 2025",
     rawDate: "2025-12-31",
@@ -169,6 +188,7 @@ export const festivals = [
   },
   {
     id: 13,
+    slug: generateSlug("Kwanzaa Market and Celebration"),
     title: "Kwanzaa Market & Celebration",
     date: "December 28, 2025",
     rawDate: "2025-12-28",

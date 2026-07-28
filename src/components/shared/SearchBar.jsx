@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 
-export function SearchBar({ className, onSearch, onFilter, filters, onFilterChange, ...props }) {
+export function SearchBar({ className, onSearch, onFilterChange, filters, ...props }) {
   const [query, setQuery] = useState("");
 
   function handleSubmit(e) {
@@ -14,6 +14,12 @@ export function SearchBar({ className, onSearch, onFilter, filters, onFilterChan
 
   function handleSelect(key, value) {
     onFilterChange?.({ ...filters, [key]: value });
+  }
+
+  function handleReset() {
+    setQuery("");
+    onSearch?.("");
+    onFilterChange?.({ date: "", type: "", area: "" });
   }
 
   return (
@@ -35,9 +41,9 @@ export function SearchBar({ className, onSearch, onFilter, filters, onFilterChan
         </div>
         <button
           type="button"
-          onClick={onFilter}
+          onClick={handleReset}
           className="flex size-10 items-center justify-center rounded-full border border-border bg-[#EEEDED] text-foreground transition-colors hover:bg-muted"
-          aria-label="Filter"
+          aria-label="Reset filters"
         >
           <SlidersHorizontal className="size-4" />
         </button>
@@ -70,6 +76,7 @@ export function SearchBar({ className, onSearch, onFilter, filters, onFilterChan
             <option value="Art">Art</option>
             <option value="Cultural">Cultural</option>
             <option value="Community">Community</option>
+            <option value="Caribbean">Caribbean</option>
             <option value="Holidays">Holidays</option>
           </select>
         </div>
