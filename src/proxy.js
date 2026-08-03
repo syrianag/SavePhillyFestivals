@@ -34,9 +34,7 @@ export async function proxy(request) {
   // Protect admin routes
   const isAdminPath = adminPaths.some((p) => pathname.startsWith(p));
   if (isAdminPath && !isAuthenticated) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   // Protect admin API mutations (POST/PATCH/DELETE)

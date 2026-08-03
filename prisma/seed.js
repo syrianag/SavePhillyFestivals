@@ -26,6 +26,63 @@ const users = [
     name: "Producer User",
     role: "producer",
   },
+  {
+    email: "elena@phlwaterfront.com",
+    password: "elena123",
+    name: "Elena Rodriguez",
+    role: "producer",
+  },
+  {
+    email: "diane@phlcaribbeanjazz.org",
+    password: "diane123",
+    name: "Diane Campbell",
+    role: "producer",
+  },
+  {
+    email: "tom@rittenhouserow.org",
+    password: "tom123",
+    name: "Thomas Greene",
+    role: "producer",
+  },
+];
+
+const organizations = [
+  {
+    name: "Mann Center for the Performing Arts",
+    slug: "mann-center",
+    description: "A beloved outdoor concert destination in Fairmount Park since 1930.",
+    website_url: "https://www.mannmusiccenter.org",
+    email: "info@manncenter.org",
+    phone: "(215) 546-7901",
+    address: "5201 Parkside Ave",
+    city: "Philadelphia",
+    state: "PA",
+    status: "active",
+  },
+  {
+    name: "Delaware River Waterfront Corporation",
+    slug: "delaware-river-waterfront",
+    description: "Managing and activating Philadelphia's Delaware River waterfront.",
+    website_url: "https://www.penns-landing.com",
+    email: "info@drwc.org",
+    phone: "(215) 555-0100",
+    address: "121 N Columbus Blvd",
+    city: "Philadelphia",
+    state: "PA",
+    status: "active",
+  },
+  {
+    name: "Fishtown Business Improvement District",
+    slug: "fishtown-bid",
+    description: "Supporting local businesses and community events in Fishtown.",
+    website_url: "https://www.fishtownbid.org",
+    email: "info@fishtownbid.org",
+    phone: "(215) 555-0167",
+    address: "1301 Frankford Ave",
+    city: "Philadelphia",
+    state: "PA",
+    status: "active",
+  },
 ];
 
 const categories = [
@@ -95,6 +152,7 @@ const festivals = [
     end_date: new Date("2026-07-12T22:00:00"),
     categorySlugs: ["music"],
     tagSlugs: ["outdoor", "annual", "family-friendly"],
+    orgSlug: "mann-center",
   },
   {
     name: "South Philly Caribbean Festival",
@@ -131,7 +189,7 @@ const festivals = [
     zip_code: "19106",
     website_url: "https://www.penns-landing.com",
     status: "approved",
-    submitted_by: null,
+    submitted_by: "elena@phlwaterfront.com",
     contact_name: "Elena Rodriguez",
     contact_email: "elena@phlwaterfront.com",
     contact_phone: "(215) 555-0198",
@@ -145,6 +203,7 @@ const festivals = [
     end_date: new Date("2026-08-17T21:00:00"),
     categorySlugs: ["art", "community"],
     tagSlugs: ["free", "outdoor", "family-friendly"],
+    orgSlug: "delaware-river-waterfront",
   },
   {
     name: "Fishtown neighborhood Block Party & Food Fest",
@@ -170,6 +229,7 @@ const festivals = [
     end_date: new Date("2026-09-06T22:00:00"),
     categorySlugs: ["food", "music", "community"],
     tagSlugs: ["outdoor", "family-friendly", "annual"],
+    orgSlug: "fishtown-bid",
   },
   {
     name: "Philadelphia Caribbean Jazz & Culture Festival",
@@ -181,7 +241,7 @@ const festivals = [
     zip_code: "19131",
     website_url: "https://www.phlcaribbeanjazz.org",
     status: "approved",
-    submitted_by: null,
+    submitted_by: "diane@phlcaribbeanjazz.org",
     contact_name: "Diane Campbell",
     contact_email: "diane@phlcaribbeanjazz.org",
     contact_phone: "(215) 555-0211",
@@ -233,7 +293,7 @@ const festivals = [
     zip_code: "19103",
     website_url: "https://www.rittenhouserow.org",
     status: "pending",
-    submitted_by: null,
+    submitted_by: "tom@rittenhouserow.org",
     contact_name: "Thomas Greene",
     contact_email: "tom@rittenhouserow.org",
     contact_phone: "(215) 555-0156",
@@ -547,6 +607,38 @@ const schedules = [
 
 // ─── Seed Functions ────────────────────────────────────────
 
+async function seedOrganizations() {
+  for (const o of organizations) {
+    await prisma.organization.upsert({
+      where: { slug: o.slug },
+      update: {
+        name: o.name,
+        description: o.description,
+        website_url: o.website_url,
+        email: o.email,
+        phone: o.phone,
+        address: o.address,
+        city: o.city,
+        state: o.state,
+        status: o.status,
+      },
+      create: {
+        name: o.name,
+        slug: o.slug,
+        description: o.description,
+        website_url: o.website_url,
+        email: o.email,
+        phone: o.phone,
+        address: o.address,
+        city: o.city,
+        state: o.state,
+        status: o.status,
+      },
+    });
+  }
+  console.log(`Seeded ${organizations.length} organizations`);
+}
+
 async function seedUsers() {
   for (const u of users) {
     const passwordHash = await bcrypt.hash(u.password, 12);
@@ -635,6 +727,19 @@ async function seedFestivals() {
       },
     });
 
+    // ── Organization link ────────────────────────────────────
+    if (f.orgSlug) {
+      const org = await prisma.organization.findUnique({
+        where: { slug: f.orgSlug },
+      });
+      if (org) {
+        await prisma.festival.update({
+          where: { id: festival.id },
+          data: { organization_id: org.id },
+        });
+      }
+    }
+
     // ── Festival-Category links ─────────────────────────────
     for (const catSlug of f.categorySlugs) {
       const category = await prisma.category.findUnique({
@@ -716,6 +821,7 @@ async function seedSchedules() {
 
 async function main() {
   await seedUsers();
+  await seedOrganizations();
   await seedCategories();
   await seedTags();
   await seedFestivals();

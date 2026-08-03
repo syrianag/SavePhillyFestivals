@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth-helpers";
+import AdminSidebar from "@/components/admin/AdminSidebar";
 
 export const metadata = {
   title: "Admin Dashboard - Save Philly Festivals",
@@ -6,11 +7,14 @@ export const metadata = {
 };
 
 export default async function AdminLayout({ children }) {
-  await requireAdmin();
+  const session = await requireAdmin();
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="container mx-auto px-4 py-8">{children}</main>
+    <div className="flex min-h-screen bg-background">
+      <AdminSidebar user={session.user} />
+      <main className="flex-1 overflow-x-auto">
+        <div className="container mx-auto px-4 py-8 md:px-8">{children}</div>
+      </main>
     </div>
   );
 }

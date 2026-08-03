@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "library"
 }
 
@@ -8,158 +8,171 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Festival ───────────────────────────────────────────────
+model Organization {
+  id          String     @id @default(uuid())
+  name        String
+  slug        String     @unique
+  description String?
+  logo_url    String?
+  website_url String?
+  email       String?
+  phone       String?
+  address     String?
+  city        String?    @default("Philadelphia")
+  state       String?    @default("PA")
+  status      String     @default("active")
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+  festivals   Festival[]
+  Producer    Producer[]
+
+  @@index([slug])
+  @@index([status])
+}
+
 model Festival {
-  id            String   @id @default(uuid())
-  name          String
-  slug          String   @unique
-  description   String?
-  location      String?
-  city          String?  @default("Philadelphia")
-  state         String?  @default("PA")
-  zip_code      String?
-  website_url   String?
-  logo_url      String?
-  image_url     String?
-  status        String   @default("draft")
-  rejection_reason String?
-  submitted_by  String?
-  contact_name  String?
-  contact_email String?
-  contact_phone String?
-  host_name     String?
-  host_title    String?
-  host_about    String?
-  host_social   String?
-  social_instagram String?
-  social_facebook  String?
-  social_twitter   String?
-  social_tiktok    String?
-  social_youtube   String?
+  id                   String             @id @default(uuid())
+  name                 String
+  slug                 String             @unique
+  description          String?
+  location             String?
+  city                 String?            @default("Philadelphia")
+  state                String?            @default("PA")
+  zip_code             String?
+  website_url          String?
+  logo_url             String?
+  image_url            String?
+  status               String             @default("draft")
+  submitted_by         String?
+  contact_name         String?
+  contact_email        String?
+  contact_phone        String?
+  start_date           DateTime?
+  end_date             DateTime?
+  created_at           DateTime           @default(now())
+  updated_at           DateTime           @updatedAt
+  history              String?
+  mission              String?
+  story                String?
+  rejection_reason     String?
+  host_about           String?
+  host_name            String?
+  host_social          String?
+  host_title           String?
   festival_age         String?
   festival_age_details String?
   org_type             String?
-  story         String?
-  mission       String?
-  history       String?
-  start_date    DateTime?
-  end_date      DateTime?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-
-  schedules     Schedule[]
-  categories    FestivalCategory[]
-  tags          FestivalTag[]
-  files         FestivalFile[]
+  social_facebook      String?
+  social_instagram     String?
+  social_tiktok        String?
+  social_twitter       String?
+  social_youtube       String?
+  organization_id      String?
+  producer_id          String?
+  Communication        Communication[]
+  organization         Organization?      @relation(fields: [organization_id], references: [id])
+  Producer             Producer?          @relation(fields: [producer_id], references: [id])
+  categories           FestivalCategory[]
+  files                FestivalFile[]
+  tags                 FestivalTag[]
+  schedules            Schedule[]
+  Task                 Task[]
 
   @@index([status])
   @@index([start_date])
   @@index([slug])
 }
 
-// ─── Schedule (individual events within a festival) ────────
 model Schedule {
-  id            String   @id @default(uuid())
-  festival_id   String
-  title         String
-  description   String?
-  location      String?
-  start_time    DateTime
-  end_time      DateTime
-  performer     String?
-  genre         String?
-  is_headliner  Boolean  @default(false)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-
-  festival      Festival        @relation(fields: [festival_id], references: [id], onDelete: Cascade)
+  id              String          @id @default(uuid())
+  festival_id     String
+  title           String
+  description     String?
+  location        String?
+  start_time      DateTime
+  end_time        DateTime
+  performer       String?
+  genre           String?
+  is_headliner    Boolean         @default(false)
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
   saved_schedules SavedSchedule[]
+  festival        Festival        @relation(fields: [festival_id], references: [id], onDelete: Cascade)
 
   @@index([festival_id])
   @@index([start_time])
 }
 
-// ─── Saved Schedule (user's personalized schedule) ─────────
 model SavedSchedule {
-  id            String   @id @default(uuid())
-  user_email    String
-  schedule_id   String
-  created_at    DateTime @default(now())
-
-  schedule      Schedule @relation(fields: [schedule_id], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  user_email  String
+  schedule_id String
+  created_at  DateTime @default(now())
+  schedule    Schedule @relation(fields: [schedule_id], references: [id], onDelete: Cascade)
 
   @@unique([user_email, schedule_id])
   @@index([user_email])
 }
 
-// ─── Category ──────────────────────────────────────────────
 model Category {
-  id            String   @id @default(uuid())
-  name          String   @unique
-  slug          String   @unique
-  description   String?
-
-  festivals     FestivalCategory[]
+  id          String             @id @default(uuid())
+  name        String             @unique
+  slug        String             @unique
+  description String?
+  festivals   FestivalCategory[]
 }
 
 model FestivalCategory {
-  festival_id   String
-  category_id   String
-
-  festival      Festival   @relation(fields: [festival_id], references: [id], onDelete: Cascade)
-  category      Category   @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  festival_id String
+  category_id String
+  category    Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  festival    Festival @relation(fields: [festival_id], references: [id], onDelete: Cascade)
 
   @@id([festival_id, category_id])
 }
 
-// ─── Tag ───────────────────────────────────────────────────
 model Tag {
-  id            String   @id @default(uuid())
-  name          String   @unique
-  slug          String   @unique
-
-  festivals     FestivalTag[]
+  id        String        @id @default(uuid())
+  name      String        @unique
+  slug      String        @unique
+  festivals FestivalTag[]
 }
 
 model FestivalTag {
-  festival_id   String
-  tag_id        String
-
-  festival      Festival   @relation(fields: [festival_id], references: [id], onDelete: Cascade)
-  tag           Tag        @relation(fields: [tag_id], references: [id], onDelete: Cascade)
+  festival_id String
+  tag_id      String
+  festival    Festival @relation(fields: [festival_id], references: [id], onDelete: Cascade)
+  tag         Tag      @relation(fields: [tag_id], references: [id], onDelete: Cascade)
 
   @@id([festival_id, tag_id])
 }
 
-// ─── Festival File Uploads ─────────────────────────────────
 model FestivalFile {
-  id            String   @id @default(uuid())
-  festival_id   String
-  file_name     String
-  file_url      String
-  file_type     String
-  file_size     Int?
-  uploaded_at   DateTime @default(now())
-
-  festival      Festival @relation(fields: [festival_id], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  festival_id String
+  file_name   String
+  file_url    String
+  file_type   String
+  file_size   Int?
+  uploaded_at DateTime @default(now())
+  festival    Festival @relation(fields: [festival_id], references: [id], onDelete: Cascade)
 
   @@index([festival_id])
 }
 
-// ─── Auth (NextAuth.js) ────────────────────────────────────
 model User {
-  id            String   @id @default(uuid())
-  name          String?
-  email         String   @unique
+  id             String    @id @default(uuid())
+  name           String?
+  email          String    @unique
   email_verified DateTime?
-  password_hash String
-  role          String   @default("admin")
-  image         String?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-
-  sessions      Session[]
-  accounts      Account[]
+  password_hash  String
+  role           String    @default("admin")
+  image          String?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  accounts       Account[]
+  Producer       Producer?
+  sessions       Session[]
 }
 
 model Account {
@@ -175,8 +188,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -186,8 +198,7 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -198,7 +209,6 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// ─── Email Log ─────────────────────────────────────────────
 model EmailLog {
   id            String   @id @default(uuid())
   to_email      String
@@ -210,4 +220,98 @@ model EmailLog {
 
   @@index([to_email])
   @@index([sent_at])
+}
+
+model Communication {
+  id          String    @id
+  direction   String
+  channel     String    @default("email")
+  from_email  String?
+  to_email    String?
+  subject     String?
+  body        String?
+  status      String    @default("sent")
+  festival_id String?
+  producer_id String?
+  created_at  DateTime  @default(now())
+  Festival    Festival? @relation(fields: [festival_id], references: [id])
+  Producer    Producer? @relation(fields: [producer_id], references: [id])
+
+  @@index([created_at])
+  @@index([festival_id])
+  @@index([producer_id])
+}
+
+model Note {
+  id           String    @id
+  body         String
+  author_email String?
+  entity_type  String
+  entity_id    String
+  created_at   DateTime  @default(now())
+  updated_at   DateTime
+  producer_id  String?
+  Producer     Producer? @relation(fields: [producer_id], references: [id])
+
+  @@index([entity_type, entity_id])
+  @@index([producer_id])
+}
+
+model Permission {
+  id         String   @id
+  role       String
+  resource   String
+  action     String
+  created_at DateTime @default(now())
+
+  @@unique([role, resource, action])
+  @@index([role])
+}
+
+model Producer {
+  id               String          @id
+  user_id          String?         @unique
+  name             String
+  email            String          @unique
+  phone            String?
+  bio              String?
+  avatar_url       String?
+  website_url      String?
+  social_instagram String?
+  social_facebook  String?
+  social_twitter   String?
+  status           String          @default("active")
+  created_at       DateTime        @default(now())
+  updated_at       DateTime
+  organization_id  String?
+  Communication    Communication[]
+  Festival         Festival[]
+  Note             Note[]
+  Organization     Organization?   @relation(fields: [organization_id], references: [id])
+  User             User?           @relation(fields: [user_id], references: [id])
+  Task             Task[]
+
+  @@index([email])
+  @@index([status])
+}
+
+model Task {
+  id             String    @id
+  title          String
+  description    String?
+  status         String    @default("todo")
+  priority       String    @default("medium")
+  due_date       DateTime?
+  completed_at   DateTime?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime
+  producer_id    String?
+  festival_id    String?
+  assignee_email String?
+  Festival       Festival? @relation(fields: [festival_id], references: [id])
+  Producer       Producer? @relation(fields: [producer_id], references: [id])
+
+  @@index([festival_id])
+  @@index([producer_id])
+  @@index([status])
 }
