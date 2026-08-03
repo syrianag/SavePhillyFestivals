@@ -14,6 +14,7 @@ export default async function AdminPendingPage() {
   return (
     <div className="space-y-6">
       <div>
+        <p className="text-sm text-muted-foreground">Content</p>
         <h1 className="text-3xl font-heading font-bold">Pending Review</h1>
         <p className="text-muted-foreground">
           {pending.length} submission{pending.length !== 1 ? "s" : ""} awaiting review

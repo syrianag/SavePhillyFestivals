@@ -1,74 +1,223 @@
-import { getFestivals } from "@/features/festivals/festival-queries";
-import { requireAdmin } from "@/lib/auth-helpers";
-import { FESTIVAL_STATUS, STATUS_COLORS } from "@/lib/constants";
+"use client";
+
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, Plus, Building2, CalendarDays, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { Eye } from "lucide-react";
 import FestivalReviewDialog from "@/components/admin/FestivalReviewDialog";
+import { STATUS_COLORS, STATUS_LABELS } from "@/lib/constants";
 
-export default async function AdminFestivalsPage() {
-  await requireAdmin();
+const STATUS_OPTIONS = [
+  { value: "", label: "All statuses" },
+  { value: "draft", label: "Draft" },
+  { value: "pending", label: "Pending Review" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
+];
 
-  const { festivals } = await getFestivals({ limit: 50 });
+function formatDate(dateStr) {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
-  const statusBadge = (status) => {
-    const colors = STATUS_COLORS[status];
-    return colors ? colors.text : "text-muted-foreground";
-  };
+export default function AdminFestivalsPage() {
+  const [festivals, setFestivals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    let ignore = false;
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (status) params.set("status", status);
+      params.set("limit", "100");
+
+      fetch(`/api/festivals?${params.toString()}`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to fetch festivals");
+          return res.json();
+        })
+        .then((data) => {
+          if (!ignore) setFestivals(data.festivals || []);
+        })
+        .catch(() => {
+          if (!ignore) setError("Failed to load festivals.");
+        })
+        .finally(() => {
+          if (!ignore) setLoading(false);
+        });
+    }, 300);
+
+    return () => {
+      ignore = true;
+      clearTimeout(timer);
+    };
+  }, [search, status]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <p className="text-sm text-muted-foreground">Content</p>
           <h1 className="text-3xl font-heading font-bold">Festivals</h1>
           <p className="text-muted-foreground">All festival submissions</p>
         </div>
-        <Link href="/admin/submit" className="text-sm text-primary hover:underline">
-          + New Submission
+        <Link href="/admin/submit">
+          <Button className="gap-2">
+            <Plus className="size-4" />
+            New Festival
+          </Button>
         </Link>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[220px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search festivals..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value || "all"} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Card>
         <CardContent className="p-0">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b text-left text-sm font-medium text-muted-foreground">
-                <th className="px-4 py-3">Title</th>
-                <th className="px-4 py-3">Location</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Submitted</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {festivals.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                    No festivals yet.
-                  </td>
-                </tr>
-              ) : (
-                festivals.map((f) => (
-                  <tr key={f.id} className="border-b last:border-0 hover:bg-muted/50">
-                    <td className="px-4 py-3 font-medium">{f.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{f.location ?? "—"}</td>
-                    <td className="px-4 py-3">
-                      <span className={statusBadge(f.status)}>{f.status}</span>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(f.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <FestivalReviewDialog festival={f}>
-                        <Eye className="size-3.5" />
-                        Review
-                      </FestivalReviewDialog>
-                    </td>
+          {loading ? (
+            <div className="px-6 py-12 text-center text-sm text-muted-foreground">
+              Loading...
+            </div>
+          ) : error ? (
+            <div className="px-6 py-12 text-center text-sm text-red-600">
+              {error}
+            </div>
+          ) : festivals.length === 0 ? (
+            <div className="px-6 py-12 text-center text-sm text-muted-foreground">
+              No festivals match your filters.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-y text-left text-sm font-medium text-muted-foreground">
+                    <th className="px-6 py-3">Name</th>
+                    <th className="px-6 py-3">Organization</th>
+                    <th className="px-6 py-3">Dates</th>
+                    <th className="px-6 py-3">Status</th>
+                    <th className="px-6 py-3">Submitted</th>
+                    <th className="px-6 py-3">Actions</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {festivals.map((f) => {
+                    const colors = STATUS_COLORS[f.status] || STATUS_COLORS.draft;
+                    return (
+                      <tr
+                        key={f.id}
+                        className="border-b last:border-0 hover:bg-muted/50"
+                      >
+                        <td className="px-6 py-3">
+                          <Link
+                            href={`/festivals/${f.slug}`}
+                            className="font-medium hover:underline"
+                          >
+                            {f.name}
+                          </Link>
+                          {f.location && (
+                            <p className="text-xs text-muted-foreground">
+                              {f.location}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-6 py-3">
+                          {f.organization ? (
+                            <Link
+                              href={`/organizations/${f.organization.slug}`}
+                              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground hover:underline"
+                            >
+                              <Building2 className="size-3.5 shrink-0" />
+                              {f.organization.name}
+                            </Link>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              —
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-3 text-sm text-muted-foreground">
+                          {f.start_date ? (
+                            <span className="flex items-center gap-1.5">
+                              <CalendarDays className="size-3.5 shrink-0" />
+                              {formatDate(f.start_date)}
+                              {f.end_date &&
+                                f.end_date !== f.start_date &&
+                                ` — ${formatDate(f.end_date)}`}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="px-6 py-3">
+                          <Badge
+                            variant="outline"
+                            className={`${colors.bg} ${colors.text} border-transparent`}
+                          >
+                            {STATUS_LABELS[f.status] || f.status}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-3 text-sm text-muted-foreground">
+                          {f.submitted_by || "—"}
+                          <p className="text-xs">
+                            {new Date(f.created_at).toLocaleDateString()}
+                          </p>
+                        </td>
+                        <td className="px-6 py-3">
+                          <div className="flex gap-1">
+                            <FestivalReviewDialog festival={f}>
+                              <span className="inline-flex items-center gap-1 text-sm font-medium hover:underline">
+                                Review
+                                <ArrowRight className="size-3.5" />
+                              </span>
+                            </FestivalReviewDialog>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -17,6 +17,7 @@ import {
   X,
   Users,
   Building2,
+  Kanban,
 } from "lucide-react";
 
 const navGroups = [
@@ -39,6 +40,7 @@ const navGroups = [
     label: "Management",
     links: [
       { href: "/admin/producers", label: "Producers", icon: Users },
+      { href: "/admin/tasks", label: "Task Board", icon: Kanban },
     ],
   },
   {

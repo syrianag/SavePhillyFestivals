@@ -36,6 +36,7 @@ export async function getFestivals({
         schedules: true,
         categories: { include: { category: true } },
         tags: { include: { tag: true } },
+        organization: { select: { id: true, name: true, slug: true } },
       },
       orderBy: { created_at: "desc" },
       skip,

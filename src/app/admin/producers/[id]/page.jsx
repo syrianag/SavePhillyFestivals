@@ -5,6 +5,7 @@ import { STATUS_COLORS } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import NotesSection from "@/components/admin/NotesSection";
 import Link from "next/link";
 import {
   Calendar,
@@ -20,7 +21,7 @@ import {
 import FestivalReviewDialog from "@/components/admin/FestivalReviewDialog";
 
 export default async function ProducerDetailPage({ params }) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const { id } = await params;
 
   const producer = await prisma.user.findUnique({
@@ -212,6 +213,19 @@ export default async function ProducerDetailPage({ params }) {
               </table>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Notes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <NotesSection
+            entityType="producer"
+            entityId={producer.id}
+            authorEmail={session.user.email}
+          />
         </CardContent>
       </Card>
     </div>
