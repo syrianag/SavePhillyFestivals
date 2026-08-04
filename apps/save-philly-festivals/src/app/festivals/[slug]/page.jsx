@@ -1,257 +1,276 @@
+import { cache } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getApprovedFestivalBySlug } from "@/features/festivals/festival-queries";
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  ExternalLink,
+  Globe,
+  ImageIcon,
+  MapPin,
+  Tag,
+} from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Image from "next/image";
+import { getPublicFestivalBySlug } from "@/features/festivals/festival-queries";
 import {
-  Calendar,
-  MapPin,
-  Globe,
-  Mail,
-  Phone,
-  Clock,
-  Tag,
-  ArrowLeft,
-} from "lucide-react";
-import Link from "next/link";
+  formatPhiladelphiaDate,
+  formatPhiladelphiaTime,
+} from "@/features/festivals/public-festival";
 
-function formatDate(dateStr) {
-  if (!dateStr) return "TBD";
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "America/New_York",
-  });
+const getFestival = cache(getPublicFestivalBySlug);
+
+function getCanonicalUrl(slug) {
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.VERCEL_URL;
+  if (!configuredUrl) return null;
+
+  try {
+    const base = new URL(configuredUrl.includes("://") ? configuredUrl : `https://${configuredUrl}`);
+    return new URL(`/festivals/${encodeURIComponent(slug)}`, base).toString();
+  } catch {
+    return null;
+  }
 }
 
-function formatTime(dateStr) {
-  if (!dateStr) return "";
-  return new Date(dateStr).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/New_York",
-  });
+export async function generateMetadata({ params }) {
+  const { slug } = await params;
+  const festival = await getFestival(slug);
+
+  if (!festival) {
+    return { title: "Festival not found | Save Philly Festivals" };
+  }
+
+  const canonical = getCanonicalUrl(festival.slug);
+  return {
+    title: `${festival.name} | Save Philly Festivals`,
+    description: festival.description,
+    ...(canonical ? { alternates: { canonical } } : {}),
+    openGraph: {
+      title: festival.name,
+      description: festival.description,
+      type: "website",
+      ...(canonical ? { url: canonical } : {}),
+      ...(festival.image_url ? { images: [{ url: festival.image_url, alt: festival.name }] } : {}),
+    },
+  };
 }
 
 export default async function FestivalDetailPage({ params }) {
   const { slug } = await params;
-  const festival = await getApprovedFestivalBySlug(slug);
+  const festival = await getFestival(slug);
 
-  if (!festival) {
-    notFound();
-  }
-
-  const categories = festival.categories?.map((c) => c.category?.name).filter(Boolean) || [];
-  const tags = festival.tags?.map((t) => t.tag?.name).filter(Boolean) || [];
+  if (!festival) notFound();
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 md:py-12">
+    <main className="mx-auto max-w-5xl px-4 py-8 md:py-12">
       <Link
         href="/"
-        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+        className="mb-6 inline-flex items-center gap-2 font-ui text-sm text-[#848484] transition-colors hover:text-black"
       >
         <ArrowLeft className="size-4" />
         Back to Festivals
       </Link>
 
-      {festival.image_url && (
-        <div className="relative mb-8 aspect-[21/9] overflow-hidden rounded-2xl">
+      {festival.image_url ? (
+        <div className="relative mb-8 aspect-[21/9] overflow-hidden rounded-2xl bg-[#E8E6E1]">
           <Image
             src={festival.image_url}
-            alt={festival.name}
+            alt={`${festival.name} festival`}
             fill
             priority
+            unoptimized
             className="object-cover"
           />
+        </div>
+      ) : (
+        <div
+          data-testid="festival-image-fallback"
+          className="mb-8 flex aspect-[21/9] items-center justify-center rounded-2xl bg-gradient-to-br from-brand-light-teal to-brand-teal text-white"
+        >
+          <div className="text-center">
+            <ImageIcon className="mx-auto size-8" aria-hidden="true" />
+            <p className="mt-2 font-ui text-sm">Festival photo coming soon</p>
+          </div>
         </div>
       )}
 
       <div className="space-y-8">
-        <div>
-          <div className="flex flex-wrap items-center gap-3 mb-2">
-            {categories.map((cat) => (
-              <Badge key={cat} variant="secondary">
-                {cat}
-              </Badge>
-            ))}
+        <header>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            {festival.categories.length ? (
+              festival.categories.map((category) => (
+                <Badge key={category.slug || category.name} variant="secondary">
+                  {category.name}
+                </Badge>
+              ))
+            ) : (
+              <span className="font-ui text-sm text-[#848484]">Category to be announced</span>
+            )}
           </div>
-          <h1 className="text-4xl font-heading font-bold mb-2">
+          <h1 className="font-heading text-4xl font-bold text-black md:text-5xl">
             {festival.name}
           </h1>
-          {festival.description && (
-            <p className="text-lg text-muted-foreground">
-              {festival.description}
-            </p>
-          )}
-        </div>
+          <p className="mt-3 font-body text-lg leading-relaxed text-[#45556C]">
+            {festival.description}
+          </p>
+        </header>
 
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                <Calendar className="mr-1 inline-block size-4" />
-                Dates
+              <CardTitle className="text-sm text-[#848484]">
+                <Calendar className="mr-1 inline-block size-4" /> Dates &amp; times
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="font-medium">{formatDate(festival.start_date)}</p>
-              {festival.end_date && (
-                <p className="text-sm text-muted-foreground">
-                  to {formatDate(festival.end_date)}
-                </p>
+              <p className="font-medium">{festival.dateLabel}</p>
+              {festival.endDateLabel && (
+                <p className="mt-1 text-sm text-[#848484]">through {festival.endDateLabel}</p>
               )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                <MapPin className="mr-1 inline-block size-4" />
-                Location
+              <CardTitle className="text-sm text-[#848484]">
+                <MapPin className="mr-1 inline-block size-4" /> Location
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {festival.location && <p className="font-medium">{festival.location}</p>}
-              <p className="text-sm text-muted-foreground">
-                {[festival.city, festival.state, festival.zip_code]
-                  .filter(Boolean)
-                  .join(", ")}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                <Mail className="mr-1 inline-block size-4" />
-                Contact
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              {festival.contact_name && (
-                <p className="font-medium">{festival.contact_name}</p>
-              )}
-              {festival.contact_email && (
-                <a
-                  href={`mailto:${festival.contact_email}`}
-                  className="flex items-center gap-1 text-sm text-primary hover:underline"
-                >
-                  <Mail className="size-3" />
-                  {festival.contact_email}
-                </a>
-              )}
-              {festival.contact_phone && (
-                <a
-                  href={`tel:${festival.contact_phone}`}
-                  className="flex items-center gap-1 text-sm text-primary hover:underline"
-                >
-                  <Phone className="size-3" />
-                  {festival.contact_phone}
-                </a>
-              )}
+              <p className="font-medium">{festival.locationLabel}</p>
+              <p className="mt-1 text-sm text-[#848484]">{festival.addressLabel}</p>
             </CardContent>
           </Card>
         </div>
 
-        {festival.website_url && (
+        {festival.website_url ? (
           <a
             href={festival.website_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-primary hover:underline"
+            className="inline-flex items-center gap-2 font-ui font-medium text-[#1E7BF6] hover:underline"
           >
-            <Globe className="size-4" />
-            Visit Website
+            <Globe className="size-4" /> Visit official website
           </a>
+        ) : (
+          <p className="font-ui text-sm text-[#848484]">Official website coming soon</p>
         )}
+
+        <section aria-labelledby="official-social-heading">
+          <h2 id="official-social-heading" className="font-heading text-xl font-semibold">
+            Official social channels
+          </h2>
+          {festival.socialLinks.length ? (
+            <div className="mt-3 flex flex-wrap gap-3">
+              {festival.socialLinks.map((social) => (
+                <a
+                  key={social.label}
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#EBEBEB] px-4 py-2 font-ui text-sm font-medium text-black transition-colors hover:bg-[#D9D9D9]"
+                >
+                  {social.label} <ExternalLink className="size-3" aria-hidden="true" />
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-[#848484]">No official social channels listed.</p>
+          )}
+        </section>
 
         {(festival.story || festival.mission || festival.history) && (
           <div className="space-y-6">
-            {festival.story && (
-              <section>
-                <h2 className="text-xl font-heading font-semibold mb-2">Our Story</h2>
-                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {festival.story}
-                </p>
-              </section>
-            )}
-            {festival.mission && (
-              <section>
-                <h2 className="text-xl font-heading font-semibold mb-2">Mission</h2>
-                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {festival.mission}
-                </p>
-              </section>
-            )}
-            {festival.history && (
-              <section>
-                <h2 className="text-xl font-heading font-semibold mb-2">History</h2>
-                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {festival.history}
-                </p>
-              </section>
+            {[
+              ["Our Story", festival.story],
+              ["Mission", festival.mission],
+              ["History", festival.history],
+            ].map(([heading, copy]) =>
+              copy ? (
+                <section key={heading}>
+                  <h2 className="font-heading text-xl font-semibold">{heading}</h2>
+                  <p className="mt-2 whitespace-pre-wrap font-body leading-relaxed text-[#45556C]">
+                    {copy}
+                  </p>
+                </section>
+              ) : null
             )}
           </div>
         )}
 
-        {tags.length > 0 && (
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">
-              <Tag className="mr-1 inline-block size-3" />
-              Tags
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <Badge key={tag} variant="outline">
-                  {tag}
+        <section aria-labelledby="tags-heading">
+          <h2 id="tags-heading" className="text-sm font-medium text-[#848484]">
+            <Tag className="mr-1 inline-block size-3" /> Tags
+          </h2>
+          {festival.tags.length ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {festival.tags.map((tag) => (
+                <Badge key={tag.slug || tag.name} variant="outline">
+                  {tag.name}
                 </Badge>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="mt-2 text-sm text-[#848484]">Tags to be announced</p>
+          )}
+        </section>
 
-        {festival.schedules?.length > 0 && (
-          <section>
-            <h2 className="text-xl font-heading font-semibold mb-4">Schedule</h2>
-            <div className="space-y-3">
+        <section aria-labelledby="program-heading">
+          <h2 id="program-heading" className="font-heading text-2xl font-semibold">
+            Schedule &amp; program
+          </h2>
+          {festival.schedules.length ? (
+            <div className="mt-4 space-y-3">
               {festival.schedules.map((event) => (
-                <Card key={event.id}>
-                  <CardContent className="flex items-start gap-4 py-4">
-                    <div className="shrink-0 text-center min-w-[60px]">
-                      <Clock className="mx-auto size-4 text-muted-foreground" />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatTime(event.start_time)}
+                <Card key={event.id} data-testid="program-item">
+                  <CardContent className="flex flex-col gap-4 py-2 sm:flex-row sm:items-start">
+                    <div className="min-w-36 shrink-0">
+                      <p className="font-ui text-xs text-[#848484]">
+                        {formatPhiladelphiaDate(event.start_time, {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                          year: undefined,
+                        }) || "Date TBD"}
+                      </p>
+                      <p className="mt-1 flex items-center gap-1 font-ui text-sm font-medium">
+                        <Clock className="size-4 text-[#848484]" />
+                        {formatPhiladelphiaTime(event.start_time) || "Time TBD"}
                       </p>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium">{event.title}</h4>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-body text-lg font-semibold">{event.title}</h3>
                         {event.is_headliner && (
                           <Badge className="bg-brand-yellow text-brand-dark" variant="secondary">
                             Headliner
                           </Badge>
                         )}
                       </div>
-                      {event.performer && (
-                        <p className="text-sm text-muted-foreground">
-                          {event.performer}
-                        </p>
-                      )}
+                      {event.performer && <p className="text-sm text-[#45556C]">{event.performer}</p>}
                       {event.description && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {event.description}
-                        </p>
+                        <p className="mt-2 text-sm leading-relaxed text-[#45556C]">{event.description}</p>
                       )}
+                      <p className="mt-2 text-xs text-[#848484]">
+                        {event.location || festival.locationLabel}
+                        {event.genre ? ` · ${event.genre}` : ""}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
-          </section>
-        )}
+          ) : (
+            <p className="mt-2 text-sm text-[#848484]">Program details are coming soon.</p>
+          )}
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
