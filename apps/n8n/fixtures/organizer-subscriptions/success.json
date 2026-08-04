@@ -1,0 +1,1 @@
+{"name":"success","input":{"email":"visitor@example.com","authorization_enabled":true,"authorization_status":"authorized","consent_revoked":false,"attempts":0,"max_attempts":5},"simulation":{"outcomes":["success"]},"expected":{"status":"completed","attempts":1,"completed":1,"failed":0}}

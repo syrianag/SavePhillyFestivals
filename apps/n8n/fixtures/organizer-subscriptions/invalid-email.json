@@ -1,0 +1,1 @@
+{"name":"invalid-email","input":{"email":"not-an-email","authorization_enabled":true,"authorization_status":"authorized","consent_revoked":false,"attempts":0,"max_attempts":5},"expected":{"status":"rejected","reason":"invalid_email"}}

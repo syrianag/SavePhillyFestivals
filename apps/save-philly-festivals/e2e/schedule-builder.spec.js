@@ -66,13 +66,51 @@ test("emails a mixed schedule without marketing consent and keeps it intact", as
   const builder = await buildMixedSchedule(page);
   const before = await page.evaluate((key) => localStorage.getItem(key), storageKey);
 
-  await expect(builder.getByRole("checkbox")).toHaveCount(0);
+  await expect(builder.getByRole("checkbox")).toHaveCount(6);
+  for (const checkbox of await builder.getByRole("checkbox").all()) await expect(checkbox).not.toBeChecked();
   await builder.getByLabel("Email this schedule").fill("Visitor@Example.com");
   await builder.getByRole("button", { name: "Email schedule" }).click();
 
-  await expect(builder.getByRole("status")).toContainText("Schedule emailed successfully");
+  await expect(builder.getByText("Schedule emailed successfully", { exact: false })).toBeVisible();
   await expect(builder.getByText("Community Arts Parade")).toBeVisible();
   await expect(builder.getByText("Whole festival", { exact: false })).toBeVisible();
+  await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), storageKey)).toBe(before);
+});
+
+test("records checked organizer consent with preferences separately and preserves schedule", async ({ page }) => {
+  const builder = await buildMixedSchedule(page);
+  const before = await page.evaluate((key) => localStorage.getItem(key), storageKey);
+
+  await expect(builder.getByText("Riverfront Arts Festival organizers", { exact: false })).toBeVisible();
+  await builder.getByLabel(/Riverfront Arts Festival organizers/).check();
+  await builder.getByLabel("Reminders").check();
+  await builder.getByLabel("Discovery").check();
+  await builder.getByLabel("Email this schedule").fill("visitor@example.com");
+  const consentButton = builder.getByRole("button", { name: "Request organizer emails" });
+  await expect(consentButton).toBeDisabled();
+  await builder.getByLabel(/I agree that each organizer I select/).check();
+  await consentButton.click();
+
+  await expect(builder.getByText("Organizer request queued for 1 organizer", { exact: false })).toBeVisible();
+  await expect(builder.getByText("Community Arts Parade")).toBeVisible();
+  await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), storageKey)).toBe(before);
+});
+
+test("reports partial organizer eligibility truthfully without changing schedule", async ({ page }) => {
+  const builder = await buildMixedSchedule(page);
+  const before = await page.evaluate((key) => localStorage.getItem(key), storageKey);
+  await page.route("**/api/organizer-consent", (route) => route.fulfill({
+    status: 201,
+    contentType: "application/json",
+    body: JSON.stringify({ queued_organizers: 1, ineligible_organizers: 1, replayed: false }),
+  }));
+  await builder.getByLabel(/Riverfront Arts Festival organizers/).check();
+  await builder.getByLabel(/Riverfront Community Partners/).check();
+  await builder.getByLabel("Updates").check();
+  await builder.getByLabel("Email this schedule").fill("visitor@example.com");
+  await builder.getByLabel(/I agree that each organizer I select/).check();
+  await builder.getByRole("button", { name: "Request organizer emails" }).click();
+  await expect(builder.getByText("1 organizer is no longer eligible", { exact: false })).toBeVisible();
   await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), storageKey)).toBe(before);
 });
 

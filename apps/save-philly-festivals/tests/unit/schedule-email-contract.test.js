@@ -38,12 +38,12 @@ describe("F-04 persistence and security contract", () => {
     expect(schema).not.toMatch(/title|start_time|website_url/);
   });
 
-  it("keeps F-04 transactional and independent of marketing consent", () => {
+  it("keeps F-04 transactional and independent of the separate F-05 consent form", () => {
     const form = read("src/features/schedule-email/ScheduleEmailForm.jsx");
     const route = read("src/app/api/schedules/email/route.js");
 
     expect(form).toContain("does not sign you up for marketing");
-    expect(form).not.toMatch(/type=["']checkbox["']/);
+    expect(form).toContain("Optional organizer emails");
     expect(route).not.toMatch(/consent|receive_updates|mailing.list/i);
   });
 });

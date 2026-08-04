@@ -1,0 +1,1 @@
+{"name":"duplicate-replay","input":{"email":"visitor@example.com","authorization_enabled":true,"authorization_status":"authorized","consent_revoked":false,"prior_status":"completed","lease_replayed":true,"attempts":1,"max_attempts":5},"expected":{"status":"rejected","reason":"invalid_or_expired_lease"}}

@@ -50,6 +50,8 @@ model Festival {
   categories    FestivalCategory[]
   tags          FestivalTag[]
   files         FestivalFile[]
+  organizer_integrations OrganizerIntegration[]
+  mailing_consents OrganizerMailingConsentFestival[]
 
   @@index([status])
   @@index([start_date])
@@ -141,6 +143,144 @@ model ScheduleEmailItem {
   @@unique([request_id, position])
   @@unique([request_id, item_type, item_id])
   @@index([item_type, item_id])
+}
+
+// ─── Organizer mailing consent and N8N outbox ───────────────
+enum OrganizerAuthorizationStatus {
+  authorized
+  revoked
+}
+
+enum OrganizerConsentPreference {
+  reminders
+  updates
+  discovery
+}
+
+enum OrganizerOutboxStatus {
+  pending
+  processing
+  completed
+  failed
+  suppressed
+}
+
+model OrganizerIntegration {
+  id                       String                        @id @default(uuid())
+  festival_id              String
+  organizer_name           String
+  enabled                  Boolean                       @default(false)
+  authorization_status     OrganizerAuthorizationStatus @default(revoked)
+  authorization_granted_at DateTime?
+  authorization_revoked_at DateTime?
+  created_at               DateTime                      @default(now())
+  updated_at               DateTime                      @updatedAt
+
+  festival                 Festival                      @relation(fields: [festival_id], references: [id], onDelete: Cascade)
+  consents                 OrganizerMailingConsentOrganizer[]
+  outbox_items             OrganizerMailingOutbox[]
+  suppressions             OrganizerMailingSuppression[]
+
+  @@index([festival_id])
+  @@index([enabled, authorization_status])
+}
+
+model OrganizerMailingConsent {
+  id                    String                           @id @default(uuid())
+  submission_key        String                           @unique
+  request_fingerprint   String
+  normalized_email      String
+  consent_text          String
+  consent_version       Int
+  preference_version    Int
+  source                String
+  request_ip            String
+  consented_at          DateTime                         @default(now())
+  revoked_at            DateTime?
+  suppressed_at         DateTime?
+  suppression_reason    String?
+  management_token_hash String                           @unique
+  created_at            DateTime                         @default(now())
+  updated_at            DateTime                         @updatedAt
+
+  festivals             OrganizerMailingConsentFestival[]
+  organizers            OrganizerMailingConsentOrganizer[]
+  preferences           OrganizerMailingConsentPreferenceRecord[]
+  outbox_items           OrganizerMailingOutbox[]
+
+  @@index([normalized_email])
+  @@index([revoked_at, suppressed_at])
+}
+
+model OrganizerMailingConsentFestival {
+  consent_id  String
+  festival_id String
+
+  consent     OrganizerMailingConsent @relation(fields: [consent_id], references: [id], onDelete: Cascade)
+  festival    Festival                @relation(fields: [festival_id], references: [id], onDelete: Restrict)
+
+  @@id([consent_id, festival_id])
+}
+
+model OrganizerMailingConsentOrganizer {
+  consent_id              String
+  organizer_integration_id String
+  revoked_at              DateTime?
+  suppressed_at           DateTime?
+
+  consent                 OrganizerMailingConsent @relation(fields: [consent_id], references: [id], onDelete: Cascade)
+  organizer_integration   OrganizerIntegration     @relation(fields: [organizer_integration_id], references: [id], onDelete: Restrict)
+
+  @@id([consent_id, organizer_integration_id])
+  @@index([organizer_integration_id, revoked_at, suppressed_at])
+}
+
+model OrganizerMailingConsentPreferenceRecord {
+  consent_id String
+  preference OrganizerConsentPreference
+
+  consent    OrganizerMailingConsent @relation(fields: [consent_id], references: [id], onDelete: Cascade)
+
+  @@id([consent_id, preference])
+}
+
+model OrganizerMailingSuppression {
+  id                       String               @id @default(uuid())
+  normalized_email         String
+  organizer_integration_id String
+  reason                   String
+  created_at               DateTime             @default(now())
+
+  organizer_integration    OrganizerIntegration @relation(fields: [organizer_integration_id], references: [id], onDelete: Restrict)
+
+  @@unique([normalized_email, organizer_integration_id])
+  @@index([organizer_integration_id])
+}
+
+model OrganizerMailingOutbox {
+  id                       String                @id @default(uuid())
+  consent_id               String
+  organizer_integration_id String
+  idempotency_key          String                @unique
+  status                   OrganizerOutboxStatus @default(pending)
+  attempts                 Int                   @default(0)
+  max_attempts             Int                   @default(5)
+  next_attempt_at          DateTime               @default(now())
+  lease_token_hash         String?
+  lease_expires_at         DateTime?
+  provider_result_id       String?
+  last_error_code          String?
+  completed_at             DateTime?
+  suppressed_at            DateTime?
+  created_at               DateTime               @default(now())
+  updated_at               DateTime               @updatedAt
+
+  consent                  OrganizerMailingConsent @relation(fields: [consent_id], references: [id], onDelete: Cascade)
+  organizer_integration    OrganizerIntegration     @relation(fields: [organizer_integration_id], references: [id], onDelete: Restrict)
+
+  @@unique([consent_id, organizer_integration_id])
+  @@index([status, next_attempt_at])
+  @@index([lease_expires_at])
 }
 
 // ─── Category ──────────────────────────────────────────────

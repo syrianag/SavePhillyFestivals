@@ -15,14 +15,14 @@
     "validate": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node tools/scripts/n8n-ops.mjs validate",
+        "command": "node tools/scripts/n8n-ops.mjs validate && node tools/scripts/validate-n8n-workflow.mjs && node tools/scripts/validate-organizer-subscriptions-workflow.mjs",
         "cwd": "{workspaceRoot}"
       }
     },
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "node --test apps/n8n/tests/workflow-contract.test.mjs",
+        "command": "node --test apps/n8n/tests/*.test.mjs",
         "cwd": "{workspaceRoot}"
       }
     },
