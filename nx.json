@@ -1,0 +1,54 @@
+{
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "defaultProject": "save-philly-festivals",
+  "workspaceLayout": {
+    "appsDir": "apps",
+    "libsDir": "libs"
+  },
+  "namedInputs": {
+    "default": [
+      "{projectRoot}/**/*",
+      "sharedGlobals"
+    ],
+    "sharedGlobals": [
+      "{workspaceRoot}/nx.json",
+      "{workspaceRoot}/package.json",
+      "{workspaceRoot}/pnpm-lock.yaml",
+      "{workspaceRoot}/pnpm-workspace.yaml"
+    ],
+    "production": [
+      "default",
+      "!{projectRoot}/**/*.test.js",
+      "!{projectRoot}/**/*.spec.js"
+    ]
+  },
+  "targetDefaults": {
+    "build": {
+      "inputs": [
+        "production",
+        "^production"
+      ],
+      "cache": true
+    },
+    "lint": {
+      "inputs": [
+        "default",
+        "^default"
+      ],
+      "cache": true
+    },
+    "validate": {
+      "cache": false
+    },
+    "health": {
+      "cache": false
+    },
+    "plan": {
+      "cache": false
+    },
+    "deploy": {
+      "cache": false
+    }
+  },
+  "analytics": true
+}

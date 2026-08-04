@@ -1,14 +1,14 @@
 # Figma Review Checklist — Implementation Status: Done
 
 > All design tokens extracted from Figma Dev Mode (2026-07-13) and applied to the codebase.
-> See `src/app/globals.css` (theme variables) and `src/app/layout.js` (font loading).
+> See `apps/save-philly-festivals/src/app/globals.css` (theme variables) and `apps/save-philly-festivals/src/app/layout.js` (font loading).
 
 ## 1. Layouts
 
 - [x] Identify which pages share the same shell (header, footer, sidebar, etc.)
   - **Common shell:** NavBar (sticky header) + Footer. Pages render content between them.
 - [ ] Document layout variants (public vs. admin vs. producer)
-- [x] Extract shared layout components into `src/components/layouts/`
+- [x] Extract shared layout components into `apps/save-philly-festivals/src/components/layouts/`
   - **Shell layout:** uses `<NavBar />` + `<Footer />` wrapping page content (not yet built).
 - [ ] Note any nested layouts (e.g., admin sidebar with sub-nav)
 
@@ -19,7 +19,7 @@
 - [x] Map each to existing **shadcn/ui primitives** (Button, Input, Card, Dialog, Table, etc.)
   - **Installed:** `button`, `card`, `badge`, `input`, `select`, `label`, `skeleton`, `dialog`, `separator`
 - [x] Flag components that need custom implementation
-  - **Custom shared components built:** `NavBar`, `FestivalCard`, `Footer`, `SearchBar` (`src/components/shared/`)
+  - **Custom shared components built:** `NavBar`, `FestivalCard`, `Footer`, `SearchBar` (`apps/save-philly-festivals/src/components/shared/`)
 - [ ] Note component states: default, hover, active, disabled, loading, error, empty
 
 ## 3. Design Tokens
@@ -48,7 +48,7 @@
   - **CSS variables:** `font-logo`, `font-heading`, `font-sans`, `font-serif`, `font-ui`, `font-footer`
   - **Base:** `h1-h6 @apply font-heading` in `@layer base`
 - [x] Note any font loading requirements (`next/font`)
-  - **Loaded via `next/font/google`** in `src/app/layout.js`
+  - **Loaded via `next/font/google`** in `apps/save-philly-festivals/src/app/layout.js`
 
 ## 5. Spacing System
 
@@ -98,8 +98,8 @@
 ## 7. Icons
 
 - [x] Confirm icon set (lucide-react is shadcn default)
-  - **Available:** `lucide-react` in `package.json`. Used in shared components (`Search`, `MapPin`, `Calendar`, `Menu`, `X`, `Facebook`, `Instagram`, `Twitter`, `SlidersHorizontal`).
-- [ ] If using custom SVGs, create a `src/components/icons/` directory
+  - **Available:** `lucide-react` in the workspace-root `package.json`. Used in shared components (`Search`, `MapPin`, `Calendar`, `Menu`, `X`, `Facebook`, `Instagram`, `Twitter`, `SlidersHorizontal`).
+- [ ] If using custom SVGs, create an `apps/save-philly-festivals/src/components/icons/` directory
 - [ ] Document which icons are used where
 - [x] Note icon sizes (16px, 20px, 24px, etc.)
   - **Default used:** `size-4` (16px) for inline icons, `size-5` (20px) for social, `size-6` (24px) for menu toggle
@@ -133,14 +133,14 @@
 ## Implementation Summary
 
 **Design tokens applied to:**
-- `src/app/globals.css` — Brand colors, radius, font variable definitions in `@theme inline` and `:root`
-- `src/app/layout.js` — 6 fonts loaded via `next/font/google` with CSS variable bindings
+- `apps/save-philly-festivals/src/app/globals.css` — Brand colors, radius, font variable definitions in `@theme inline` and `:root`
+- `apps/save-philly-festivals/src/app/layout.js` — 6 fonts loaded via `next/font/google` with CSS variable bindings
 
 **shadcn components installed (9 total):**
 `button`, `card`, `badge`, `input`, `select`, `label`, `skeleton`, `dialog`, `separator`
 
 **Custom shared components built (4 total):**
-`NavBar`, `FestivalCard`, `Footer`, `SearchBar` in `src/components/shared/`
+`NavBar`, `FestivalCard`, `Footer`, `SearchBar` in `apps/save-philly-festivals/src/components/shared/`
 
 **Pending screens to build (Week 2+):**
 Homepage hero, Tours listing, Discover (calendar/map views), About page

@@ -1,0 +1,16 @@
+{
+  "name": "duplicate",
+  "input": {
+    "Name": "Maya Johnson",
+    "Email": "maya@community.org",
+    "Org": "Community Arts Network",
+    "Context": "Ordinary context.",
+    "Status": "ready",
+    "DraftId": "draft-previously-created"
+  },
+  "expected": {
+    "status": "duplicate",
+    "ready": false,
+    "guardReason": "already_processed"
+  }
+}

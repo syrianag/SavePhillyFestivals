@@ -1,0 +1,172 @@
+name: N8N DigitalOcean Operations
+
+on:
+  schedule:
+    - cron: "17 13 * * 1"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Operation to perform
+        required: true
+        type: choice
+        options:
+          - check-upgrades
+          - plan
+          - deploy
+      confirm_deploy:
+        description: Type DEPLOY_N8N_PRODUCTION to authorize a deploy
+        required: false
+        type: string
+      import_workflow_inactive:
+        description: Import DiasporaDNA after platform health checks (remains inactive)
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: n8n-digitalocean-production
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "20"
+  N8N_COMPOSE_FILE: apps/n8n/config/compose.yaml
+
+jobs:
+  upgrade-check:
+    name: Check N8N stable release
+    if: github.event_name == 'schedule' || inputs.action == 'check-upgrades'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Compare pinned and stable versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          pinned="$(sed -n 's|.*docker.n8n.io/n8nio/n8n:\([^[:space:]]*\).*|\1|p' "$N8N_COMPOSE_FILE")"
+          stable="$(npm view n8n dist-tags.stable)"
+          test -n "$pinned"
+          test -n "$stable"
+          {
+            echo "## N8N upgrade report"
+            echo "- Compose pin: \`$pinned\`"
+            echo "- Stable release: \`$stable\`"
+            if [[ "$pinned" == "$stable" ]]; then
+              echo "- Status: current"
+            else
+              echo "- Status: review available upgrade; no files or services were changed"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  validate:
+    name: Validate release gates
+    if: github.event_name == 'workflow_dispatch' && (inputs.action == 'plan' || inputs.action == 'deploy')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Validate local Compose and workflow contract
+        run: |
+          pnpm exec nx run n8n:validate --outputStyle=static
+          pnpm exec nx run n8n:test --outputStyle=static
+      - name: Validate production Compose model
+        env:
+          N8N_POSTGRES_PASSWORD: validation-only
+          N8N_ENCRYPTION_KEY: validation-only-encryption-key
+          N8N_HOST: n8n.example.invalid
+        run: docker compose -f apps/n8n/config/compose.yaml -f apps/n8n/config/compose.production.yaml config --quiet
+
+  plan:
+    name: DigitalOcean deployment plan
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'plan'
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarize guarded plan
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ## N8N production plan
+          1. Require approval through the `n8n-production` GitHub environment for deploys.
+          2. Use strict SSH host verification and an existing host-side `.env.production`.
+          3. Validate Compose, create PostgreSQL and N8N-data backups, then reconcile pinned images.
+          4. Verify container and HTTPS health.
+          5. Optionally import `DiasporaDNA` inactive; activation is never performed by this workflow.
+          EOF
+
+  deploy:
+    name: Deploy N8N to DigitalOcean
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'deploy' && inputs.confirm_deploy == 'DEPLOY_N8N_PRODUCTION'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: n8n-production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure strict SSH access
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.N8N_DO_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.N8N_DO_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/n8n_deploy
+          chmod 600 ~/.ssh/n8n_deploy
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: Upload versioned N8N assets
+        env:
+          DO_HOST: ${{ secrets.N8N_DO_HOST }}
+          DO_USER: ${{ secrets.N8N_DO_USER }}
+          DO_REMOTE_DIR: ${{ secrets.N8N_DO_REMOTE_DIR }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/n8n_deploy -o StrictHostKeyChecking=yes "$DO_USER@$DO_HOST" "mkdir -p '$DO_REMOTE_DIR/apps/n8n/config/production' '$DO_REMOTE_DIR/apps/n8n/local-files' '$DO_REMOTE_DIR/backups'"
+          rsync -az --delete -e "ssh -i ~/.ssh/n8n_deploy -o StrictHostKeyChecking=yes" apps/n8n/config/ "$DO_USER@$DO_HOST:$DO_REMOTE_DIR/apps/n8n/config/"
+          rsync -az -e "ssh -i ~/.ssh/n8n_deploy -o StrictHostKeyChecking=yes" apps/n8n/DiasporaDNA.json "$DO_USER@$DO_HOST:$DO_REMOTE_DIR/apps/n8n/local-files/DiasporaDNA.json"
+      - name: Back up, reconcile, and verify
+        env:
+          DO_HOST: ${{ secrets.N8N_DO_HOST }}
+          DO_USER: ${{ secrets.N8N_DO_USER }}
+          DO_REMOTE_DIR: ${{ secrets.N8N_DO_REMOTE_DIR }}
+          IMPORT_WORKFLOW: ${{ inputs.import_workflow_inactive }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/n8n_deploy -o StrictHostKeyChecking=yes "$DO_USER@$DO_HOST" bash -s -- "$DO_REMOTE_DIR" "$IMPORT_WORKFLOW" <<'REMOTE'
+          set -euo pipefail
+          remote_dir="$1"
+          import_workflow="$2"
+          cd "$remote_dir/apps/n8n"
+          test -f .env.production
+          compose=(docker compose --env-file .env.production -f config/compose.yaml -f config/compose.production.yaml)
+          "${compose[@]}" config --quiet
+          stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+          backup_dir="$remote_dir/backups/$stamp"
+          mkdir -p "$backup_dir"
+          if "${compose[@]}" ps --status running postgres | grep -q postgres; then
+            "${compose[@]}" exec -T postgres pg_dump -U n8n -d n8n > "$backup_dir/n8n-postgres.sql"
+          fi
+          if "${compose[@]}" ps --status running n8n | grep -q n8n; then
+            "${compose[@]}" exec -T n8n tar -czf - -C /home/node/.n8n . > "$backup_dir/n8n-data.tar.gz"
+          fi
+          "${compose[@]}" pull
+          "${compose[@]}" up -d --remove-orphans
+          "${compose[@]}" ps
+          curl --fail --show-error --silent --retry 12 --retry-delay 5 "https://$(grep '^N8N_HOST=' .env.production | cut -d= -f2-)/healthz" >/dev/null
+          if [[ "$import_workflow" == "true" ]]; then
+            node -e "const w=require('./local-files/DiasporaDNA.json');if(w.active!==false)process.exit(1)"
+            "${compose[@]}" exec -T n8n n8n import:workflow --input=/files/DiasporaDNA.json
+            echo "DiasporaDNA imported from an inactive export. Activation was not performed."
+          fi
+          echo "Deployment completed. Backup directory: $backup_dir"
+          REMOTE
+      - name: Deployment summary
+        run: |
+          echo "N8N platform health checks passed. Workflow activation was not performed." >> "$GITHUB_STEP_SUMMARY"

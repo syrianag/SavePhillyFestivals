@@ -2,29 +2,47 @@
   "name": "save-philly-festivals",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.13.0",
   "scripts": {
-    "dev": "next dev --webpack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint src/ --ext .js,.jsx"
-  },
-  "prisma": {
-    "seed": "node prisma/seed.js"
+    "dev": "nx run save-philly-festivals:dev",
+    "build": "nx run save-philly-festivals:build",
+    "start": "nx run save-philly-festivals:start",
+    "lint": "nx run save-philly-festivals:lint",
+    "test": "nx run save-philly-festivals:test",
+    "test:coverage": "nx run save-philly-festivals:test-coverage",
+    "e2e": "nx run save-philly-festivals:e2e",
+    "migrate:test": "nx run save-philly-festivals:migrate-test",
+    "db:seed": "nx run save-philly-festivals:seed",
+    "db:verify-admin": "nx run save-philly-festivals:verify-seeded-admin",
+    "verify": "nx run save-philly-festivals:prisma-validate --outputStyle=static && nx run save-philly-festivals:audit --outputStyle=static && nx run save-philly-festivals:test-coverage --outputStyle=static && nx run n8n:test --outputStyle=static && nx run n8n:validate --outputStyle=static && nx run-many -t lint build --projects=save-philly-festivals --outputStyle=static",
+    "postinstall": "prisma generate --config apps/save-philly-festivals/prisma.config.ts",
+    "auth:secret": "nx run save-philly-festivals:auth-secret",
+    "n8n:init": "nx run n8n:init",
+    "n8n:validate": "nx run n8n:validate",
+    "n8n:validate:production": "nx run n8n:validate-production",
+    "n8n:test": "nx run n8n:test",
+    "n8n:health": "nx run n8n:health",
+    "n8n:plan": "nx run n8n:plan",
+    "n8n:deploy": "nx run n8n:deploy",
+    "n8n:stop": "nx run n8n:stop",
+    "n8n:logs": "nx run n8n:logs",
+    "ops:validate": "nx run-many -t validate --all"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@hookform/resolvers": "^5.4.0",
-    "@prisma/client": "^6.19.3",
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "^7.9.1",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.4.2",
     "ics": "^3.12.0",
     "lucide-react": "^1.23.0",
-    "next": "^16.0.0",
+    "next": "^16.3.0",
     "next-auth": "^5.0.0-beta.31",
-    "nodemailer": "^9.0.3",
-    "prisma": "^6.19.3",
+    "pg": "^8.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.82.0",
@@ -36,9 +54,21 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.0.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9.0.0",
-    "eslint-config-next": "^16.0.0",
-    "tailwindcss": "^4.0.0"
+    "eslint-config-next": "^16.3.0",
+    "nx": "22.7.8",
+    "prisma": "^7.9.1",
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.23.5",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "nx": {
+      "brace-expansion": "5.0.9"
+    }
   }
 }

@@ -3,13 +3,17 @@ node_modules/
 .pnp
 .pnp.js
 
-# Next.js
+# Next.js / Nx
 .next/
+.nx/
 out/
 
-# Production
+# Production and test artifacts
 build/
 dist/
+coverage/
+playwright-report/
+test-results/
 
 # Environment
 .env
@@ -33,9 +37,9 @@ yarn-error.log*
 .DS_Store
 
 # Prisma
-prisma/migrations/
-prisma/*.db
-prisma/*.db-journal
+apps/save-philly-festivals/src/generated/prisma/
+apps/save-philly-festivals/prisma/*.db
+apps/save-philly-festivals/prisma/*.db-journal
 
 # Misc
 *.pem
@@ -43,4 +47,8 @@ prisma/*.db-journal
 next-env.d.ts
 
 # Uploads
-public/uploads/
+apps/save-philly-festivals/public/uploads/
+
+# N8N local runtime files
+apps/n8n/local-files/*
+!apps/n8n/local-files/.gitkeep

@@ -8,9 +8,9 @@ This document describes how festival schedules, the ICS calendar export, and the
 
 ## 1. Email Endpoint
 
-All email is sent through `src/lib/mail.js`, which wraps the Resend SDK.
+All email is sent through `apps/save-philly-festivals/src/lib/mail.js`, which wraps the Resend SDK.
 
-**Configuration (`.env`):**
+**Configuration (`apps/save-philly-festivals/.env`):**
 ```
 RESEND_API_KEY=re_xxxxx
 RESEND_FROM_EMAIL=onboarding@resend.dev
@@ -18,7 +18,7 @@ RESEND_FROM_EMAIL=onboarding@resend.dev
 
 When `RESEND_API_KEY` is set, emails send live via Resend. When unset, all emails stub to console logs so development works without a key.
 
-**Email functions exported from `src/lib/mail.js`:**
+**Email functions exported from `apps/save-philly-festivals/src/lib/mail.js`:**
 
 | Function | Trigger | Recipient |
 |---|---|---|
@@ -42,13 +42,13 @@ POST /api/schedules/save
   → response returned regardless of email outcome
 ```
 
-All API routes use `handleApiError()` from `src/lib/errors.js`, which catches:
+All API routes use `handleApiError()` from `apps/save-philly-festivals/src/lib/errors.js`, which catches:
 - `ValidationError` (400) — invalid input
 - `NotFoundError` (404) — resource doesn't exist
 - `ForbiddenError` (403) — unauthorized access
 - Generic errors (500) — logged server-side
 
-Validation is handled by Zod schemas in `src/features/schedules/schedule-schemas.js` and `src/features/festivals/festival-schemas.js`, processed through the shared `validate()` helper in `src/lib/validate.js`.
+Validation is handled by Zod schemas in `apps/save-philly-festivals/src/features/schedules/schedule-schemas.js` and `apps/save-philly-festivals/src/features/festivals/festival-schemas.js`, processed through the shared `validate()` helper in `apps/save-philly-festivals/src/lib/validate.js`.
 
 ---
 
@@ -104,14 +104,14 @@ Visitor                React Hook Form           API Route              Prisma  
 
 | File | Role |
 |---|---|
-| `src/features/schedules/SaveScheduleForm.jsx` | React Hook Form component |
-| `src/features/schedules/schedule-schemas.js` | Zod validation schemas |
-| `src/features/schedules/schedule-queries.js` | Prisma queries (save, get, remove) |
-| `src/app/api/schedules/save/route.js` | POST endpoint |
-| `src/app/api/schedules/saved/route.js` | GET (list) + DELETE (remove) endpoints |
-| `src/lib/mail.js` | Resend email functions |
-| `src/lib/errors.js` | Error classes and handler |
-| `src/lib/validate.js` | Zod validation helper |
+| `apps/save-philly-festivals/src/features/schedules/SaveScheduleForm.jsx` | React Hook Form component |
+| `apps/save-philly-festivals/src/features/schedules/schedule-schemas.js` | Zod validation schemas |
+| `apps/save-philly-festivals/src/features/schedules/schedule-queries.js` | Prisma queries (save, get, remove) |
+| `apps/save-philly-festivals/src/app/api/schedules/save/route.js` | POST endpoint |
+| `apps/save-philly-festivals/src/app/api/schedules/saved/route.js` | GET (list) + DELETE (remove) endpoints |
+| `apps/save-philly-festivals/src/lib/mail.js` | Resend email functions |
+| `apps/save-philly-festivals/src/lib/errors.js` | Error classes and handler |
+| `apps/save-philly-festivals/src/lib/validate.js` | Zod validation helper |
 
 ---
 
@@ -119,7 +119,7 @@ Visitor                React Hook Form           API Route              Prisma  
 
 ### How it works
 
-`src/features/festivals/festival-calendar.js` generates an `.ics` file of approved festivals happening this month.
+`apps/save-philly-festivals/src/features/festivals/festival-calendar.js` generates an `.ics` file of approved festivals happening this month.
 
 1. Queries `Festival` where `status = "approved"` and dates fall within the current month
 2. Maps each festival to an `ics` event (title, description, location, URL, dates)

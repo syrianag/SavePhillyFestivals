@@ -39,14 +39,14 @@ Production: `https://savephillyfestivals.org/api`
 
 | Status | Implementation |
 |--------|----------------|
-| Current | No auth required (all routes public) |
-| Future | NextAuth.js or Lucia Auth |
-| Middleware | `src/middleware.js` (stub) → will become `src/proxy.js` (Next.js 16) |
+| Current | Auth.js (NextAuth v5) with the Credentials provider |
+| Session | JWT strategy with the user role attached to the session |
+| Route protection | `apps/save-philly-festivals/src/proxy.js` plus server-side `auth()` checks |
 
-**Planned auth flow:**
-- Session-based authentication via `src/proxy.js`
-- JWT tokens stored in httpOnly cookies
-- Role attached to session object
+**Implemented auth flow:**
+- Auth.js handlers are exposed through `apps/save-philly-festivals/src/app/api/auth/[...nextauth]/route.js`
+- Session JWTs are stored in httpOnly cookies
+- The user role is attached to the session object
 
 ---
 
@@ -501,7 +501,7 @@ END:VCALENDAR
 ```
 
 **Storage:**
-- Current: `public/uploads/` (local filesystem)
+- Current: `apps/save-philly-festivals/public/uploads/` (local filesystem)
 - Future: AWS S3 or Cloudflare R2
 
 ---
@@ -563,7 +563,7 @@ All errors follow this format:
 | Code | Meaning | When |
 |------|---------|------|
 | `400` | Bad Request | Validation failed, missing required fields |
-| `401` | Unauthorized | Not authenticated (future) |
+| `401` | Unauthorized | Authentication is required or the session is invalid |
 | `403` | Forbidden | Insufficient permissions |
 | `404` | Not Found | Resource doesn't exist |
 | `409` | Conflict | Duplicate resource (e.g., slug) |
@@ -572,7 +572,7 @@ All errors follow this format:
 | `422` | Unprocessable Entity | Business logic error |
 | `500` | Internal Server Error | Unexpected error |
 
-**Error classes** (in `src/lib/errors.js`):
+**Error classes** (in `apps/save-philly-festivals/src/lib/errors.js`):
 - `AppError` — Base error class
 - `NotFoundError` — 404
 - `ValidationError` — 400 with field errors
@@ -605,6 +605,8 @@ All list endpoints support pagination:
 
 ## Environment Variables
 
+Store these values in `apps/save-philly-festivals/.env` (or `apps/save-philly-festivals/.env.local`). `UPLOAD_DIR` is app-root-relative.
+
 ```bash
 # Database (required)
 DATABASE_URL="postgresql://..."
@@ -620,7 +622,7 @@ EMAIL_FROM="Save Philly Festivals <noreply@savephillyfestivals.org>"
 UPLOAD_DIR="public/uploads"
 MAX_FILE_SIZE="5242880"
 
-# Auth (future)
+# Auth (required)
 AUTH_SECRET="your-auth-secret"
 ```
 
@@ -651,12 +653,12 @@ AUTH_SECRET="your-auth-secret"
 | Email templates | Planned | Nodemailer with SMTP |
 | File uploads | Planned | Local storage, future S3 |
 
-### Phase 5: Middleware (Planned)
+### Phase 5: Authentication and Middleware
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Admin auth | Planned | `src/proxy.js` (Next.js 16) |
-| Role-based access | Planned | Session-based roles |
+| Admin auth | Implemented | Auth.js with `apps/save-philly-festivals/src/proxy.js` and server-side checks |
+| Role-based access | Implemented | Roles are attached to Auth.js sessions |
 | Rate limiting | Planned | API rate limiting |
 | CORS | Planned | Cross-origin configuration |
 
@@ -664,7 +666,6 @@ AUTH_SECRET="your-auth-secret"
 
 | Feature | Priority | Description |
 |---------|----------|-------------|
-| Authentication | High | NextAuth.js or Lucia Auth |
 | Rate limiting | Medium | Prevent API abuse |
 | Caching | Medium | Redis or in-memory cache |
 | Search | Medium | Full-text search with Postgres |

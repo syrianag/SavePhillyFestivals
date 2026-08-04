@@ -7,7 +7,7 @@
 ## 1. Prisma Schema Design
 
 ```prisma
-// prisma/schema.prisma
+// apps/save-philly-festivals/prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -159,12 +159,16 @@ model EmailLog {
 
 ### 2a. Config & Dependencies
 
+Run dependency installation commands from the workspace root.
+
 | What | Command |
 |------|---------|
 | Install packages | `npm install zod nodemailer uuid` |
 | Install dev deps | `npm install -D @types/nodemailer` (types only, still useful for IDE) |
 
 ### 2b. File Tree (new files only)
+
+The following tree is relative to the app root, `apps/save-philly-festivals/`.
 
 ```
 src/
@@ -277,7 +281,7 @@ prisma/
 
 ---
 
-## 4. Utility Functions (src/lib/)
+## 4. Utility Functions (`apps/save-philly-festivals/src/lib/`)
 
 ### `db.js` — Prisma Singleton
 
@@ -337,7 +341,7 @@ if (process.env.NODE_ENV !== "production") {
 
 ```js
 // saveFile(file, directory) → { url, fileName, size }
-// Saves to public/uploads/ locally (swap to S3 later)
+// Saves to apps/save-philly-festivals/public/uploads/ locally (swap to S3 later)
 // Validates file type + size limits
 ```
 
@@ -361,6 +365,8 @@ export const MAX_PAGE_SIZE = 100;
 
 ## 5. Package Dependencies
 
+Run these commands from the workspace root.
+
 ```bash
 # Runtime dependencies
 npm install zod nodemailer uuid
@@ -381,40 +387,40 @@ npm install -D @types/nodemailer
 ## 6. Implementation Order
 
 ### Phase 1: Foundation (do first)
-1. **Install dependencies** — `npm install zod nodemailer uuid`
-2. **`src/lib/db.js`** — Prisma singleton (everything depends on this)
-3. **`prisma/schema.prisma`** — Full schema with all models
-4. **Run migration** — `npx prisma migrate dev --name init`
-5. **`src/lib/constants.js`** — Status enums and limits
-6. **`src/lib/errors.js`** — Error classes + `handleApiError()`
-7. **`src/lib/validate.js`** — Zod wrapper
+1. **Install dependencies from the workspace root** — `npm install zod nodemailer uuid`
+2. **`apps/save-philly-festivals/src/lib/db.js`** — Prisma singleton (everything depends on this)
+3. **`apps/save-philly-festivals/prisma/schema.prisma`** — Full schema with all models
+4. **Run migration from the workspace root** — `npx prisma migrate dev --config apps/save-philly-festivals/prisma.config.ts --name init`
+5. **`apps/save-philly-festivals/src/lib/constants.js`** — Status enums and limits
+6. **`apps/save-philly-festivals/src/lib/errors.js`** — Error classes + `handleApiError()`
+7. **`apps/save-philly-festivals/src/lib/validate.js`** — Zod wrapper
 
 ### Phase 2: Feature Queries (DB logic before routes)
-8. **`src/features/festivals/festival-schemas.js`** — Zod schemas
-9. **`src/features/festivals/festival-queries.js`** — CRUD functions
-10. **`src/features/schedules/schedule-schemas.js`** — Zod schemas
-11. **`src/features/schedules/schedule-queries.js`** — CRUD functions
+8. **`apps/save-philly-festivals/src/features/festivals/festival-schemas.js`** — Zod schemas
+9. **`apps/save-philly-festivals/src/features/festivals/festival-queries.js`** — CRUD functions
+10. **`apps/save-philly-festivals/src/features/schedules/schedule-schemas.js`** — Zod schemas
+11. **`apps/save-philly-festivals/src/features/schedules/schedule-queries.js`** — CRUD functions
 
 ### Phase 3: API Routes (consume queries + validation)
-12. **`src/app/api/health/route.js`** — Test DB connection first
-13. **`src/app/api/festivals/route.js`** — List + Create
-14. **`src/app/api/festivals/[id]/route.js`** — Get + Update + Delete
-15. **`src/app/api/festivals/[id]/approve/route.js`** — Approve/Reject
-16. **`src/app/api/schedules/route.js`** — List + Create
-17. **`src/app/api/schedules/[id]/route.js`** — Get + Update + Delete
-18. **`src/app/api/saved-schedules/route.js`** — Get + Save + Remove
+12. **`apps/save-philly-festivals/src/app/api/health/route.js`** — Test DB connection first
+13. **`apps/save-philly-festivals/src/app/api/festivals/route.js`** — List + Create
+14. **`apps/save-philly-festivals/src/app/api/festivals/[id]/route.js`** — Get + Update + Delete
+15. **`apps/save-philly-festivals/src/app/api/festivals/[id]/approve/route.js`** — Approve/Reject
+16. **`apps/save-philly-festivals/src/app/api/schedules/route.js`** — List + Create
+17. **`apps/save-philly-festivals/src/app/api/schedules/[id]/route.js`** — Get + Update + Delete
+18. **`apps/save-philly-festivals/src/app/api/saved-schedules/route.js`** — Get + Save + Remove
 
 ### Phase 4: Supporting Features
-19. **`src/lib/calendar.js`** — .ics generation
-20. **`src/app/api/calendar/[festivalId]/route.js`** — Calendar download
-21. **`src/lib/email.js`** — Nodemailer setup
-22. **`src/features/email/email-templates.js`** — HTML templates
-23. **`src/app/api/email/send/route.js`** — Send email endpoint
-24. **`src/lib/uploads.js`** — File save helper
-25. **`src/app/api/upload/route.js`** — Upload endpoint
+19. **`apps/save-philly-festivals/src/lib/calendar.js`** — .ics generation
+20. **`apps/save-philly-festivals/src/app/api/calendar/[festivalId]/route.js`** — Calendar download
+21. **`apps/save-philly-festivals/src/lib/email.js`** — Nodemailer setup
+22. **`apps/save-philly-festivals/src/features/email/email-templates.js`** — HTML templates
+23. **`apps/save-philly-festivals/src/app/api/email/send/route.js`** — Send email endpoint
+24. **`apps/save-philly-festivals/src/lib/uploads.js`** — File save helper
+25. **`apps/save-philly-festivals/src/app/api/upload/route.js`** — Upload endpoint
 
-### Phase 5: Middleware (optional, later)
-26. Update `src/middleware.js` or create `src/proxy.js` for admin auth checks
+### Phase 5: Authentication and Middleware
+26. Auth.js route protection is implemented in `apps/save-philly-festivals/src/proxy.js`, with server-side `auth()` checks on protected handlers.
 
 ---
 
@@ -494,7 +500,7 @@ curl -o festival.ics http://localhost:3000/api/calendar/<festival-id>
 # Opens as calendar event in any calendar app
 ```
 
-### Test email (requires SMTP config in .env)
+### Test email (requires SMTP config in `apps/save-philly-festivals/.env`)
 ```bash
 curl -X POST http://localhost:3000/api/email/send \
   -H "Content-Type: application/json" \
@@ -520,7 +526,7 @@ curl -X POST http://localhost:3000/api/festivals \
 
 ## 8. Environment Variables to Add
 
-Add to `.env.example` (and `.env`):
+Add to `apps/save-philly-festivals/.env.example` (and `apps/save-philly-festivals/.env`). The values below are app-root-relative where they contain paths.
 
 ```bash
 # Email (SMTP)
@@ -541,7 +547,7 @@ MAX_FILE_SIZE="5242880"
 
 | Decision | Rationale |
 |----------|-----------|
-| Feature-based queries in `src/features/` | Keeps DB logic separate from API routes; reusable from server actions later |
+| Feature-based queries in `apps/save-philly-festivals/src/features/` | Keeps DB logic separate from API routes; reusable from server actions later |
 | Zod schemas co-located with features | `festival-schemas.js` lives next to `festival-queries.js` — easy to find |
 | `snake_case` DB fields per coding standards | Prisma maps `snake_case` columns to `camelCase` JS fields automatically |
 | Single `handleApiError()` wrapper | Every route.js wraps its handler in try/catch calling this — consistent error responses |
