@@ -1,10 +1,11 @@
-import FestivalSubmissionForm from "@/features/festivals/FestivalSubmissionForm";
+import ProducerSubmissionEditor from "@/features/producer-submission/ProducerSubmissionEditor";
 
 export const metadata = {
-  title: "Submit Your Festival - Save Philly Festivals",
-  description: "Submit your Philadelphia festival for consideration",
+  title: "Festival submission - Save Philly Festivals",
+  description: "Create or resume a private producer festival submission.",
 };
 
-export default function SubmitFestivalPage() {
-  return <FestivalSubmissionForm />;
+export default async function SubmitFestivalPage({ searchParams }) {
+  const id = (await searchParams)?.id;
+  return <ProducerSubmissionEditor festivalId={typeof id === "string" ? id : null} />;
 }

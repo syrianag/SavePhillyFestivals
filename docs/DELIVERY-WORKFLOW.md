@@ -91,6 +91,7 @@ A flaky test blocks merge. Retries may collect diagnostics but may not convert a
 - Never edit a migration already deployed to a shared environment.
 - Never use `prisma db push` as a production release mechanism.
 - Include rollback or forward-recovery notes in the pull request.
+- Bulk source-data imports follow `docs/FESTIVAL-DATA-MIGRATION.md`: profile and dry-run first, preserve row lineage, quarantine ambiguity, prove idempotent replay on disposable PostgreSQL, and keep imported records private until editorial approval.
 
 ## External integration activation
 

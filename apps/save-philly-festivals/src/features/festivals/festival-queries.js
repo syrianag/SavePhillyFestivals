@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { FESTIVAL_STATUS } from "@/lib/constants";
+import { ConflictError } from "@/lib/errors";
 import {
   getDiscoveryE2eFestival,
   getDiscoveryE2eFestivalCatalog,
@@ -76,6 +77,11 @@ export async function getFestivalById(id) {
 }
 
 export async function getApprovedFestivalById(id) {
+  const fixtureCatalog = getDiscoveryE2eFestivalCatalog();
+  if (fixtureCatalog !== undefined) {
+    return mapPublicFestival(fixtureCatalog.find((festival) => festival.id === id) || null);
+  }
+
   const festival = await prisma.festival.findFirst({
     where: { id, status: FESTIVAL_STATUS.APPROVED },
     select: PUBLIC_FESTIVAL_SELECT,
@@ -142,14 +148,53 @@ export async function deleteFestival(id) {
   });
 }
 
-export async function approveFestival(id, status, reason) {
-  const data = { status };
-  if (reason) {
-    data.rejection_reason = reason;
-  }
-  const festival = await prisma.festival.update({
-    where: { id },
-    data,
+export async function approveFestival(id, status, reason, actorUserId, expectedRevision) {
+  if (!actorUserId) throw new Error("Authenticated moderation actor is required.");
+  const workflowState = status === FESTIVAL_STATUS.APPROVED ? "approved" : "rejected";
+  return prisma.$transaction(async (transaction) => {
+    const current = await transaction.festival.findUnique({
+      where: { id },
+      select: { id: true, workflow_state: true, status: true, revision: true },
+    });
+    if (!current) return null;
+    if (
+      current.workflow_state !== "pending_review"
+      || current.status !== FESTIVAL_STATUS.PENDING
+      || current.revision !== expectedRevision
+    ) {
+      throw new ConflictError("Festival is not pending review at the expected revision");
+    }
+
+    const nextRevision = expectedRevision + 1;
+    const changed = await transaction.festival.updateMany({
+      where: {
+        id,
+        workflow_state: "pending_review",
+        status: FESTIVAL_STATUS.PENDING,
+        revision: expectedRevision,
+      },
+      data: {
+        status,
+        workflow_state: workflowState,
+        revision: nextRevision,
+        rejection_reason: status === FESTIVAL_STATUS.REJECTED ? reason || null : null,
+      },
+    });
+    if (changed.count !== 1) {
+      throw new ConflictError("Festival changed while moderation was in progress");
+    }
+
+    await transaction.festivalTransition.create({
+      data: {
+        festival_id: id,
+        actor_user_id: actorUserId,
+        from_state: "pending_review",
+        to_state: workflowState,
+        revision: nextRevision,
+        reason: status === FESTIVAL_STATUS.REJECTED ? reason || null : null,
+      },
+    });
+    const festival = await transaction.festival.findUnique({ where: { id } });
+    return { festival, reason };
   });
-  return { festival, reason };
 }

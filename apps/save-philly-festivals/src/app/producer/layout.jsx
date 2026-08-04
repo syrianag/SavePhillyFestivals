@@ -1,119 +1,29 @@
-"use client";
-
 import Link from "next/link";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
-import { cn } from "@/lib/utils";
-import { Menu, X, LogOut } from "lucide-react";
-import { useState } from "react";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
-const producerLinks = [
-  { href: "/producer/dashboard", label: "Overview" },
-  { href: "/producer/festivals", label: "My Festivals" },
-  { href: "/producer/submit", label: "Submit Festival" },
-  { href: "/producer/schedule", label: "Schedule" },
-];
+import ProducerShell from "@/features/producer-submission/ProducerShell";
+import { authorizeProducerPage } from "@/features/producer-submission/producer-page-authorization";
 
-export default function ProducerLayout({ children }) {
-  const pathname = usePathname();
-  const { data: session } = useSession();
-  const [mobileOpen, setMobileOpen] = useState(false);
+export default async function ProducerLayout({ children }) {
+  const authorization = await authorizeProducerPage();
+  if (authorization.status === "unauthenticated") {
+    const requestedPath = (await headers()).get("x-producer-path") || "/producer/dashboard";
+    const callbackUrl = requestedPath.startsWith("/producer/") ? requestedPath : "/producer/dashboard";
+    redirect(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+  }
 
-  return (
-    <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-50 border-b border-[#E2E8F0] bg-background">
-        <div className="mx-auto flex h-[77px] items-center justify-between px-4 md:px-[81px]">
-          <div className="flex flex-col">
-            <Link
-              href="/"
-              className="flex items-center"
-            >
-              <Image
-                src="/logos/PF-Logo-TM.png"
-                alt="Save Philly Festivals"
-                width={200}
-                height={72}
-                className="max-h-[72px] w-auto"
-                priority
-              />
-            </Link>
-            {session?.user && (
-              <span className="font-body text-xs font-medium text-muted-foreground">
-                {session.user.email}
-              </span>
-            )}
-          </div>
-
-          <nav className="hidden items-center gap-[31.73px] md:flex">
-            {producerLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "font-body text-lg font-bold transition-colors",
-                  pathname === link.href
-                    ? "text-foreground"
-                    : "text-[#AAAAAA] hover:text-foreground"
-                )}
-                style={{ letterSpacing: "-0.198857px", lineHeight: "26px" }}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <button
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="flex items-center gap-1 font-body text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <LogOut className="size-4" />
-              Sign Out
-            </button>
-          </nav>
-
-          <button
-            className="flex md:hidden"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X className="size-6" /> : <Menu className="size-6" />}
-          </button>
-        </div>
-
-        {mobileOpen && (
-          <nav className="border-t border-[#E2E8F0] px-4 pb-4 pt-2 md:hidden">
-            {producerLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  "block py-2 font-body text-lg font-bold transition-colors",
-                  pathname === link.href
-                    ? "text-foreground"
-                    : "text-[#AAAAAA] hover:text-foreground"
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <button
-              onClick={() => {
-                setMobileOpen(false);
-                signOut({ callbackUrl: "/" });
-              }}
-              className="block py-2 font-body text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Sign Out
-            </button>
-          </nav>
-        )}
-      </header>
-
-      <main className="flex-1 pb-16">
-        <div className="mx-auto max-w-5xl px-4 py-8 md:px-[81px] md:py-10">
-          {children}
-        </div>
+  if (authorization.status === "denied") {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <section className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm" role="alert" aria-labelledby="producer-access-title">
+          <h1 id="producer-access-title" className="font-heading text-3xl font-bold">Producer access unavailable</h1>
+          <p className="mt-3 text-slate-600">A verified producer account is required to manage festival submissions.</p>
+          <Link href="/producer" className="mt-6 inline-flex rounded-md bg-black px-5 py-3 font-semibold text-white">Return to producer information</Link>
+        </section>
       </main>
-    </div>
-  );
+    );
+  }
+
+  return <ProducerShell user={authorization.user}>{children}</ProducerShell>;
 }
