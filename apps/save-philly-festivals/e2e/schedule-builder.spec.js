@@ -99,6 +99,8 @@ test("exports a mixed schedule without consent data and keeps it intact", async 
 
 test("exports an event-only schedule", async ({ page }) => {
   await page.goto("/calendar");
+  await expect(page.getByRole("region", { name: "Schedule Builder" })
+    .getByText("No festivals or program events saved yet.")).toBeVisible();
   await page.evaluate(({ key }) => {
     localStorage.setItem(key, JSON.stringify({
       version: 1,
@@ -120,6 +122,8 @@ test("exports an event-only schedule", async ({ page }) => {
 
 test("downloads valid selections while reporting stale omissions", async ({ page }) => {
   await page.goto("/calendar");
+  await expect(page.getByRole("region", { name: "Schedule Builder" })
+    .getByText("No festivals or program events saved yet.")).toBeVisible();
   await page.evaluate(({ key }) => {
     localStorage.setItem(key, JSON.stringify({
       version: 1,
@@ -146,6 +150,8 @@ test("downloads valid selections while reporting stale omissions", async ({ page
 
 test("blocks an all-stale export with an accessible error", async ({ page }) => {
   await page.goto("/calendar");
+  await expect(page.getByRole("region", { name: "Schedule Builder" })
+    .getByText("No festivals or program events saved yet.")).toBeVisible();
   await page.evaluate(({ key }) => {
     localStorage.setItem(key, JSON.stringify({
       version: 1,
