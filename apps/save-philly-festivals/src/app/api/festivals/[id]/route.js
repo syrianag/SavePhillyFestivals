@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getFestivalById, updateFestival, deleteFestival } from "@/features/festivals/festival-queries";
+import { getApprovedFestivalById, getFestivalById, updateFestival, deleteFestival } from "@/features/festivals/festival-queries";
 import { updateFestivalSchema } from "@/features/festivals/festival-schemas";
 import { validate } from "@/lib/validate";
 import { handleApiError, NotFoundError } from "@/lib/errors";
@@ -8,7 +8,9 @@ import { auth } from "@/lib/auth";
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
-    const festival = await getFestivalById(id);
+    const session = await auth();
+    const isAdmin = session?.user?.role === "admin" || session?.user?.role === "super_admin";
+    const festival = isAdmin ? await getFestivalById(id) : await getApprovedFestivalById(id);
 
     if (!festival) {
       throw new NotFoundError("Festival not found");

@@ -67,9 +67,33 @@ export async function getFestivalById(id) {
   });
 }
 
+export async function getApprovedFestivalById(id) {
+  return prisma.festival.findFirst({
+    where: { id, status: FESTIVAL_STATUS.APPROVED },
+    include: {
+      schedules: { orderBy: { start_time: "asc" } },
+      categories: { include: { category: true } },
+      tags: { include: { tag: true } },
+      files: true,
+    },
+  });
+}
+
 export async function getFestivalBySlug(slug) {
   return prisma.festival.findUnique({
     where: { slug },
+    include: {
+      schedules: { orderBy: { start_time: "asc" } },
+      categories: { include: { category: true } },
+      tags: { include: { tag: true } },
+      files: true,
+    },
+  });
+}
+
+export async function getApprovedFestivalBySlug(slug) {
+  return prisma.festival.findFirst({
+    where: { slug, status: FESTIVAL_STATUS.APPROVED },
     include: {
       schedules: { orderBy: { start_time: "asc" } },
       categories: { include: { category: true } },

@@ -4,8 +4,10 @@ import { createFestivalSchema } from "@/features/festivals/festival-schemas";
 import { validate } from "@/lib/validate";
 import { handleApiError } from "@/lib/errors";
 import { auth } from "@/lib/auth";
-import { FESTIVAL_STATUS } from "@/lib/constants";
+
 import { sendSubmissionConfirmation } from "@/lib/mail";
+import { parseDiscoveryParams } from "@/features/festivals/discovery";
+import { discoverApprovedFestivals } from "@/features/festivals/public-discovery";
 
 export async function GET(request) {
   try {
@@ -18,16 +20,16 @@ export async function GET(request) {
     const session = await auth();
     const isAdmin = session?.user?.role === "admin" || session?.user?.role === "super_admin";
 
-    // Non-admin users can only see approved festivals
-    const filterStatus = isAdmin ? status : FESTIVAL_STATUS.APPROVED;
+    if (!isAdmin) {
+      const filters = parseDiscoveryParams(Object.fromEntries(searchParams));
+      const result = await discoverApprovedFestivals(filters);
+      return NextResponse.json({
+        festivals: result.items,
+        pagination: result.pagination,
+      });
+    }
 
-    const result = await getFestivals({
-      status: filterStatus,
-      page,
-      limit,
-      search,
-    });
-
+    const result = await getFestivals({ status, page, limit, search });
     return NextResponse.json(result);
   } catch (error) {
     return handleApiError(error);

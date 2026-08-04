@@ -20,6 +20,10 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      name: "mobile-chromium",
+      use: { ...devices["Pixel 5"] },
+    },
   ],
   webServer: {
     command: `next build && next start --port ${port}`,
@@ -30,6 +34,7 @@ export default defineConfig({
       ...process.env,
       AUTH_SECRET: process.env.AUTH_SECRET || "application-e2e-secret-not-for-production",
       AUTH_TRUST_HOST: "true",
+      DISCOVERY_E2E_FIXTURE: "1",
       DATABASE_URL:
         process.env.DATABASE_URL || "postgresql://e2e:e2e@127.0.0.1:5432/save_philly_festivals_e2e",
     },

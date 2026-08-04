@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Bookmark, Calendar, MapPin, ArrowRight, X } from "lucide-react";
+import { Bookmark, MapPin, ArrowRight, X } from "lucide-react";
 import { useSchedule } from "@/features/schedule/schedule-context";
 
 function getTextColorForBg(bgColor) {
@@ -18,6 +19,7 @@ export function FestivalCard({
   className,
   variant = "default",
   id,
+  slug,
   image,
   title,
   date,
@@ -65,38 +67,31 @@ export function FestivalCard({
   }
 
   if (variant === "compact") {
-    return (
-      <div
-        data-slot="festival-card"
-        className={cn(
-          "flex w-[193px] flex-col overflow-hidden rounded-xl",
-          className
+    const card = (
+      <>
+        {image ? (
+          <div aria-hidden="true" className="h-[120px] w-full bg-cover bg-center" style={{ backgroundImage: `url(${image})` }} />
+        ) : (
+          <div className="h-[120px] w-full bg-gradient-to-br from-brand-light-teal to-brand-teal" />
         )}
-        {...props}
-      >
-        <div className="h-[120px] w-full bg-gradient-to-br from-brand-light-teal to-brand-teal" />
-        <div className="flex h-[102px] flex-col gap-0.5 bg-[#EBEBEB] px-[11px] pb-[7px] pt-[13px]">
-          <h3 className="font-body text-base font-normal leading-[19px] text-black">
-            {title}
-          </h3>
+        <div className="flex min-h-[118px] flex-1 flex-col gap-0.5 bg-[#EBEBEB] px-[11px] pb-[7px] pt-[13px]">
+          <h3 className="font-body text-base font-normal leading-[19px] text-black">{title}</h3>
           {location && (
-            <span className="flex items-center gap-[6px] font-body text-sm font-semibold leading-[17px] text-[#848484]">
-              <MapPin className="size-[10px] text-[#848484]" />
+            <span className="flex items-center gap-[6px] font-body text-sm font-semibold leading-[17px] text-[#606060]">
+              <MapPin aria-hidden="true" className="size-[10px] text-[#606060]" />
               {location}
             </span>
           )}
-          {date && (
-            <span className="font-body text-xs font-normal leading-[14px] text-[#848484]">
-              {date}
-            </span>
-          )}
-          {category && (
-            <span className="mt-auto font-body text-sm font-semibold leading-[17px] text-[#848484]">
-              {category}
-            </span>
-          )}
+          {date && <span className="font-body text-xs font-normal leading-[14px] text-[#606060]">{date}</span>}
+          {category && <span className="mt-auto font-body text-sm font-semibold leading-[17px] text-[#606060]">{category}</span>}
         </div>
-      </div>
+      </>
+    );
+    const cardClass = cn("flex w-full min-w-0 flex-col overflow-hidden rounded-xl transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black", className);
+    return slug ? (
+      <Link href={`/festivals/${slug}`} aria-label={`View ${title}`} data-slot="festival-card" className={cardClass} {...props}>{card}</Link>
+    ) : (
+      <div data-slot="festival-card" className={cardClass} {...props}>{card}</div>
     );
   }
 
@@ -190,13 +185,15 @@ export function FestivalCard({
               </button>
             )}
 
-            <a
-              href="#"
-              className="flex h-9 items-center gap-2 rounded-full bg-[#FF7261] px-4 font-body text-base font-bold text-white transition-opacity hover:opacity-90"
-            >
-              <ArrowRight className="size-3.5 text-white" />
-              Learn more
-            </a>
+            {slug ? (
+              <Link
+                href={`/festivals/${slug}`}
+                className="flex h-9 items-center gap-2 rounded-full bg-[#FF7261] px-4 font-body text-base font-bold text-white transition-opacity hover:opacity-90"
+              >
+                <ArrowRight className="size-3.5 text-white" />
+                Learn more
+              </Link>
+            ) : null}
           </div>
         </div>
       </div>

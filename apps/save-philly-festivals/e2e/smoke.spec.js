@@ -6,6 +6,31 @@ test("home page renders festival discovery content", async ({ page }) => {
   await expect(page).toHaveTitle(/Save Philly Festivals/i);
   await expect(page.getByRole("heading", { name: "About Philly Fests" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Featured" })).toBeVisible();
+  await expect(page.getByText("2 festivals found")).toBeVisible();
+  await expect(page.getByRole("link", { name: "View Riverfront Arts Festival" })).toHaveAttribute("href", "/festivals/riverfront-arts-festival");
+});
+
+test("discovery controls reflect URL query state", async ({ page }) => {
+  await page.goto("/?search=riverfront&date=custom&start=2026-09-12&end=2026-09-13&category=Art&neighborhood=Landing&sort=name");
+
+  await expect(page.getByLabel("Search festivals")).toHaveValue("riverfront");
+  await expect(page.getByLabel("Date", { exact: true })).toHaveValue("custom");
+  await expect(page.getByLabel("Start date")).toHaveValue("2026-09-12");
+  await expect(page.getByLabel("Category")).toHaveValue("Art");
+  await expect(page.getByLabel("Neighborhood or location")).toHaveValue("Landing");
+  await expect(page.getByLabel("Sort results")).toHaveValue("name");
+  await expect(page.getByText("1 festival found")).toBeVisible();
+});
+
+test("discovery submits query state and renders intentional no-results content", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Search festivals").fill("no such festival");
+  await page.getByRole("button", { name: "Apply festival search and filters" }).click();
+
+  await expect(page).toHaveURL(/q=no\+such\+festival/);
+  await expect(page.getByRole("heading", { name: "No festivals match your search" })).toBeVisible();
+  await expect(page.getByText("0 festivals found")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Clear all filters" })).toHaveAttribute("href", "/");
 });
 
 test("about page renders its mission", async ({ page }) => {
