@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-const resend = process.env.RESEND_API_KEY
+const resendClient = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
@@ -114,20 +114,38 @@ export async function sendFestivalRejected({ to, festivalName, reason }) {
   return sendEmail({ to, subject: `Update on your submission: ${festivalName}`, html });
 }
 
-async function sendEmail({ to, subject, html }) {
-  if (!resend) {
-    console.log("[MAIL STUB] No RESEND_API_KEY set. Logging instead of sending.");
-    console.log(`[MAIL STUB] To: ${to}`);
-    console.log(`[MAIL STUB] Subject: ${subject}`);
-    console.log(`[MAIL STUB] HTML:\n${html}`);
-    return { success: true, stubbed: true };
+export async function sendTransactionalEmail(
+  { to, subject, html, text },
+  { client = resendClient, logger = console } = {}
+) {
+  if (!client) {
+    logger.warn("[MAIL] Delivery skipped because the provider is not configured.");
+    return { success: false, code: "provider_unconfigured" };
   }
 
   try {
-    await resend.emails.send({ from: FROM_EMAIL, to, subject, html });
-    return { success: true };
-  } catch (error) {
-    console.error("[MAIL] Failed to send:", error.message);
-    return { success: false, error: error.message };
+    const response = await client.emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject,
+      html,
+      ...(text ? { text } : {}),
+    });
+    if (response?.error) {
+      logger.error("[MAIL] Provider rejected an email delivery request.");
+      return { success: false, code: "provider_error" };
+    }
+    return { success: true, id: response?.data?.id || null };
+  } catch {
+    logger.error("[MAIL] Email delivery request failed.");
+    return { success: false, code: "provider_error" };
   }
+}
+
+export const scheduleEmailProvider = Object.freeze({
+  send: sendTransactionalEmail,
+});
+
+async function sendEmail(message) {
+  return sendTransactionalEmail(message);
 }

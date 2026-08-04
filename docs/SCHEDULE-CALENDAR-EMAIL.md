@@ -16,13 +16,14 @@ RESEND_API_KEY=re_xxxxx
 RESEND_FROM_EMAIL=onboarding@resend.dev
 ```
 
-When `RESEND_API_KEY` is set, emails send live via Resend. When unset, all emails stub to console logs so development works without a key.
+When `RESEND_API_KEY` is set, emails send live via Resend. When unset, delivery returns a truthful `provider_unconfigured` failure and logs only a generic operational message—never the recipient, subject, or email body. `RESEND_FROM_EMAIL` configures the verified sender; no provider credentials are stored in application tables.
 
 **Email functions exported from `apps/save-philly-festivals/src/lib/mail.js`:**
 
 | Function | Trigger | Recipient |
 |---|---|---|
-| `sendScheduleConfirmation` | Visitor saves a schedule | The visitor |
+| `sendTransactionalEmail` | Transactional provider boundary (including F-04 mixed schedule summaries) | The visitor |
+| `sendScheduleConfirmation` | Legacy event-only saved-schedule confirmation | The visitor |
 | `sendMailingListForward` | Visitor opts in to updates | Festival's `contact_email` |
 | `sendSubmissionConfirmation` | Festival is submitted | Submitter's `contact_email` |
 | `sendFestivalApproved` | Admin approves a festival | Festival's `contact_email` |
@@ -52,7 +53,21 @@ Validation is handled by Zod schemas in `apps/save-philly-festivals/src/features
 
 ---
 
-## 3. Confirmation Email — Schedule Save Flow
+## 3. F-04 Mixed Schedule Email Flow
+
+The Calendar Schedule Builder sends its complete local, versioned `{type,id}` selection to `POST /api/schedules/email` with a UUID idempotency key. This transactional action is independent of marketing consent and has no marketing checkbox.
+
+The endpoint strictly validates and normalizes the request, resolves only currently approved festivals and events, and builds escaped email content exclusively from server records. Unknown, deleted, or unapproved selections are retained as unavailable child rows and reported safely; a request with no valid resolved selection is rejected.
+
+Each submission is stored in `ScheduleEmailRequest` with normalized ordered `ScheduleEmailItem` rows and a `pending`, `sent`, or `failed` delivery status. The unique idempotency key prevents a browser retry from creating or sending a duplicate request. Provider IDs and redacted operational failures may be stored; provider credentials and complete email bodies are not.
+
+For Playwright only, `DISCOVERY_E2E_FIXTURE=1` supplies an in-process repository/provider fixture. It does not call PostgreSQL or Resend. Production must not enable this flag.
+
+### Legacy event-only confirmation flow
+
+The following documents the pre-existing `SavedSchedule` event-only flow, which remains separate from F-04.
+
+#### Confirmation Email — Schedule Save Flow
 
 ### Dataflow
 
