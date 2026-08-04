@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/db";
 import { FESTIVAL_STATUS } from "@/lib/constants";
-import { getDiscoveryE2eFestival } from "@/features/festivals/discovery-e2e-fixture";
+import {
+  getDiscoveryE2eFestival,
+  getDiscoveryE2eFestivalCatalog,
+} from "@/features/festivals/discovery-e2e-fixture";
 import {
   mapPublicFestival,
   PUBLIC_FESTIVAL_SELECT,
@@ -91,6 +94,19 @@ export async function getPublicFestivalBySlug(slug) {
   });
 
   return mapPublicFestival(festival);
+}
+
+export async function getPublicFestivalCatalog() {
+  const fixture = getDiscoveryE2eFestivalCatalog();
+  if (fixture !== undefined) return fixture.map(mapPublicFestival);
+
+  const festivals = await prisma.festival.findMany({
+    where: { status: FESTIVAL_STATUS.APPROVED },
+    select: PUBLIC_FESTIVAL_SELECT,
+    orderBy: { start_date: "asc" },
+  });
+
+  return festivals.map(mapPublicFestival);
 }
 
 // Public callers must use the approved-only DTO. Private admin lookups remain ID-based.

@@ -19,6 +19,7 @@ export default defineConfig({
         "src/lib/validate.js",
         "src/lib/uploads.js",
         "src/features/festivals/festival-schemas.js",
+        "src/features/schedule/schedule-storage.js",
       ],
     },
   },

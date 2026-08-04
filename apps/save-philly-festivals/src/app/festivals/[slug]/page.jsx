@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPublicFestivalBySlug } from "@/features/festivals/festival-queries";
+import { ScheduleSaveButton } from "@/features/schedule/ScheduleSaveButton";
 import {
   formatPhiladelphiaDate,
   formatPhiladelphiaTime,
@@ -119,6 +120,13 @@ export default async function FestivalDetailPage({ params }) {
           <p className="mt-3 font-body text-lg leading-relaxed text-[#45556C]">
             {festival.description}
           </p>
+          <div className="mt-5">
+            <ScheduleSaveButton
+              type="festival"
+              id={festival.id}
+              name={festival.name}
+            />
+          </div>
         </header>
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -262,6 +270,11 @@ export default async function FestivalDetailPage({ params }) {
                         {event.genre ? ` · ${event.genre}` : ""}
                       </p>
                     </div>
+                    <ScheduleSaveButton
+                      type="event"
+                      id={event.id}
+                      name={event.title}
+                    />
                   </CardContent>
                 </Card>
               ))}

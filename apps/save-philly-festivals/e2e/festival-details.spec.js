@@ -29,7 +29,8 @@ test("navigates from discovery to an approved festival detail", async ({ page })
   await expect(programItems.nth(0)).toContainText("Community Arts Parade");
   await expect(programItems.nth(1)).toContainText("Riverfront Headliner Set");
   await expect(programItems.nth(1)).toContainText("Headliner");
-  await expect(page.getByRole("button", { name: /save/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Save Riverfront Arts Festival to schedule" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Save .* to schedule/ })).toHaveCount(3);
 });
 
 test("an unavailable or unapproved festival slug returns 404", async ({ page }) => {
