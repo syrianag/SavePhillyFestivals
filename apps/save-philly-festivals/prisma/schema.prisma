@@ -7,6 +7,19 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Calendar semantics ─────────────────────────────────────
+enum CalendarDateType {
+  timed
+  all_day
+}
+
+enum CalendarStatus {
+  confirmed
+  tentative
+  postponed
+  canceled
+}
+
 // ─── Festival ───────────────────────────────────────────────
 model Festival {
   id            String   @id @default(uuid())
@@ -41,10 +54,17 @@ model Festival {
   story         String?
   mission       String?
   history       String?
-  start_date    DateTime?
-  end_date      DateTime?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  start_date            DateTime?
+  end_date              DateTime?
+  calendar_date_type    CalendarDateType @default(timed)
+  time_zone             String           @default("America/New_York")
+  all_day_start         DateTime?        @db.Date
+  all_day_end           DateTime?        @db.Date
+  calendar_status       CalendarStatus   @default(confirmed)
+  calendar_sequence     Int              @default(0)
+  calendar_published_at DateTime?
+  created_at            DateTime         @default(now())
+  updated_at            DateTime         @updatedAt
 
   schedules     Schedule[]
   categories    FestivalCategory[]
@@ -56,6 +76,7 @@ model Festival {
   @@index([status])
   @@index([start_date])
   @@index([slug])
+  @@index([calendar_status, calendar_published_at])
 }
 
 // ─── Schedule (individual events within a festival) ────────
@@ -65,8 +86,15 @@ model Schedule {
   title         String
   description   String?
   location      String?
-  start_time    DateTime
-  end_time      DateTime
+  start_time            DateTime?
+  end_time              DateTime?
+  calendar_date_type    CalendarDateType @default(timed)
+  time_zone             String           @default("America/New_York")
+  all_day_start         DateTime?        @db.Date
+  all_day_end           DateTime?        @db.Date
+  calendar_status       CalendarStatus   @default(confirmed)
+  calendar_sequence     Int              @default(0)
+  calendar_published_at DateTime?
   performer     String?
   genre         String?
   is_headliner  Boolean  @default(false)
@@ -78,6 +106,7 @@ model Schedule {
 
   @@index([festival_id])
   @@index([start_time])
+  @@index([calendar_status, calendar_published_at])
 }
 
 // ─── Saved Schedule (user's personalized schedule) ─────────
