@@ -1,0 +1,1 @@
+{"name":"revoked-authorization","input":{"email":"visitor@example.com","authorization_enabled":false,"authorization_status":"revoked","consent_revoked":false,"attempts":0,"max_attempts":5},"expected":{"status":"suppressed","reason":"not_authorized"}}

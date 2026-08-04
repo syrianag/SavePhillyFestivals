@@ -63,6 +63,22 @@ Each submission is stored in `ScheduleEmailRequest` with normalized ordered `Sch
 
 For Playwright only, `DISCOVERY_E2E_FIXTURE=1` supplies an in-process repository/provider fixture. It does not call PostgreSQL or Resend. Production must not enable this flag.
 
+## F-05 Optional organizer consent
+
+The schedule email remains transactional and available with every consent checkbox unchecked. A separate section lists only server-resolved, approved parent festivals that have an enabled, authorized `OrganizerIntegration`. The visitor explicitly chooses one or more named organizers and one shared preference set (`reminders`, `updates`, `discovery`); no option is preselected. Browser storage continues to contain only the versioned schedule IDs—never email, consent, preferences, or management tokens.
+
+`POST /api/organizer-consent/eligibility` accepts only the versioned ID selection and returns display-safe eligible organizer records. `POST /api/organizer-consent` re-resolves all IDs and authorization server-side, normalizes the email, stores versioned disclosure evidence, selected approved festivals/organizers/preferences, source, timestamp, trusted request IP, revocation/suppression state, and one hashed high-entropy management token. It creates one idempotent outbox row per still-authorized chosen organizer. Partial eligibility is reported separately from schedule delivery.
+
+The raw management token is returned only on initial creation, held only in component memory, and never written to browser storage; the UI offers an immediate revoke action while that page remains open. `DELETE /api/organizer-consent` accepts the consent ID and token, hashes it server-side, persists organizer-scoped email suppressions, revokes the grant, and suppresses pending/processing work. A future full cross-provider preference center may wrap this mechanism; tokens must be delivered only in an approved private channel and must never be logged or placed in URLs.
+
+Operational application environment names:
+
+- `N8N_ORGANIZER_OUTBOX_SECRET`: shared high-entropy bearer secret held only in app/N8N secret stores.
+- `CONSENT_TRUSTED_PROXY_HOPS`: number of trusted right-most `X-Forwarded-For` hops; defaults to `0` (record `unknown`) to prevent spoofing.
+- `CONSENT_IP_RETENTION_DAYS`: documented retention setting for policy/cleanup operations. Configure the approved period; this change does not add a destructive cleanup job.
+
+N8N claims bounded due work under a five-minute lease and reports completion or retryable/permanent failure. Invalid, expired, or replayed leases are rejected. Revoked/suppressed consent or organizer authorization suppresses work before claim and again before report acceptance. Provider details are reduced to allowlisted operational error codes. See `apps/n8n/README.md`; no workflow or ESP is activated by F-05.
+
 ### Legacy event-only confirmation flow
 
 The following documents the pre-existing `SavedSchedule` event-only flow, which remains separate from F-04.

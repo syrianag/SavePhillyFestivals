@@ -8,6 +8,7 @@ N8N is the second Nx application. It has dedicated PostgreSQL storage and is iso
 - Production publishes Caddy on `80/443`; PostgreSQL and N8N port `5678` are not directly public.
 - Images are pinned. Upgrade checks report stable-version drift but never modify production.
 - `DiasporaDNA.json` is inactive and Gmail is draft-only.
+- `OrganizerSubscriptions.json` is a separate inactive organizer-mailing orchestrator. It has no embedded credentials or provider implementation.
 - Platform deployment, workflow import, controlled proof, and activation are separate approvals.
 - `N8N_ENCRYPTION_KEY` must remain stable and be escrowed securely.
 - No provided command deletes persistent volumes.
@@ -30,6 +31,17 @@ pnpm run n8n:stop
 ## DiasporaDNA contract
 
 `DiasporaDNA.json` uses environment-configured Sheet/tab/model bindings and contains no exported credential IDs or source-instance metadata. It normalizes and bounds input, requires ready status, rejects invalid/duplicate/prompt-injection inputs, validates generated content, creates a Gmail draft only, and emits explicit success/failure status data.
+
+## Organizer subscription contract
+
+`OrganizerSubscriptions.json` is the only automation boundary permitted to hand organizer subscription work to an approved ESP adapter. The application owns consent, authorization, suppression, idempotency, retries, and claim leases. N8N calls only:
+
+- `POST /api/internal/n8n/organizer-subscriptions/claim` with `{ "limit": 1..25, "worker_id": "..." }`.
+- `POST /api/internal/n8n/organizer-subscriptions/report` with the claimed `outbox_id`, one-time `lease_token`, and either a strict completion or redacted failure outcome.
+
+Both endpoints require `Authorization: Bearer <N8N_ORGANIZER_OUTBOX_SECRET>`. Configure the same high-entropy secret in the app and N8N secret stores; never commit it or paste it into workflow JSON. Configure `SPF_APP_BASE_URL` in N8N. Before any activation, replace the intentionally failing provider-adapter node, bind credentials inside N8N, verify provider unsubscribe/suppression behavior, run controlled fixtures, and obtain explicit activation approval. This repository does not activate or call N8N or an ESP.
+
+Static tests cover inactive/sanitized state, success, invalid email, replay, revoked authorization, partial/permanent failure, and bounded retry.
 
 Before activation, an operator must:
 

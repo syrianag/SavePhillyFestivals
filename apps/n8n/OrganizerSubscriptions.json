@@ -1,0 +1,89 @@
+{
+  "name": "Organizer Subscriptions (INACTIVE)",
+  "active": false,
+  "settings": { "availableInMCP": false, "executionOrder": "v1" },
+  "nodes": [
+    {
+      "id": "organizer-subscription-schedule",
+      "name": "Bounded Poll Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "parameters": { "rule": { "interval": [{ "field": "minutes", "minutesInterval": 5 }] } }
+    },
+    {
+      "id": "claim-organizer-work",
+      "name": "Claim Authorized Work",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SPF_APP_BASE_URL + '/api/internal/n8n/organizer-subscriptions/claim' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "={{ 'Bearer ' + $env.N8N_ORGANIZER_OUTBOX_SECRET }}" }] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\"limit\":10,\"worker_id\":\"organizer-subscriptions-v1\"}"
+      }
+    },
+    {
+      "id": "split-claimed-work",
+      "name": "Split Claimed Work",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [480, 0],
+      "parameters": { "fieldToSplitOut": "items", "options": {} }
+    },
+    {
+      "id": "provider-adapter-boundary",
+      "name": "Organizer Provider Adapter (CONFIGURE BEFORE ACTIVATION)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 0],
+      "parameters": { "jsCode": "throw new Error('provider_adapter_not_configured');" },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "report-completion",
+      "name": "Report Completion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, -100],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SPF_APP_BASE_URL + '/api/internal/n8n/organizer-subscriptions/report' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "={{ 'Bearer ' + $env.N8N_ORGANIZER_OUTBOX_SECRET }}" }] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({outbox_id:$json.outbox_id,lease_token:$json.lease_token,outcome:'completed',provider_result_id:$json.provider_result_id}) }}"
+      }
+    },
+    {
+      "id": "report-failure",
+      "name": "Report Redacted Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 100],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SPF_APP_BASE_URL + '/api/internal/n8n/organizer-subscriptions/report' }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "={{ 'Bearer ' + $env.N8N_ORGANIZER_OUTBOX_SECRET }}" }] },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({outbox_id:$json.outbox_id,lease_token:$json.lease_token,outcome:'failed',retryable:true,error_code:'provider_error'}) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Bounded Poll Schedule": { "main": [[{ "node": "Claim Authorized Work", "type": "main", "index": 0 }]] },
+    "Claim Authorized Work": { "main": [[{ "node": "Split Claimed Work", "type": "main", "index": 0 }]] },
+    "Split Claimed Work": { "main": [[{ "node": "Organizer Provider Adapter (CONFIGURE BEFORE ACTIVATION)", "type": "main", "index": 0 }]] },
+    "Organizer Provider Adapter (CONFIGURE BEFORE ACTIVATION)": { "main": [[{ "node": "Report Completion", "type": "main", "index": 0 }], [{ "node": "Report Redacted Failure", "type": "main", "index": 0 }]] }
+  }
+}
