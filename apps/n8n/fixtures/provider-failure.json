@@ -1,0 +1,18 @@
+{
+  "name": "provider-failure",
+  "input": {
+    "Name": "Maya Johnson",
+    "Email": "maya@community.org",
+    "Org": "Community Arts Network",
+    "Context": "Met at the neighborhood arts roundtable last month.",
+    "Status": "ready"
+  },
+  "simulation": {
+    "providerFailure": true
+  },
+  "expected": {
+    "status": "provider_failed",
+    "ready": true,
+    "failureCode": "provider_error"
+  }
+}

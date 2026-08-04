@@ -1,0 +1,77 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "n8n",
+  "projectType": "application",
+  "tags": ["scope:automation", "platform:docker"],
+  "targets": {
+    "init": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/scripts/init-n8n-env.mjs",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "validate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node tools/scripts/n8n-ops.mjs validate",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node --test apps/n8n/tests/workflow-contract.test.mjs",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "validate-production": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker compose --env-file apps/n8n/config/production/.env.example -f apps/n8n/config/compose.yaml -f apps/n8n/config/compose.production.yaml config --quiet",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "health": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/scripts/n8n-ops.mjs health",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "plan": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/scripts/n8n-ops.mjs plan",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/scripts/n8n-ops.mjs deploy",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "stop": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/scripts/n8n-ops.mjs stop",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "logs": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node tools/scripts/n8n-ops.mjs logs",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

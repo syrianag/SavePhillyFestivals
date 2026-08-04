@@ -1,0 +1,15 @@
+{
+  "name": "invalid",
+  "input": {
+    "Name": "",
+    "Email": "not-an-email",
+    "Org": "Community Arts Network",
+    "Context": "Ordinary context.",
+    "Status": "ready"
+  },
+  "expected": {
+    "status": "validation_failed",
+    "ready": false,
+    "validationErrors": ["name_required", "email_invalid"]
+  }
+}

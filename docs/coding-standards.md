@@ -36,7 +36,7 @@ FestivalCard/
 1. **Tailwind utility classes first** for 95% of styling
 2. `cn()` helper (from shadcn) for conditional classes
 3. CSS modules or inline style only when Tailwind can't handle the requirement
-4. Global styles in `src/app/globals.css` (Tailwind directives + CSS custom properties)
+4. Global styles in `apps/save-philly-festivals/src/app/globals.css` (Tailwind directives + CSS custom properties)
 
 ## Import Order
 
@@ -75,12 +75,12 @@ import { FestivalCard } from "./festival-card";
 | `NEXT_PUBLIC_*` | Client-side (prefix required) | `NEXT_PUBLIC_SITE_URL` |
 | Without prefix | Server-side only | `DATABASE_URL` |
 
-- Never commit `.env.local` or `.env*.local` files
-- Commit `.env.example` with placeholder values
+- Never commit `apps/save-philly-festivals/.env.local` or other `apps/save-philly-festivals/.env*.local` files
+- Commit `apps/save-philly-festivals/.env.example` with placeholder values
 
 ## Note on Next.js 16 Middleware Deprecation
 
-Next.js 16 has deprecated `middleware.js` in favor of `proxy.js`. When implementing auth middleware, switch to the `src/proxy.js` convention. Refer to: https://nextjs.org/docs/messages/middleware-to-proxy
+Next.js 16 has deprecated `middleware.js` in favor of `proxy.js`. Auth.js route protection uses `apps/save-philly-festivals/src/proxy.js`. Refer to: https://nextjs.org/docs/messages/middleware-to-proxy
 
 ## Commit Messages
 
@@ -108,7 +108,15 @@ test: add festival card unit tests
 ## Branch Naming
 
 ```
-feature/add-festival-search
+dev-a/ui/add-festival-search
+dev-a/ui/festival-cards
+dev-b/api/festival-crud
+dev-b/api/auth-setup
 bugfix/fix-timezone-offset
 release/v1.2.0
 ```
+
+- `dev-a/ui/*` — Developer A (frontend/UI work)
+- `dev-b/api/*` — Developer B (backend/API work)
+- `bugfix/*` — Bug fixes (any developer)
+- `release/*` — Release candidates

@@ -1,0 +1,35 @@
+services:
+  n8n:
+    environment:
+      N8N_HOST: ${N8N_HOST:?N8N_HOST is required}
+      N8N_PROTOCOL: https
+      N8N_SECURE_COOKIE: "true"
+      N8N_EDITOR_BASE_URL: https://${N8N_HOST:?N8N_HOST is required}/
+      WEBHOOK_URL: https://${N8N_HOST:?N8N_HOST is required}/
+      N8N_PROXY_HOPS: "1"
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: ${EXECUTIONS_DATA_MAX_AGE:-336}
+      N8N_DIAGNOSTICS_ENABLED: "false"
+    expose:
+      - "5678"
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    depends_on:
+      n8n:
+        condition: service_healthy
+    environment:
+      N8N_HOST: ${N8N_HOST:?N8N_HOST is required}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./production/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

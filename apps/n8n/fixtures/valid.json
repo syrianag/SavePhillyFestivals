@@ -1,0 +1,15 @@
+{
+  "name": "valid",
+  "input": {
+    "Name": "  Maya Johnson  ",
+    "Email": "MAYA@COMMUNITY.ORG",
+    "Org": "Community Arts Network",
+    "Context": "Met at the neighborhood arts roundtable last month.",
+    "Status": "ready"
+  },
+  "expected": {
+    "status": "draft_created",
+    "ready": true,
+    "normalizedEmail": "maya@community.org"
+  }
+}

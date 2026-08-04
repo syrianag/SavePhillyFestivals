@@ -1,0 +1,120 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "save-philly-festivals",
+  "projectType": "application",
+  "sourceRoot": "apps/save-philly-festivals/src",
+  "tags": ["scope:product", "platform:nextjs"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "next dev",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/.next"],
+      "options": {
+        "command": "next build",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "next start",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "eslint src/ --ext .js,.jsx",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config vitest.config.js",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "test-coverage": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/coverage"],
+      "options": {
+        "command": "vitest run --config vitest.config.js --coverage",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "e2e": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "outputs": ["{projectRoot}/playwright-report", "{projectRoot}/test-results"],
+      "options": {
+        "command": "playwright test --config playwright.config.js",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "prisma-generate": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "outputs": ["{projectRoot}/src/generated/prisma"],
+      "options": {
+        "command": "prisma generate",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "prisma-validate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "prisma validate",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "migrate-test": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node scripts/migrate-test.mjs",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "seed": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "prisma db seed",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "verify-seeded-admin": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsx scripts/verify-seeded-admin.mjs",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "auth-secret": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node scripts/generate-auth-secret.mjs",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "audit": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "pnpm audit",
+        "cwd": "{workspaceRoot}"
+      }
+    }
+  }
+}

@@ -1,0 +1,95 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - "fix/**"
+      - "chore/**"
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+  NEXT_TELEMETRY_DISABLED: "1"
+  NX_DAEMON: "false"
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/save_philly_festivals_ci?schema=public
+  AUTH_SECRET: save-philly-festivals-ci-validation-secret-2026
+  AUTH_TRUST_HOST: "true"
+
+jobs:
+  verify:
+    name: Migrations, quality, tests, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: save_philly_festivals_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d save_philly_festivals_ci"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate and validate Prisma Client
+        run: |
+          pnpm exec nx run save-philly-festivals:prisma-generate --outputStyle=static
+          pnpm exec nx run save-philly-festivals:prisma-validate --outputStyle=static
+      - name: Apply committed migrations to a blank database
+        run: pnpm exec nx run save-philly-festivals:migrate-test --outputStyle=static
+      - name: Audit dependencies
+        run: pnpm audit
+      - name: Lint application
+        run: pnpm exec nx run save-philly-festivals:lint --outputStyle=static
+      - name: Run unit tests with coverage
+        run: pnpm exec nx run save-philly-festivals:test-coverage --outputStyle=static
+      - name: Validate N8N Compose and workflow contract
+        run: |
+          pnpm exec nx run n8n:validate --outputStyle=static
+          pnpm exec nx run n8n:test --outputStyle=static
+      - name: Validate production N8N Compose model
+        env:
+          N8N_POSTGRES_PASSWORD: validation-only
+          N8N_ENCRYPTION_KEY: validation-only-encryption-key
+          N8N_HOST: n8n.example.invalid
+        run: docker compose -f apps/n8n/config/compose.yaml -f apps/n8n/config/compose.production.yaml config --quiet
+      - name: Build Next.js application
+        run: pnpm exec nx run save-philly-festivals:build --outputStyle=static
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Run browser end-to-end smoke tests
+        run: pnpm exec nx run save-philly-festivals:e2e --outputStyle=static
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            apps/save-philly-festivals/playwright-report
+            apps/save-philly-festivals/test-results
+          if-no-files-found: ignore
+          retention-days: 7

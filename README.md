@@ -1,206 +1,108 @@
 # Save Philly Festivals
 
-Save Philly Festivals is an early-stage platform for discovering Philadelphia festivals and managing their schedules, organizers, users, and inquiries. The checked-out **main** branch currently provides the database, authentication, authorization, and API foundation; its user-facing experience is still under development.
+Save Philly Festivals is an Nx monorepo for a Philadelphia festival platform and its outreach automation.
 
-## Current application state
+## Projects
 
-The application currently includes a minimal homepage plus backend services built with Next.js and PostgreSQL. Festival discovery and management are available through API route handlers, but the login screen and public, host, CRM, and admin interfaces have not yet been implemented on this branch.
-
-> **Branch note:** this README describes the code checked out on **main**. The remote **develop** branch contains additional work that is not present in this working tree.
-
-## Core features
-
-- **Festival discovery API:** List published festivals chronologically with their schedules, or retrieve an individual festival by ID.
-- **Festival management:** Authenticated users can create festivals. Owners and administrators can update or delete them, and signed-in users can list festivals assigned to their account.
-- **Schedule management:** Store multi-day lineups with dates, start and end times, activities, and descriptions.
-- **Contact intake:** Capture general or festival-specific inquiries and represent their progress as NEW, CONTACTED, or RESOLVED.
-- **Credentials authentication:** Authenticate email and password credentials with Auth.js/NextAuth. Passwords are hashed with bcrypt and sessions use JWTs.
-- **Role-based access:** Model ADMIN, HOST, and CRM users and attach their roles to authenticated sessions.
-- **User administration:** Admin-only API handlers can list, create, update, and delete platform users without returning password hashes.
-- **Development seed data:** Populate local admin, host, and CRM accounts plus a published sample festival and schedule.
-
-## Roles
-
-| Role | Current responsibilities |
-|---|---|
-| ADMIN | Manage users and update or delete any festival |
-| HOST | Create festivals, list assigned festivals, and manage owned festivals |
-| CRM | Receive contact assignments in the data model; CRM management endpoints and UI are not yet implemented |
-
-## API overview
-
-| Method | Endpoint | Purpose | Handler access |
-|---|---|---|---|
-| GET | /api/festivals | List published festivals with schedules | Public |
-| POST | /api/festivals | Create a festival for the signed-in user | Authenticated |
-| GET | /api/festivals/:id | Retrieve one festival with its schedule | Public |
-| PUT, DELETE | /api/festivals/:id | Update or delete a festival | Owner or admin |
-| GET | /api/host/festivals | List the signed-in user's festivals | Authenticated |
-| GET | /api/schedules | List schedule entries | Public |
-| POST | /api/schedules | Create a schedule entry | Authenticated |
-| POST | /api/contacts | Submit a contact inquiry | Public |
-| GET, POST | /api/admin/users | List or create users | Admin |
-| PUT, DELETE | /api/admin/users/:id | Update or delete a user | Admin |
-| GET, POST | /api/auth/* | Auth.js/NextAuth authentication routes | Public |
-
-Access in this table reflects checks performed by the individual route handlers. See [Known limitations](#known-limitations) for the current proxy behavior and authorization gaps.
-
-## Data model
-
-- **User:** platform identity, hashed credentials, role, owned festivals, and assigned contacts.
-- **Festival:** details, location, dates, image, host, schedules, contacts, and a DRAFT, PUBLISHED, or CANCELLED lifecycle state.
-- **Schedule:** festival date, times, activity, and optional description.
-- **Contact:** sender details, message, optional festival and CRM assignment, and inquiry status.
-
-## Tech stack
-
-- Next.js 16 App Router and React 19
-- JavaScript and JSX
-- Tailwind CSS 4, shadcn/ui, Base UI, and Lucide icons
-- PostgreSQL with Prisma ORM 7 and the pg adapter
-- Auth.js/NextAuth credentials authentication and bcrypt password hashing
-- Vercel deployment configuration
-- GitHub Actions for linting, builds, and production deployment
-
-## Getting started
-
-### Prerequisites
-
-- Node.js 20.9 or newer (CI uses Node.js 22)
-- pnpm 11 (verified with pnpm 11.13.0)
-- A running PostgreSQL database
-
-### Installation
-
-1. Confirm the local toolchain:
-
-   ~~~bash
-   node --version
-   pnpm --version
-   ~~~
-
-2. Install the exact dependency versions recorded in the pnpm lockfile:
-
-   ~~~bash
-   pnpm install --frozen-lockfile
-   ~~~
-
-   The repository explicitly allows build scripts for Prisma, Sharp, and the native module resolver in `pnpm-workspace.yaml`. Do not approve additional dependency scripts without reviewing why they are required.
-
-3. Copy the environment template to `.env`:
-
-   ~~~bash
-   cp .env.example .env
-   ~~~
-
-   Next.js and the standalone Prisma CLI both load this file, and it is excluded from Git.
-
-4. Set `DATABASE_URL` for your PostgreSQL instance and replace `AUTH_SECRET` with a generated value:
-
-   ~~~bash
-   openssl rand -base64 32
-   ~~~
-
-5. Generate the Prisma client and synchronize the development database:
-
-   ~~~bash
-   pnpm db:generate
-   pnpm db:push
-   ~~~
-
-6. Optionally load the sample users and festival:
-
-   ~~~bash
-   pnpm db:seed
-   ~~~
-
-7. Start the development server:
-
-   ~~~bash
-   pnpm dev
-   ~~~
-
-Open [http://localhost:3000](http://localhost:3000).
-
-### Seeded development accounts
-
-These credentials are intended only for local development after running **pnpm db:seed**.
-
-| Role | Email | Password |
+| Nx project | Location | Purpose |
 |---|---|---|
-| Admin | admin@savephillyfestivals.com | admin123 |
-| Host | host@example.com | host123 |
-| CRM | crm@example.com | crm123 |
+| `save-philly-festivals` | `apps/save-philly-festivals` | Next.js 16 App Router application using Auth.js and Prisma 7/PostgreSQL |
+| `n8n` | `apps/n8n` | Isolated N8N automation runtime, dedicated PostgreSQL, workflow contract tests, and production operations configuration |
 
-## Available scripts
+The web application and N8N use separate databases and can be released independently. `apps/n8n/DiasporaDNA.json` is intentionally inactive and creates Gmail drafts only; deployment never activates it.
 
-| Command | Description |
-|---|---|
-| pnpm dev | Start the development server |
-| pnpm build | Create a production build |
-| pnpm start | Run the production build |
-| pnpm lint | Lint JavaScript and JSX in src/ |
-| pnpm db:generate | Generate the Prisma client |
-| pnpm db:migrate | Create and apply a development migration |
-| pnpm db:push | Synchronize the schema without creating a migration |
-| pnpm db:seed | Load local sample accounts and festival data |
-| pnpm db:studio | Open Prisma Studio |
-| pnpm db:reset | Reset the development database and reapply its schema |
+## Requirements
 
-## Onboarding verification
+- Node.js 20.19 or newer
+- Corepack and pnpm 11.13.0
+- PostgreSQL for the web application
+- Docker Engine with Docker Compose for N8N
+- Chromium installed by Playwright for browser tests
 
-Before starting feature work, verify that dependency installation, generated database code, linting, and the production build all succeed:
+Use pnpm from the workspace root. npm lockfiles and npm-based install workflows are not supported.
 
-~~~bash
+## Web application setup
+
+```sh
+corepack enable
 pnpm install --frozen-lockfile
-pnpm db:generate
-pnpm lint
-pnpm build
-~~~
+cp apps/save-philly-festivals/.env.example apps/save-philly-festivals/.env.local
+pnpm run auth:secret
+pnpm exec nx run save-philly-festivals:prisma-generate --outputStyle=static
+pnpm exec nx run save-philly-festivals:migrate-test --outputStyle=static
+pnpm run dev
+```
 
-If pnpm reports `ERR_PNPM_IGNORED_BUILDS`, check that `pnpm-workspace.yaml` is present and unchanged. If approval must be restored, run `pnpm approve-builds` and approve only `@prisma/engines`, `prisma`, `sharp`, and `unrs-resolver`, then repeat the frozen-lockfile install.
+Set `DATABASE_URL` in `apps/save-philly-festivals/.env.local` before running migrations or the application. Seed and verify the development admin with `pnpm run db:seed && pnpm run db:verify-admin`. Default local login details and secure overrides are documented in `apps/save-philly-festivals/README.md`. Open <http://localhost:3000>.
 
-## Project structure
+The remaining production checklist is tracked in [`remaining-production-gates.md`](remaining-production-gates.md).
 
-~~~text
-prisma/
-  schema.prisma       Database models, enums, and relationships
-  seed.mjs            Local sample data
-src/
-  app/                App Router pages and API route handlers
-  components/         Shared and shadcn/ui components
-  features/           Feature module placeholders
-  lib/                Authentication, Prisma client, and utilities
-  proxy.js            Authentication and role-based route protection
-docs/                 Engineering standards and review guidance
-~~~
+## Quality gates
 
-## Known limitations
+```sh
+pnpm run lint
+pnpm run test
+pnpm run test:coverage
+pnpm run build
+pnpm exec playwright install chromium
+pnpm run e2e
+pnpm run n8n:validate
+pnpm run n8n:validate:production
+pnpm run n8n:test
+pnpm audit
+pnpm run verify
+```
 
-- The homepage is currently the only browser interface; /login and the admin, host, and CRM screens referenced by the authentication configuration do not exist on main.
-- Proxy route protection currently treats every path as public because "/" is matched with startsWith. Authorization inside individual API handlers still applies.
-- Festival creation accepts every authenticated role, and schedule creation does not verify festival ownership.
-- An individual festival can be retrieved regardless of whether it is published, and contact submissions can set fields that should normally be server-controlled.
-- API inputs do not yet have a validation layer, pagination, rate limiting, or centralized error handling.
-- CRM inquiry listing, assignment, and resolution endpoints are not implemented.
-- Prisma migrations and automated tests are not currently committed.
-- Seed runs can duplicate schedule entries because the schedule model has no matching uniqueness constraint.
+`pnpm run verify` runs Prisma validation, the dependency audit, web coverage, N8N workflow/Compose checks, lint, and the production web build. The migration gate needs a reachable blank PostgreSQL database, and Playwright remains a separate explicit browser gate locally. GitHub Actions enforces both.
 
-## Development priorities
+Committed Prisma migrations are under `apps/save-philly-festivals/prisma/migrations`. Production releases use `prisma migrate deploy`; `prisma db push` is not a production release mechanism.
 
-- Build the public festival listing and detail pages.
-- Add login and role-specific dashboards.
-- Correct proxy matching and close route-level authorization gaps.
-- Validate and constrain API request payloads.
-- Complete the CRM inquiry workflow.
-- Add database migrations and automated tests for authentication, authorization, and APIs.
+## Local N8N
 
-## Branch strategy
+```sh
+pnpm run n8n:init
+pnpm run n8n:validate
+pnpm run n8n:plan
+CONFIRM_DEPLOY=n8n pnpm run n8n:deploy
+pnpm run n8n:health
+```
 
-| Branch | Purpose |
-|---|---|
-| main | Production-ready code and the repository's current default branch |
-| develop | Integration branch |
-| feature/* | Features branched from and merged into develop |
-| bugfix/* | Fixes branched from and merged into develop |
-| release/* | Release candidates merged into main and develop |
+Open <http://localhost:5678>. Local N8N binds to loopback only, uses dedicated PostgreSQL, and stores data in named volumes. Never run `docker compose down --volumes` unless destruction is explicitly intended and backed up.
+
+## DigitalOcean N8N operations
+
+`.github/workflows/deploy-n8n-digitalocean.yml` provides:
+
+- A weekly and manual stable-version report. It reports drift but never edits or upgrades services.
+- A no-change production plan.
+- A guarded deployment requiring the `n8n-production` GitHub environment and the exact confirmation `DEPLOY_N8N_PRODUCTION`.
+- Strict SSH host verification, pre-reconciliation PostgreSQL/N8N-data backups, pinned-image reconciliation, and HTTPS health verification.
+- Optional import of `DiasporaDNA` from an inactive export. Activation is always a separate operator-approved action.
+
+Configure these GitHub environment secrets without exposing their values:
+
+- `N8N_DO_HOST`
+- `N8N_DO_USER`
+- `N8N_DO_SSH_PRIVATE_KEY`
+- `N8N_DO_KNOWN_HOSTS`
+- `N8N_DO_REMOTE_DIR`
+
+The host must already contain `apps/n8n/.env.production`, based on `apps/n8n/config/production/.env.example`, with mode `0600` and an escrowed, stable `N8N_ENCRYPTION_KEY`. Configure DNS for `N8N_HOST`, allow public `80/443` only as required, restrict SSH, and never expose `5432` or `5678` publicly.
+
+Production configuration is in:
+
+- `apps/n8n/config/compose.production.yaml`
+- `apps/n8n/config/production/Caddyfile`
+- `apps/n8n/config/production/.env.example`
+
+See `apps/n8n/README.md` and `docs/FDE-DELIVERY-PLAN.md` for deployment, activation, backup, rollback, and controlled-proof requirements.
+
+## CI
+
+`.github/workflows/ci-cd.yml` applies committed migrations to a blank PostgreSQL service and then enforces Prisma generation/validation, dependency audit, lint, unit coverage, N8N local/production validation, N8N workflow tests, production build, and Playwright E2E.
+
+The DigitalOcean workflow is intentionally separate from CI. A green CI run does not by itself authorize deployment or workflow activation.
+
+## Troubleshooting and resources
+
+See `training-guide.md` for the running problem list covering pnpm development startup, Prisma 7 generation/migrations, dependency vulnerabilities, Auth.js secrets, Nx migration issues, N8N workflow safety, and DigitalOcean operations.
