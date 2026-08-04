@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getFestivalBySlug } from "@/features/festivals/festival-queries";
+import { getApprovedFestivalBySlug } from "@/features/festivals/festival-queries";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
@@ -22,6 +22,7 @@ function formatDate(dateStr) {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: "America/New_York",
   });
 }
 
@@ -30,12 +31,13 @@ function formatTime(dateStr) {
   return new Date(dateStr).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "America/New_York",
   });
 }
 
 export default async function FestivalDetailPage({ params }) {
   const { slug } = await params;
-  const festival = await getFestivalBySlug(slug);
+  const festival = await getApprovedFestivalBySlug(slug);
 
   if (!festival) {
     notFound();
