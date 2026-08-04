@@ -6,6 +6,7 @@ import {
   sortFestivalRecords,
 } from "@/features/festivals/discovery";
 import { FESTIVAL_STATUS } from "@/lib/constants";
+import { DISCOVERY_E2E_FESTIVALS } from "@/features/festivals/discovery-e2e-fixture";
 
 export const PUBLIC_DISCOVERY_SELECT = {
   id: true,
@@ -20,35 +21,6 @@ export const PUBLIC_DISCOVERY_SELECT = {
   image_url: true,
   categories: { select: { category: { select: { name: true, slug: true } } } },
 };
-
-const E2E_FESTIVALS = [
-  {
-    id: "e2e-approved-1",
-    slug: "riverfront-arts-festival",
-    name: "Riverfront Arts Festival",
-    description: "Local artists, food, and performances along the Delaware River.",
-    location: "Penn's Landing",
-    city: "Philadelphia",
-    start_date: new Date("2026-09-12T14:00:00.000Z"),
-    end_date: new Date("2026-09-13T22:00:00.000Z"),
-    created_at: new Date("2026-07-01T12:00:00.000Z"),
-    image_url: null,
-    categories: [{ category: { name: "Art", slug: "art" } }],
-  },
-  {
-    id: "e2e-approved-2",
-    slug: "south-philly-food-fest",
-    name: "South Philly Food Fest",
-    description: "A neighborhood celebration of Philadelphia food makers.",
-    location: "South Philadelphia",
-    city: "Philadelphia",
-    start_date: new Date("2026-10-03T15:00:00.000Z"),
-    end_date: null,
-    created_at: new Date("2026-07-15T12:00:00.000Z"),
-    image_url: null,
-    categories: [{ category: { name: "Food", slug: "food" } }],
-  },
-];
 
 function searchFilter(q) {
   return {
@@ -104,7 +76,7 @@ function fixtureDiscovery(filters, now) {
   const q = filters.q.toLocaleLowerCase("en-US");
   const category = filters.category.toLocaleLowerCase("en-US");
   const location = filters.location.toLocaleLowerCase("en-US");
-  const records = E2E_FESTIVALS.filter((festival) => {
+  const records = DISCOVERY_E2E_FESTIVALS.filter((festival) => {
     const searchable = [
       festival.name,
       festival.description,

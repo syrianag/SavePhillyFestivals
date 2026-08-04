@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/db";
 import { FESTIVAL_STATUS } from "@/lib/constants";
+import { getDiscoveryE2eFestival } from "@/features/festivals/discovery-e2e-fixture";
+import {
+  mapPublicFestival,
+  PUBLIC_FESTIVAL_SELECT,
+} from "@/features/festivals/public-festival";
 
 function generateSlug(name) {
   return name
@@ -68,40 +73,28 @@ export async function getFestivalById(id) {
 }
 
 export async function getApprovedFestivalById(id) {
-  return prisma.festival.findFirst({
+  const festival = await prisma.festival.findFirst({
     where: { id, status: FESTIVAL_STATUS.APPROVED },
-    include: {
-      schedules: { orderBy: { start_time: "asc" } },
-      categories: { include: { category: true } },
-      tags: { include: { tag: true } },
-      files: true,
-    },
+    select: PUBLIC_FESTIVAL_SELECT,
   });
+
+  return mapPublicFestival(festival);
 }
 
-export async function getFestivalBySlug(slug) {
-  return prisma.festival.findUnique({
-    where: { slug },
-    include: {
-      schedules: { orderBy: { start_time: "asc" } },
-      categories: { include: { category: true } },
-      tags: { include: { tag: true } },
-      files: true,
-    },
-  });
-}
+export async function getPublicFestivalBySlug(slug) {
+  const fixture = getDiscoveryE2eFestival(slug);
+  if (fixture !== undefined) return mapPublicFestival(fixture);
 
-export async function getApprovedFestivalBySlug(slug) {
-  return prisma.festival.findFirst({
+  const festival = await prisma.festival.findFirst({
     where: { slug, status: FESTIVAL_STATUS.APPROVED },
-    include: {
-      schedules: { orderBy: { start_time: "asc" } },
-      categories: { include: { category: true } },
-      tags: { include: { tag: true } },
-      files: true,
-    },
+    select: PUBLIC_FESTIVAL_SELECT,
   });
+
+  return mapPublicFestival(festival);
 }
+
+// Public callers must use the approved-only DTO. Private admin lookups remain ID-based.
+export const getFestivalBySlug = getPublicFestivalBySlug;
 
 export async function createFestival(data) {
   let slug = data.slug || generateSlug(data.name);
