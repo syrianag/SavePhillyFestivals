@@ -10,6 +10,7 @@ import { Toast } from "@/components/shared/Toast";
 import { formatPhiladelphiaDateTime } from "@/features/festivals/public-festival";
 import { useSchedule } from "@/features/schedule/schedule-context";
 import { findOverlappingEvents } from "@/features/schedule/schedule-storage";
+import { ScheduleEmailForm } from "@/features/schedule-email/ScheduleEmailForm";
 import { downloadICS } from "@/lib/ics";
 
 const colors = ["#1E7BF6", "#206C4E", "#F6C847", "#FE7D0C", "#FF8577"];
@@ -221,6 +222,8 @@ function ScheduleBuilder({ festivals, cards, onToast, headingId }) {
           ))}
         </div>
       )}
+
+      <ScheduleEmailForm items={items} inputId={`${headingId}-email`} />
 
       {items.some((item) => item.type === "festival") && (
         <button

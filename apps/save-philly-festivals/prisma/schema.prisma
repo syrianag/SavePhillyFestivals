@@ -91,6 +91,58 @@ model SavedSchedule {
   @@index([user_email])
 }
 
+// ─── Transactional mixed-schedule email requests ────────────
+enum ScheduleEmailDeliveryStatus {
+  pending
+  sent
+  failed
+}
+
+enum ScheduleEmailItemType {
+  festival
+  event
+}
+
+enum ScheduleEmailResolutionStatus {
+  resolved
+  unavailable
+}
+
+model ScheduleEmailRequest {
+  id                  String                      @id @default(uuid())
+  recipient_email     String
+  idempotency_key     String                      @unique
+  selection_version   Int
+  delivery_status     ScheduleEmailDeliveryStatus @default(pending)
+  provider_message_id String?
+  failure_code        String?
+  failure_message     String?
+  attempted_at        DateTime?
+  sent_at             DateTime?
+  created_at          DateTime                    @default(now())
+  updated_at          DateTime                    @updatedAt
+
+  items               ScheduleEmailItem[]
+
+  @@index([recipient_email])
+  @@index([delivery_status, created_at])
+}
+
+model ScheduleEmailItem {
+  id                String                        @id @default(uuid())
+  request_id        String
+  position          Int
+  item_type         ScheduleEmailItemType
+  item_id           String
+  resolution_status ScheduleEmailResolutionStatus
+
+  request           ScheduleEmailRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+
+  @@unique([request_id, position])
+  @@unique([request_id, item_type, item_id])
+  @@index([item_type, item_id])
+}
+
 // ─── Category ──────────────────────────────────────────────
 model Category {
   id            String   @id @default(uuid())

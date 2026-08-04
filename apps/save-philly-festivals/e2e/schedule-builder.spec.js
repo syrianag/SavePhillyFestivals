@@ -3,6 +3,15 @@ import { expect, test } from "@playwright/test";
 const detailPath = "/festivals/riverfront-arts-festival";
 const storageKey = "savePhillySchedule";
 
+async function buildMixedSchedule(page) {
+  await page.goto(detailPath);
+  await page.getByRole("button", { name: "Save Riverfront Arts Festival to schedule" }).click();
+  await page.getByTestId("program-item").filter({ hasText: "Community Arts Parade" })
+    .getByRole("button", { name: "Save Community Arts Parade to schedule" }).click();
+  await page.goto("/calendar");
+  return page.getByRole("region", { name: "Schedule Builder" });
+}
+
 test("builds and persists an accountless mixed schedule", async ({ page }) => {
   await page.goto(detailPath);
 
@@ -51,4 +60,55 @@ test("builds and persists an accountless mixed schedule", async ({ page }) => {
   await expect(builder.getByText("No festivals or program events saved yet.")).toBeVisible();
   await expect.poll(async () => page.evaluate((key) => JSON.parse(localStorage.getItem(key)), storageKey))
     .toEqual({ version: 1, items: [] });
+});
+
+test("emails a mixed schedule without marketing consent and keeps it intact", async ({ page }) => {
+  const builder = await buildMixedSchedule(page);
+  const before = await page.evaluate((key) => localStorage.getItem(key), storageKey);
+
+  await expect(builder.getByRole("checkbox")).toHaveCount(0);
+  await builder.getByLabel("Email this schedule").fill("Visitor@Example.com");
+  await builder.getByRole("button", { name: "Email schedule" }).click();
+
+  await expect(builder.getByRole("status")).toContainText("Schedule emailed successfully");
+  await expect(builder.getByText("Community Arts Parade")).toBeVisible();
+  await expect(builder.getByText("Whole festival", { exact: false })).toBeVisible();
+  await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), storageKey)).toBe(before);
+});
+
+test("shows actionable email failure while preserving the mixed schedule", async ({ page }) => {
+  const builder = await buildMixedSchedule(page);
+  const before = await page.evaluate((key) => localStorage.getItem(key), storageKey);
+  let submittedBody;
+
+  await page.route("**/api/schedules/email", async (route) => {
+    submittedBody = route.request().postDataJSON();
+    await route.fulfill({
+      status: 502,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "failed",
+        email_sent: false,
+        message: "Email delivery is temporarily unavailable. Please retry.",
+      }),
+    });
+  });
+
+  await builder.getByLabel("Email this schedule").fill("visitor@example.com");
+  await builder.getByRole("button", { name: "Email schedule" }).click();
+
+  await expect(builder.getByRole("alert")).toContainText("temporarily unavailable");
+  expect(submittedBody).toMatchObject({
+    email: "visitor@example.com",
+    selection: {
+      version: 1,
+      items: [
+        { type: "festival", id: "e2e-approved-1" },
+        { type: "event", id: "fixture-program-1" },
+      ],
+    },
+  });
+  expect(submittedBody).not.toHaveProperty("marketing_consent");
+  await expect(builder.getByText("Community Arts Parade")).toBeVisible();
+  await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), storageKey)).toBe(before);
 });
