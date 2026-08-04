@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 
 const detailPath = "/festivals/riverfront-arts-festival";
@@ -60,6 +61,106 @@ test("builds and persists an accountless mixed schedule", async ({ page }) => {
   await expect(builder.getByText("No festivals or program events saved yet.")).toBeVisible();
   await expect.poll(async () => page.evaluate((key) => JSON.parse(localStorage.getItem(key)), storageKey))
     .toEqual({ version: 1, items: [] });
+});
+
+test("exports a mixed schedule without consent data and keeps it intact", async ({ page }) => {
+  const builder = await buildMixedSchedule(page);
+  const before = await page.evaluate((key) => localStorage.getItem(key), storageKey);
+  let submittedBody;
+  page.on("request", (request) => {
+    if (request.url().includes("/api/schedules/calendar")) submittedBody = request.postDataJSON();
+  });
+
+  await expect(builder.getByText("Calendar exports are snapshots", { exact: false })).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await builder.getByRole("button", { name: "Export to Calendar" }).click();
+  const download = await downloadPromise;
+  const calendar = await readFile(await download.path(), "utf8");
+
+  expect(download.suggestedFilename()).toBe("philly-fests-schedule.ics");
+  expect(calendar.match(/BEGIN:VEVENT/g)).toHaveLength(2);
+  expect(calendar).toContain("UID:festival-e2e-approved-1@savephillyfestivals.com");
+  expect(calendar).toContain("UID:event-fixture-program-1@savephillyfestivals.com");
+  expect(calendar).toContain("DTSTART:20260912T140000Z");
+  expect(calendar).toContain("DTSTART:20260912T160000Z");
+  expect(submittedBody).toEqual({
+    selection: {
+      version: 1,
+      items: [
+        { type: "festival", id: "e2e-approved-1" },
+        { type: "event", id: "fixture-program-1" },
+      ],
+    },
+  });
+  expect(JSON.stringify(submittedBody)).not.toMatch(/email|consent|organizer|preference/i);
+  await expect(builder.getByText("Calendar downloaded. Your saved schedule is unchanged.")).toBeVisible();
+  await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), storageKey)).toBe(before);
+});
+
+test("exports an event-only schedule", async ({ page }) => {
+  await page.goto("/calendar");
+  await page.evaluate(({ key }) => {
+    localStorage.setItem(key, JSON.stringify({
+      version: 1,
+      items: [{ type: "event", id: "fixture-program-1" }],
+    }));
+  }, { key: storageKey });
+  await page.reload();
+  const builder = page.getByRole("region", { name: "Schedule Builder" });
+
+  const downloadPromise = page.waitForEvent("download");
+  await builder.getByRole("button", { name: "Export to Calendar" }).click();
+  const download = await downloadPromise;
+  const calendar = await readFile(await download.path(), "utf8");
+
+  expect(calendar.match(/BEGIN:VEVENT/g)).toHaveLength(1);
+  expect(calendar).toContain("UID:event-fixture-program-1@savephillyfestivals.com");
+  expect(calendar).not.toContain("UID:festival-");
+});
+
+test("downloads valid selections while reporting stale omissions", async ({ page }) => {
+  await page.goto("/calendar");
+  await page.evaluate(({ key }) => {
+    localStorage.setItem(key, JSON.stringify({
+      version: 1,
+      items: [
+        { type: "festival", id: "e2e-approved-1" },
+        { type: "event", id: "missing-event" },
+      ],
+    }));
+  }, { key: storageKey });
+  await page.reload();
+  const builder = page.getByRole("region", { name: "Schedule Builder" });
+  const before = await page.evaluate((key) => localStorage.getItem(key), storageKey);
+
+  const downloadPromise = page.waitForEvent("download");
+  await builder.getByRole("button", { name: "Export to Calendar" }).click();
+  const download = await downloadPromise;
+  const calendar = await readFile(await download.path(), "utf8");
+
+  expect(calendar.match(/BEGIN:VEVENT/g)).toHaveLength(1);
+  await expect(builder.getByText("1 unavailable selection was omitted", { exact: false })).toBeVisible();
+  await expect(builder.getByText("Unavailable event")).toBeVisible();
+  await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), storageKey)).toBe(before);
+});
+
+test("blocks an all-stale export with an accessible error", async ({ page }) => {
+  await page.goto("/calendar");
+  await page.evaluate(({ key }) => {
+    localStorage.setItem(key, JSON.stringify({
+      version: 1,
+      items: [{ type: "event", id: "missing-event" }],
+    }));
+  }, { key: storageKey });
+  await page.reload();
+  const builder = page.getByRole("region", { name: "Schedule Builder" });
+  const before = await page.evaluate((key) => localStorage.getItem(key), storageKey);
+
+  await builder.getByRole("button", { name: "Export to Calendar" }).click();
+
+  await expect(builder.getByRole("alert")).toContainText("None of the selected festivals or events are currently available");
+  await expect(builder.getByRole("button", { name: "Export to Calendar" })).toBeEnabled();
+  await expect.poll(async () => page.evaluate((key) => localStorage.getItem(key), storageKey)).toBe(before);
 });
 
 test("emails a mixed schedule without marketing consent and keeps it intact", async ({ page }) => {

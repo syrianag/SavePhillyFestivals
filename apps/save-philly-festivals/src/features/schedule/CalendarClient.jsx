@@ -9,9 +9,9 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { Toast } from "@/components/shared/Toast";
 import { formatPhiladelphiaDateTime } from "@/features/festivals/public-festival";
 import { useSchedule } from "@/features/schedule/schedule-context";
-import { findOverlappingEvents } from "@/features/schedule/schedule-storage";
+import { findOverlappingEvents, SCHEDULE_STORAGE_VERSION } from "@/features/schedule/schedule-storage";
 import { ScheduleEmailForm } from "@/features/schedule-email/ScheduleEmailForm";
-import { downloadICS } from "@/lib/ics";
+import { downloadCalendarBlob } from "@/lib/ics";
 
 const colors = ["#1E7BF6", "#206C4E", "#F6C847", "#FE7D0C", "#FF8577"];
 
@@ -91,8 +91,11 @@ function ScheduleRow({ title, detail, onRemove, stale = false }) {
   );
 }
 
-function ScheduleBuilder({ festivals, cards, onToast, headingId }) {
+function ScheduleBuilder({ festivals, onToast, headingId }) {
   const { items, remove, clear, hydrated } = useSchedule();
+  const [exportPending, setExportPending] = useState(false);
+  const [exportMessage, setExportMessage] = useState("");
+  const [exportError, setExportError] = useState("");
 
   const resolved = useMemo(() => {
     const groups = festivals.map((festival) => ({ festival, parent: null, events: [] }));
@@ -132,12 +135,44 @@ function ScheduleBuilder({ festivals, cards, onToast, headingId }) {
     }
   }
 
-  function handleExport() {
-    const savedFestivalIds = new Set(
-      items.filter((item) => item.type === "festival").map((item) => item.id)
-    );
-    const savedFestivals = cards.filter((festival) => savedFestivalIds.has(festival.id));
-    if (savedFestivals.length) downloadICS(savedFestivals);
+  async function handleExport() {
+    if (!hydrated || items.length === 0 || exportPending) return;
+
+    setExportPending(true);
+    setExportError("");
+    setExportMessage("");
+
+    try {
+      const response = await fetch("/api/schedules/calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selection: {
+            version: SCHEDULE_STORAGE_VERSION,
+            items: items.map((item) => ({ type: item.type, id: String(item.id) })),
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || "Calendar export failed. Please try again.");
+      }
+
+      downloadCalendarBlob(await response.blob());
+      const omittedCount = Number(response.headers.get("X-Calendar-Omitted-Count") || 0);
+      const message = omittedCount > 0
+        ? `Calendar downloaded. ${omittedCount} unavailable ${omittedCount === 1 ? "selection was" : "selections were"} omitted; your saved schedule is unchanged.`
+        : "Calendar downloaded. Your saved schedule is unchanged.";
+      setExportMessage(message);
+      onToast("Calendar downloaded");
+    } catch (error) {
+      setExportError(error instanceof Error
+        ? error.message
+        : "Calendar export failed. Please try again.");
+    } finally {
+      setExportPending(false);
+    }
   }
 
   return (
@@ -159,6 +194,9 @@ function ScheduleBuilder({ festivals, cards, onToast, headingId }) {
 
       <p className="font-ui text-xs leading-relaxed text-[#A9A9A9]">
         Your schedule is saved only in this browser on this device and may be removed when browser data is cleared.
+      </p>
+      <p className="font-ui text-xs leading-relaxed text-[#A9A9A9]">
+        Calendar exports are snapshots and do not update automatically if festival details change.
       </p>
 
       {!hydrated ? (
@@ -225,14 +263,24 @@ function ScheduleBuilder({ festivals, cards, onToast, headingId }) {
 
       <ScheduleEmailForm items={items} inputId={`${headingId}-email`} />
 
-      {items.some((item) => item.type === "festival") && (
-        <button
-          type="button"
-          onClick={handleExport}
-          className="flex h-9 items-center justify-center gap-2 rounded-full border border-[#848484] bg-transparent px-4 font-body text-sm font-medium text-[#A9A9A9] transition-colors hover:border-white hover:text-white"
-        >
-          <Download className="size-4" aria-hidden="true" /> Export saved festivals
-        </button>
+      <button
+        type="button"
+        onClick={handleExport}
+        disabled={!hydrated || items.length === 0 || exportPending}
+        className="flex h-9 items-center justify-center gap-2 rounded-full border border-[#848484] bg-transparent px-4 font-body text-sm font-medium text-[#A9A9A9] transition-colors hover:border-white hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Download className="size-4" aria-hidden="true" />
+        {exportPending ? "Preparing calendar…" : "Export to Calendar"}
+      </button>
+      {exportMessage && (
+        <p role="status" aria-live="polite" className="font-ui text-xs text-emerald-300">
+          {exportMessage}
+        </p>
+      )}
+      {exportError && (
+        <p role="alert" className="font-ui text-xs text-red-300">
+          {exportError} Your saved schedule is unchanged.
+        </p>
       )}
     </section>
   );
@@ -291,7 +339,6 @@ export function CalendarClient({ festivals }) {
           />
           <ScheduleBuilder
             festivals={festivals}
-            cards={cards}
             headingId="saved-schedule-heading-desktop"
             onToast={(message) => setToast({ message })}
           />
@@ -301,7 +348,6 @@ export function CalendarClient({ festivals }) {
           <div className="lg:hidden">
             <ScheduleBuilder
               festivals={festivals}
-              cards={cards}
               headingId="saved-schedule-heading-mobile"
               onToast={(message) => setToast({ message })}
             />

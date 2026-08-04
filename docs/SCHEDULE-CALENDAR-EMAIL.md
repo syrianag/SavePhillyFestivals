@@ -146,21 +146,39 @@ Visitor                React Hook Form           API Route              Prisma  
 
 ---
 
-## 4. Calendar (ICS Export)
+## 4. F-06 Mixed Schedule Calendar Export
 
-### How it works
+The schedule builder sends its complete versioned, ID-only selection to `POST /api/schedules/calendar`. The server re-resolves current public records and generates one `.ics` `VEVENT` for every selected whole festival or individual event. A parent festival and one of its program events remain separate entries, and request order is preserved.
 
-`apps/save-philly-festivals/src/features/festivals/festival-calendar.js` generates an `.ics` file of approved festivals happening this month.
+The endpoint requires JSON no larger than 32 KiB, accepts at most 100 selections, and returns `400` for an invalid contract, `413` for an oversized body, `415` for an unsupported media type, `422` when no selection is currently exportable, and a generic redacted `500` for operational failure. When only some IDs resolve, it downloads the valid entries and reports the number omitted in `X-Calendar-Omitted-Count`; browser storage is never changed. The response is private, `no-store`, and contains no email, consent, organizer integration, provider credential, or private producer-contact data.
 
-1. Queries `Festival` where `status = "approved"` and dates fall within the current month
-2. Maps each festival to an `ics` event (title, description, location, URL, dates)
-3. Returns the raw `.ics` string via `ics.createEvents()`
+Timed values are persisted as UTC instants while retaining `America/New_York` as their source zone, then emitted as UTC ICS timestamps. Date-only values remain PostgreSQL `date` values. Their producer-facing end date is inclusive, while ICS `DTEND;VALUE=DATE` is exclusive: August 8 ends August 9, and August 8–10 ends August 11. This prevents browser/process timezone shifts and preserves midnight and DST-spanning intervals.
 
-This function is not wired to a route or UI yet. When connected, it can be served as a downloadable `.ics` file or embedded in a page.
+Every entry includes a stable type-prefixed UID, `DTSTAMP`, start/end, title, canonical Philly Fests URL, confirmed/tentative/canceled status, busy/free state, `LAST-MODIFIED`, and `SEQUENCE`; description and location are included when available. No alarms ship initially. Canceled entries are exportable only if they were previously public. Re-import update/cancellation behavior varies by calendar client.
+
+The `.ics` file is the common import path for current Google Calendar, Apple Calendar, and Outlook workflows. It is a snapshot and does not update automatically. Before a production release, manually import the same interoperability fixture into current Google Calendar web, Apple Calendar on macOS/iOS, and Outlook web/desktop, recording client versions and results for summer/winter times, both DST transitions, one-day and multi-day all-day entries, midnight spans, Unicode, mixed selections, and cancellation re-import. Automated unit and browser tests validate the file contract but cannot replace native-client import checks.
 
 ---
 
 ## 5. API Endpoints Reference
+
+### `POST /api/schedules/calendar`
+Generate a calendar snapshot from server-resolved selections.
+
+**Request:**
+```json
+{
+  "selection": {
+    "version": 1,
+    "items": [
+      { "type": "festival", "id": "festival-uuid" },
+      { "type": "event", "id": "event-uuid" }
+    ]
+  }
+}
+```
+
+**Successful response:** `text/calendar; charset=utf-8` with attachment filename `philly-fests-schedule.ics` and `X-Calendar-Omitted-Count`.
 
 ### `POST /api/schedules/save`
 Save a schedule to a visitor's list and trigger email.
