@@ -78,3 +78,15 @@ export function getDiscoveryE2eFestival(slug) {
   if (process.env.DISCOVERY_E2E_FIXTURE !== "1") return undefined;
   return slug === DISCOVERY_DETAIL_SLUG ? detailFixture : null;
 }
+
+export function getDiscoveryE2eFestivalCatalog() {
+  if (process.env.DISCOVERY_E2E_FIXTURE !== "1") return undefined;
+  return [
+    detailFixture,
+    {
+      ...DISCOVERY_E2E_FESTIVALS[1],
+      schedules: [],
+      tags: [],
+    },
+  ];
+}

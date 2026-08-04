@@ -1,76 +1,89 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
-
-const STORAGE_KEY = "savePhillySchedule";
-
-function loadFromStorage() {
-  if (typeof window === "undefined") return [];
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed.festivalIds)) {
-        return parsed.festivalIds;
-      }
-    }
-  } catch {
-    // ignore malformed data
-  }
-  return [];
-}
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import {
+  SCHEDULE_STORAGE_KEY,
+  addScheduleItem,
+  containsScheduleItem,
+  parseScheduleStorage,
+  removeScheduleItem,
+  serializeScheduleItems,
+  toggleScheduleItem,
+} from "@/features/schedule/schedule-storage";
 
 const ScheduleContext = createContext(null);
 
+function safelyPersist(items) {
+  try {
+    window.localStorage.setItem(SCHEDULE_STORAGE_KEY, serializeScheduleItems(items));
+  } catch {
+    // Storage can be disabled or unavailable. The in-memory schedule still works.
+  }
+}
+
+function loadInitialItems() {
+  if (typeof window === "undefined") return [];
+  try {
+    return parseScheduleStorage(window.localStorage.getItem(SCHEDULE_STORAGE_KEY)).items;
+  } catch {
+    return [];
+  }
+}
+
 export function ScheduleProvider({ children }) {
-  const [savedIds, setSavedIds] = useState(loadFromStorage);
-  const writeRef = useRef(false);
+  const [items, setItems] = useState([]);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (writeRef.current) {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ festivalIds: savedIds, updatedAt: new Date().toISOString() })
-      );
-    } else {
-      writeRef.current = true;
-    }
-  }, [savedIds]);
+    const frame = window.requestAnimationFrame(() => {
+      setItems(loadInitialItems());
+      setHydrated(true);
+    });
 
-  const addFestival = useCallback((id) => {
-    setSavedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
-  const removeFestival = useCallback((id) => {
-    setSavedIds((prev) => prev.filter((sid) => sid !== id));
+  useEffect(() => {
+    if (hydrated) safelyPersist(items);
+  }, [hydrated, items]);
+
+  const add = useCallback((item) => {
+    setItems((previous) => addScheduleItem(previous, item));
   }, []);
 
-  const toggleFestival = useCallback((id) => {
-    setSavedIds((prev) =>
-      prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]
-    );
+  const remove = useCallback((item) => {
+    setItems((previous) => removeScheduleItem(previous, item));
   }, []);
 
-  const isInSchedule = useCallback(
-    (id) => savedIds.includes(id),
-    [savedIds]
+  const toggle = useCallback((item) => {
+    setItems((previous) => toggleScheduleItem(previous, item));
+  }, []);
+
+  const contains = useCallback(
+    (item) => containsScheduleItem(items, item),
+    [items]
   );
 
-  const clearSchedule = useCallback(() => {
-    setSavedIds([]);
-  }, []);
+  const clear = useCallback(() => setItems([]), []);
+  const savedIds = items.filter((item) => item.type === "festival").map((item) => item.id);
 
   return (
     <ScheduleContext.Provider
       value={{
+        items,
         savedIds,
-        savedCount: savedIds.length,
-        addFestival,
-        removeFestival,
-        toggleFestival,
-        isInSchedule,
-        clearSchedule,
-        hydrated: true,
+        savedCount: items.length,
+        add,
+        remove,
+        toggle,
+        contains,
+        clear,
+        addFestival: (id) => add({ type: "festival", id }),
+        removeFestival: (id) => remove({ type: "festival", id }),
+        toggleFestival: (id) => toggle({ type: "festival", id }),
+        isInSchedule: (id) => contains({ type: "festival", id }),
+        clearSchedule: clear,
+        hydrated,
       }}
     >
       {children}
