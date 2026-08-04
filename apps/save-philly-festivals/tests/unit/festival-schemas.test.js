@@ -67,13 +67,14 @@ describe("updateFestivalSchema", () => {
 
 describe("approveFestivalSchema", () => {
   it("accepts approved or rejected statuses with an optional reason", () => {
-    expect(approveFestivalSchema.parse({ status: "approved" })).toEqual({ status: "approved" });
+    expect(approveFestivalSchema.parse({ status: "approved", expected_revision: 4 })).toEqual({ status: "approved", expected_revision: 4 });
     expect(
-      approveFestivalSchema.parse({ status: "rejected", reason: "Dates are missing" })
-    ).toEqual({ status: "rejected", reason: "Dates are missing" });
+      approveFestivalSchema.parse({ status: "rejected", expected_revision: 4, reason: "Dates are missing" })
+    ).toEqual({ status: "rejected", expected_revision: 4, reason: "Dates are missing" });
+    expect(approveFestivalSchema.safeParse({ status: "approved" }).success).toBe(false);
   });
 
   it("rejects statuses outside the approval workflow", () => {
-    expect(approveFestivalSchema.safeParse({ status: "pending" }).success).toBe(false);
+    expect(approveFestivalSchema.safeParse({ status: "pending", expected_revision: 0 }).success).toBe(false);
   });
 });

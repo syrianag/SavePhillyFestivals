@@ -1,74 +1,46 @@
-import { NextResponse } from "next/server";
-import { getApprovedFestivalById, getFestivalById, updateFestival, deleteFestival } from "@/features/festivals/festival-queries";
-import { updateFestivalSchema } from "@/features/festivals/festival-schemas";
-import { validate } from "@/lib/validate";
-import { handleApiError, NotFoundError } from "@/lib/errors";
-import { auth } from "@/lib/auth";
+import { NextResponse } from "next/server"
+import { prisma } from "@/lib/db"
+import { auth } from "@/lib/auth"
+import { getApprovedFestivalById } from "@/features/festivals/festival-queries"
 
-export async function GET(request, { params }) {
-  try {
-    const { id } = await params;
-    const session = await auth();
-    const isAdmin = session?.user?.role === "admin" || session?.user?.role === "super_admin";
-    const festival = isAdmin ? await getFestivalById(id) : await getApprovedFestivalById(id);
-
-    if (!festival) {
-      throw new NotFoundError("Festival not found");
-    }
-
-    return NextResponse.json(festival);
-  } catch (error) {
-    return handleApiError(error);
-  }
+// Legacy public lookup: approved festivals only, through the public presenter DTO.
+export async function GET(_, { params }) {
+  const { id } = await params
+  const festival = await getApprovedFestivalById(id)
+  if (!festival) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  return NextResponse.json(festival, { headers: { "Cache-Control": "public, max-age=60" } })
 }
 
-export async function PATCH(request, { params }) {
-  try {
-    const session = await auth();
-    if (!session || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
-      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-    }
+// Updates a festival (owner or admin only)
+export async function PUT(req, { params }) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    const { id } = await params;
-    const body = await request.json();
-    const result = validate(updateFestivalSchema, body);
-
-    if (!result.success) {
-      return NextResponse.json(
-        { error: "Validation failed", errors: result.errors },
-        { status: 400 }
-      );
-    }
-
-    const existing = await getFestivalById(id);
-    if (!existing) {
-      throw new NotFoundError("Festival not found");
-    }
-
-    const festival = await updateFestival(id, result.data);
-    return NextResponse.json(festival);
-  } catch (error) {
-    return handleApiError(error);
+  const festival = await prisma.festival.findUnique({ where: { id: params.id } })
+  if (!festival) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  if (festival.hostId !== session.user.id && session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
+
+  const body = await req.json()
+  const updated = await prisma.festival.update({
+    where: { id: params.id },
+    data: body,
+  })
+  return NextResponse.json(updated)
 }
 
-export async function DELETE(request, { params }) {
-  try {
-    const session = await auth();
-    if (!session || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
-      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-    }
+// Deletes a festival (owner or admin only)
+export async function DELETE(_, { params }) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    const { id } = await params;
-    const existing = await getFestivalById(id);
-
-    if (!existing) {
-      throw new NotFoundError("Festival not found");
-    }
-
-    await deleteFestival(id);
-    return NextResponse.json({ message: "Festival deleted" });
-  } catch (error) {
-    return handleApiError(error);
+  const festival = await prisma.festival.findUnique({ where: { id: params.id } })
+  if (!festival) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  if (festival.hostId !== session.user.id && session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
+
+  await prisma.festival.delete({ where: { id: params.id } })
+  return NextResponse.json({ message: "Deleted" })
 }

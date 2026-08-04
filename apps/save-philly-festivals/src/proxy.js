@@ -3,13 +3,20 @@ import { NextResponse } from "next/server";
 const adminPaths = ["/admin"];
 const adminApiPaths = ["/api/festivals"];
 
-const publicPaths = ["/login", "/producer", "/api/auth", "/api/health"];
+const publicPaths = ["/login", "/api/auth", "/api/health"];
 
 export async function proxy(request) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
 
-  // Always allow public paths
-  if (publicPaths.some((p) => pathname.startsWith(p))) {
+  // The producer marketing page is public; management descendants are not.
+  if (pathname === "/producer" || publicPaths.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
+
+  const producerFixtureEnabled = process.env.PRODUCER_E2E_FIXTURE === "1"
+    && process.env.NODE_ENV !== "production"
+    && Boolean(process.env.PRODUCER_E2E_SECRET?.length >= 32);
+  if (pathname === "/producer/e2e-login" && producerFixtureEnabled) {
     return NextResponse.next();
   }
 
@@ -29,7 +36,21 @@ export async function proxy(request) {
     request.cookies.get("authjs.session-token") ||
     request.cookies.get("__Secure-authjs.session-token");
 
-  const isAuthenticated = !!sessionToken;
+  const fixtureProducer = producerFixtureEnabled && request.cookies.get("producer-e2e-user");
+  const isAuthenticated = Boolean(sessionToken || fixtureProducer);
+
+  const isProducerManagement = pathname.startsWith("/producer/");
+  if (isProducerManagement && !isAuthenticated) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("callbackUrl", `${pathname}${search}`);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (isProducerManagement) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-producer-path", `${pathname}${search}`);
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
 
   // Protect admin routes
   const isAdminPath = adminPaths.some((p) => pathname.startsWith(p));
@@ -53,5 +74,5 @@ export async function proxy(request) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/festivals/:path*"],
+  matcher: ["/admin/:path*", "/producer/:path*", "/api/festivals/:path*"],
 };

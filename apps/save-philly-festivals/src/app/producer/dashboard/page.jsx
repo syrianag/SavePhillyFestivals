@@ -1,151 +1,26 @@
-"use client";
+import Link from "next/link";
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Calendar,
-  Users,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Star,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import ProducerSubmissionList from "@/features/producer-submission/ProducerSubmissionList";
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
+export const metadata = { title: "Producer overview - Save Philly Festivals" };
 
-function PlaceholderCalendar() {
-  const [currentDate] = useState(new Date());
-  const [viewDate, setViewDate] = useState(new Date());
-
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = currentDate.getDate();
-  const isCurrentMonth = currentDate.getMonth() === month && currentDate.getFullYear() === year;
-
-  const blanks = Array.from({ length: firstDay }, (_, i) => i);
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
-  function prevMonth() {
-    setViewDate(new Date(year, month - 1, 1));
-  }
-  function nextMonth() {
-    setViewDate(new Date(year, month + 1, 1));
-  }
-
+export default function ProducerDashboardPage() {
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <button onClick={prevMonth} className="rounded-md p-1 hover:bg-muted transition-colors">
-            <ChevronLeft className="size-4" />
-          </button>
-          <CardTitle className="text-sm font-medium">
-            {MONTHS[month]} {year}
-          </CardTitle>
-          <button onClick={nextMonth} className="rounded-md p-1 hover:bg-muted transition-colors">
-            <ChevronRight className="size-4" />
-          </button>
+    <div className="space-y-7">
+      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <h1 className="font-heading text-3xl font-bold sm:text-4xl">Producer overview</h1>
+          <p className="mt-2 text-slate-600">Create, resume, and track festival submissions.</p>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-7 gap-1 text-center">
-          {DAYS.map((day) => (
-            <div key={day} className="text-xs font-medium text-muted-foreground py-1">
-              {day}
-            </div>
-          ))}
-          {blanks.map((b) => (
-            <div key={`blank-${b}`} />
-          ))}
-          {days.map((day) => (
-            <div
-              key={day}
-              className={`text-sm py-1.5 rounded-md ${
-                isCurrentMonth && day === today
-                  ? "bg-primary text-primary-foreground font-semibold"
-                  : "text-foreground hover:bg-muted"
-              }`}
-            >
-              {day}
-            </div>
-          ))}
+        <Link href="/producer/submit" className="inline-flex justify-center rounded-md bg-black px-5 py-3 font-semibold text-white">New submission</Link>
+      </header>
+      <section aria-labelledby="recent-submissions-heading">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 id="recent-submissions-heading" className="font-heading text-2xl font-bold">Recent submissions</h2>
+          <Link href="/producer/festivals" className="font-semibold text-blue-700 underline-offset-4 hover:underline">View all</Link>
         </div>
-        <p className="mt-3 text-xs text-muted-foreground text-center">
-          Calendar coming soon — events will appear here
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function StatCard({ icon: Icon, label, value, color = "text-primary" }) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          <Icon className="mr-1 inline-block size-4" />
-          {label}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className={`text-3xl font-bold ${color}`}>{value}</div>
-      </CardContent>
-    </Card>
-  );
-}
-
-export default function ProducerOverviewPage() {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/producer/stats")
-      .then((res) => res.json())
-      .then((data) => {
-        setStats(data.stats);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-heading font-bold">Overview</h1>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="py-8 text-center text-muted-foreground">Loading...</CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  const s = stats || { totalFestivals: 0, approvedFestivals: 0, pendingFestivals: 0, draftFestivals: 0, totalInterested: 0, upcomingCount: 0 };
-
-  return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-heading font-bold">Overview</h1>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <StatCard icon={Calendar} label="Total Festivals" value={s.totalFestivals} />
-        <StatCard icon={CheckCircle} label="Approved" value={s.approvedFestivals} color="text-green-600" />
-        <StatCard icon={Clock} label="Pending Review" value={s.pendingFestivals} color="text-yellow-600" />
-        <StatCard icon={AlertCircle} label="Drafts" value={s.draftFestivals} color="text-gray-600" />
-        <StatCard icon={Users} label="Total Interested" value={s.totalInterested} color="text-blue-600" />
-        <StatCard icon={Star} label="Upcoming" value={s.upcomingCount} color="text-purple-600" />
-      </div>
-
-      <PlaceholderCalendar />
+        <ProducerSubmissionList compact />
+      </section>
     </div>
   );
 }

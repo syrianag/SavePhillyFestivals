@@ -55,7 +55,11 @@ export default function FestivalReviewDialog({ festival, children }) {
       const res = await fetch(`/api/festivals/${festival.id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, reason: reason || undefined }),
+        body: JSON.stringify({
+          status,
+          expected_revision: festival.revision,
+          reason: reason || undefined,
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

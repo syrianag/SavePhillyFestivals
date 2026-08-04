@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { approveFestival, getFestivalById } from "@/features/festivals/festival-queries";
+import { approveFestival } from "@/features/festivals/festival-queries";
 import { approveFestivalSchema } from "@/features/festivals/festival-schemas";
 import { validate } from "@/lib/validate";
 import { handleApiError, NotFoundError, ForbiddenError } from "@/lib/errors";
@@ -25,24 +25,22 @@ export async function POST(request, { params }) {
       );
     }
 
-    const existing = await getFestivalById(id);
-    if (!existing) {
+    const { status, reason, expected_revision: expectedRevision } = result.data;
+    const moderation = await approveFestival(id, status, reason, session.user.id, expectedRevision);
+    if (!moderation) {
       throw new NotFoundError("Festival not found");
     }
 
-    const { status, reason } = result.data;
-    const festival = await approveFestival(id, status, reason);
-
-    if (existing.contact_email) {
+    if (moderation.festival.contact_email) {
       const sendFn = status === "approved" ? sendFestivalApproved : sendFestivalRejected;
       await sendFn({
-        to: existing.contact_email,
-        festivalName: existing.name,
+        to: moderation.festival.contact_email,
+        festivalName: moderation.festival.name,
         reason,
       });
     }
 
-    return NextResponse.json(festival);
+    return NextResponse.json(moderation);
   } catch (error) {
     return handleApiError(error);
   }

@@ -38,5 +38,6 @@ export const updateFestivalSchema = createFestivalSchema.partial();
 
 export const approveFestivalSchema = z.object({
   status: z.enum(["approved", "rejected"]),
-  reason: z.string().optional(),
-});
+  expected_revision: z.number().int().nonnegative(),
+  reason: z.string().max(2000).optional(),
+}).strict();

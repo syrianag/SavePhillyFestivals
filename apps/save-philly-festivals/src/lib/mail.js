@@ -146,6 +146,21 @@ export const scheduleEmailProvider = Object.freeze({
   send: sendTransactionalEmail,
 });
 
+// Producer notifications use the same server-only transactional boundary. Tests inject
+// a provider and never instantiate or call Resend.
+export const producerNotificationProvider = Object.freeze({
+  send(message, { idempotencyKey } = {}) {
+    if (!resendClient) return sendTransactionalEmail(message);
+    return sendTransactionalEmail(message, {
+      client: {
+        emails: {
+          send: (payload) => resendClient.emails.send(payload, idempotencyKey ? { idempotencyKey } : undefined),
+        },
+      },
+    });
+  },
+});
+
 async function sendEmail(message) {
   return sendTransactionalEmail(message);
 }

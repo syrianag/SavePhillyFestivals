@@ -29,6 +29,12 @@ export class ForbiddenError extends AppError {
   }
 }
 
+export class ConflictError extends AppError {
+  constructor(message = "Resource changed or is no longer eligible for this operation") {
+    super(message, 409);
+  }
+}
+
 export function handleApiError(error) {
   console.error("API Error:", error);
 
