@@ -85,6 +85,33 @@ enum FestivalAssetEditorialStatus {
   rejected
 }
 
+enum SocialFeedProvider {
+  curator
+  flockler
+}
+
+enum SocialFeedSyncStatus {
+  never
+  success
+  failed
+}
+
+enum SocialNetwork {
+  instagram
+  x
+  facebook
+  tiktok
+  youtube
+  other
+}
+
+enum SocialPostModerationStatus {
+  pending
+  approved
+  hidden
+  rejected
+}
+
 // ─── Festival ───────────────────────────────────────────────
 model Festival {
   id                             String                @id @default(uuid())
@@ -156,6 +183,7 @@ model Festival {
   occurrences              FestivalOccurrence[]
   revisions                FestivalRevision[]
   workflow_notifications   FestivalWorkflowNotification[]
+  social_feed              FestivalSocialFeed?
 
   @@unique([owner_user_id, submission_key])
   @@index([owner_user_id, workflow_state, updated_at])
@@ -164,6 +192,76 @@ model Festival {
   @@index([start_date])
   @@index([slug])
   @@index([calendar_status, calendar_published_at])
+}
+
+model FestivalSocialFeed {
+  id                      String               @id @default(uuid())
+  festival_id             String               @unique
+  hashtag                 String
+  enabled                 Boolean              @default(false)
+  provider                SocialFeedProvider
+  provider_feed_id        String
+  revision                Int                  @default(0)
+  source_revision         Int                  @default(1)
+  sync_cursor             String?
+  sync_attempt_token      String?
+  sync_attempt_started_at DateTime?
+  last_sync_status        SocialFeedSyncStatus @default(never)
+  last_attempted_at       DateTime?
+  last_success_at         DateTime?
+  last_error_code         String?
+  created_at              DateTime             @default(now())
+  updated_at              DateTime             @updatedAt
+
+  festival Festival     @relation(fields: [festival_id], references: [id], onDelete: Restrict)
+  posts    SocialPost[]
+
+  @@index([enabled, last_sync_status, updated_at])
+}
+
+model SocialPost {
+  id                  String                     @id @default(uuid())
+  social_feed_id      String
+  provider_item_id    String
+  source_revision     Int                        @default(1)
+  network             SocialNetwork
+  canonical_url       String
+  author_name         String?
+  author_handle       String?
+  text_excerpt        String
+  source_published_at DateTime?
+  moderation_status   SocialPostModerationStatus @default(pending)
+  moderation_revision Int                        @default(0)
+  reviewed_by_user_id String?
+  reviewed_at         DateTime?
+  ingested_at         DateTime                   @default(now())
+  created_at          DateTime                   @default(now())
+  updated_at          DateTime                   @updatedAt
+
+  social_feed            FestivalSocialFeed               @relation(fields: [social_feed_id], references: [id], onDelete: Restrict)
+  reviewer               User?                            @relation("SocialPostReviewer", fields: [reviewed_by_user_id], references: [id], onDelete: Restrict)
+  moderation_transitions SocialPostModerationTransition[]
+
+  @@unique([social_feed_id, source_revision, provider_item_id])
+  @@index([social_feed_id, source_revision, moderation_status, source_published_at, id])
+  @@index([reviewed_by_user_id, reviewed_at])
+}
+
+model SocialPostModerationTransition {
+  id             String                     @id @default(uuid())
+  social_post_id String
+  actor_user_id  String
+  from_status    SocialPostModerationStatus
+  to_status      SocialPostModerationStatus
+  revision       Int
+  reason         String?
+  created_at     DateTime                   @default(now())
+
+  social_post SocialPost @relation(fields: [social_post_id], references: [id], onDelete: Restrict)
+  actor       User       @relation("SocialPostModerationActor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@unique([social_post_id, revision])
+  @@index([actor_user_id, created_at])
 }
 
 model FestivalTransition {
@@ -631,13 +729,15 @@ model User {
   created_at     DateTime  @default(now())
   updated_at     DateTime  @updatedAt
 
-  sessions                 Session[]
-  accounts                 Account[]
-  owned_festivals          Festival[]           @relation("FestivalOwner")
-  festival_transitions     FestivalTransition[] @relation("FestivalTransitionActor")
-  uploaded_festival_assets FestivalAsset[]      @relation("FestivalAssetUploader")
-  reviewed_festival_assets FestivalAsset[]      @relation("FestivalAssetReviewer")
-  festival_revisions       FestivalRevision[]   @relation("FestivalRevisionActor")
+  sessions                           Session[]
+  accounts                           Account[]
+  owned_festivals                    Festival[]                       @relation("FestivalOwner")
+  festival_transitions               FestivalTransition[]             @relation("FestivalTransitionActor")
+  uploaded_festival_assets           FestivalAsset[]                  @relation("FestivalAssetUploader")
+  reviewed_festival_assets           FestivalAsset[]                  @relation("FestivalAssetReviewer")
+  festival_revisions                 FestivalRevision[]               @relation("FestivalRevisionActor")
+  reviewed_social_posts              SocialPost[]                     @relation("SocialPostReviewer")
+  social_post_moderation_transitions SocialPostModerationTransition[] @relation("SocialPostModerationActor")
 }
 
 model Account {

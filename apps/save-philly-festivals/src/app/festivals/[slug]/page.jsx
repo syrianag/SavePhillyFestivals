@@ -18,6 +18,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPublicFestivalBySlug } from "@/features/festivals/festival-queries";
 import { ScheduleSaveButton } from "@/features/schedule/ScheduleSaveButton";
+import PublicSocialFeed from "@/features/social-feed/PublicSocialFeed";
+import { socialFeedE2ERepository } from "@/features/social-feed/social-feed-e2e-fixture";
+import { socialFeedRepository } from "@/features/social-feed/social-feed-repository";
+import { getPublicSocialFeed } from "@/features/social-feed/social-feed-service";
 import {
   formatPhiladelphiaDate,
   formatPhiladelphiaTime,
@@ -68,6 +72,9 @@ export default async function FestivalDetailPage({ params }) {
   const festival = await getFestival(slug);
 
   if (!festival) notFound();
+  const socialFeed = festival.canceled
+    ? null
+    : await getPublicSocialFeed(festival.id, { repository: socialFeedE2ERepository() || socialFeedRepository });
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 md:py-12">
@@ -202,6 +209,8 @@ export default async function FestivalDetailPage({ params }) {
             <p className="mt-2 text-sm text-[#848484]">No official social channels listed.</p>
           )}
         </section>}
+
+        {!festival.canceled && <PublicSocialFeed feed={socialFeed} />}
 
         {(festival.story || festival.mission || festival.history) && (
           <div className="space-y-6">

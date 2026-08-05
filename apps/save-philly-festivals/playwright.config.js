@@ -42,6 +42,9 @@ export default defineConfig({
       DISCOVERY_E2E_FIXTURE: "1",
       PRODUCER_E2E_FIXTURE: "1",
       PRODUCER_E2E_SECRET: producerE2ESecret,
+      CURATOR_SOCIAL_FEED_TOKEN: "",
+      FLOCKLER_SOCIAL_FEED_TOKEN: "",
+      SOCIAL_FEED_SYNC_SECRET: "",
       NEXT_PUBLIC_SITE_URL: baseURL,
       DATABASE_URL:
         process.env.DATABASE_URL || "postgresql://e2e:e2e@127.0.0.1:5432/save_philly_festivals_e2e",

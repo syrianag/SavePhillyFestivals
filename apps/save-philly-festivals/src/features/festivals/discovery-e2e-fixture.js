@@ -74,19 +74,35 @@ const detailFixture = {
   ],
 };
 
+const unavailableFeedDetailFixture = {
+  ...DISCOVERY_E2E_FESTIVALS[1],
+  state: "PA",
+  zip_code: "19147",
+  website_url: "https://example.com/south-philly-food-fest",
+  logo_url: null,
+  social_instagram: "https://www.instagram.com/southphillyfoodfest/",
+  social_facebook: null,
+  social_twitter: null,
+  social_tiktok: null,
+  social_youtube: null,
+  story: null,
+  mission: null,
+  history: null,
+  schedules: [],
+  tags: [],
+};
+
 export function getDiscoveryE2eFestival(slug) {
   if (process.env.DISCOVERY_E2E_FIXTURE !== "1") return undefined;
-  return slug === DISCOVERY_DETAIL_SLUG ? detailFixture : null;
+  if (slug === DISCOVERY_DETAIL_SLUG) return detailFixture;
+  if (slug === unavailableFeedDetailFixture.slug) return unavailableFeedDetailFixture;
+  return null;
 }
 
 export function getDiscoveryE2eFestivalCatalog() {
   if (process.env.DISCOVERY_E2E_FIXTURE !== "1") return undefined;
   return [
     detailFixture,
-    {
-      ...DISCOVERY_E2E_FESTIVALS[1],
-      schedules: [],
-      tags: [],
-    },
+    unavailableFeedDetailFixture,
   ];
 }
