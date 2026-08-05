@@ -2,6 +2,9 @@ export const PHILADELPHIA_TIME_ZONE = "America/New_York";
 
 export const PUBLIC_FESTIVAL_SELECT = Object.freeze({
   id: true,
+  workflow_state: true,
+  first_published_at: true,
+  public_message: true,
   name: true,
   slug: true,
   description: true,
@@ -22,6 +25,12 @@ export const PUBLIC_FESTIVAL_SELECT = Object.freeze({
   history: true,
   start_date: true,
   end_date: true,
+  occurrences: {
+    where: { is_primary: true },
+    take: 1,
+    select: { id: true, calendar_date_type: true, start_at: true, end_at: true, all_day_start: true, all_day_end: true, time_zone: true, calendar_status: true },
+  },
+
   schedules: {
     select: {
       id: true,
@@ -92,7 +101,9 @@ export function validatePublicImageUrl(value) {
 
   try {
     const url = new URL(value);
-    return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password
+    const host = url.hostname.toLowerCase();
+    const driveHost = host === "drive.google.com" || host.endsWith(".googleusercontent.com");
+    return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password && !driveHost
       ? url.toString()
       : null;
   } catch {
@@ -175,6 +186,10 @@ export function mapPublicFestival(record) {
       (left, right) =>
         (asDate(left.start_time)?.getTime() || 0) - (asDate(right.start_time)?.getTime() || 0)
     );
+  const primaryOccurrence = record.occurrences?.[0] || null;
+
+  const startDate = primaryOccurrence?.start_at || primaryOccurrence?.all_day_start || record.start_date;
+  const endDate = primaryOccurrence?.end_at || primaryOccurrence?.all_day_end || record.end_date;
   const locality = [record.city, record.state].filter(Boolean).join(", ");
   const address = [locality, record.zip_code].filter(Boolean).join(" ");
 
@@ -188,21 +203,22 @@ export function mapPublicFestival(record) {
     state: record.state || null,
     zip_code: record.zip_code || null,
     website_url: validatePublicWebsiteUrl(record.website_url),
-    image_url:
-      validatePublicImageUrl(record.image_url) || validatePublicImageUrl(record.logo_url) || null,
+    image_url: validatePublicImageUrl(record.image_url) || validatePublicImageUrl(record.logo_url) || null,
+    canceled: record.workflow_state === "canceled",
+    public_message: record.workflow_state === "canceled" ? record.public_message || "This festival has been canceled." : null,
     story: record.story || null,
     mission: record.mission || null,
     history: record.history || null,
-    start_date: record.start_date || null,
-    end_date: record.end_date || null,
+    start_date: startDate || null,
+    end_date: endDate || null,
     categories,
     tags,
     schedules,
     socialLinks: getOfficialSocialLinks(record),
-    dateLabel: record.start_date
-      ? formatPhiladelphiaDateTime(record.start_date)
+    dateLabel: startDate
+      ? formatPhiladelphiaDateTime(startDate)
       : "Dates and times to be announced",
-    endDateLabel: record.end_date ? formatPhiladelphiaDateTime(record.end_date) : null,
+    endDateLabel: endDate ? formatPhiladelphiaDateTime(endDate) : null,
     locationLabel: record.location?.trim() || "Location to be announced",
     addressLabel: address || "Address details to be announced",
   };

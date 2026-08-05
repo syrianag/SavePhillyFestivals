@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
-import { FESTIVAL_STATUS } from "@/lib/constants";
-import { ConflictError } from "@/lib/errors";
+import { publicDetailWhere, publishedDiscoveryWhere } from "@/features/editorial-workflow/publication-policy";
+import { editorialE2EPublicCatalog, editorialE2EPublicFestival } from "@/features/editorial-workflow/editorial-e2e-fixture";
 import {
   getDiscoveryE2eFestival,
   getDiscoveryE2eFestivalCatalog,
@@ -10,12 +10,7 @@ import {
   PUBLIC_FESTIVAL_SELECT,
 } from "@/features/festivals/public-festival";
 
-function generateSlug(name) {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
+
 
 export async function getFestivals({
   status,
@@ -79,11 +74,11 @@ export async function getFestivalById(id) {
 export async function getApprovedFestivalById(id) {
   const fixtureCatalog = getDiscoveryE2eFestivalCatalog();
   if (fixtureCatalog !== undefined) {
-    return mapPublicFestival(fixtureCatalog.find((festival) => festival.id === id) || null);
+    return mapPublicFestival(fixtureCatalog.find((festival) => festival.id === id) || editorialE2EPublicFestival({ id }));
   }
 
   const festival = await prisma.festival.findFirst({
-    where: { id, status: FESTIVAL_STATUS.APPROVED },
+    where: { id, ...publicDetailWhere },
     select: PUBLIC_FESTIVAL_SELECT,
   });
 
@@ -92,10 +87,10 @@ export async function getApprovedFestivalById(id) {
 
 export async function getPublicFestivalBySlug(slug) {
   const fixture = getDiscoveryE2eFestival(slug);
-  if (fixture !== undefined) return mapPublicFestival(fixture);
+  if (fixture !== undefined) return mapPublicFestival(fixture || editorialE2EPublicFestival({ slug }));
 
   const festival = await prisma.festival.findFirst({
-    where: { slug, status: FESTIVAL_STATUS.APPROVED },
+    where: { slug, ...publicDetailWhere },
     select: PUBLIC_FESTIVAL_SELECT,
   });
 
@@ -104,10 +99,10 @@ export async function getPublicFestivalBySlug(slug) {
 
 export async function getPublicFestivalCatalog() {
   const fixture = getDiscoveryE2eFestivalCatalog();
-  if (fixture !== undefined) return fixture.map(mapPublicFestival);
+  if (fixture !== undefined) return [...fixture, ...editorialE2EPublicCatalog()].map(mapPublicFestival);
 
   const festivals = await prisma.festival.findMany({
-    where: { status: FESTIVAL_STATUS.APPROVED },
+    where: publishedDiscoveryWhere,
     select: PUBLIC_FESTIVAL_SELECT,
     orderBy: { start_date: "asc" },
   });
@@ -118,83 +113,17 @@ export async function getPublicFestivalCatalog() {
 // Public callers must use the approved-only DTO. Private admin lookups remain ID-based.
 export const getFestivalBySlug = getPublicFestivalBySlug;
 
-export async function createFestival(data) {
-  let slug = data.slug || generateSlug(data.name);
-
-  const existing = await prisma.festival.findUnique({ where: { slug } });
-  if (existing) {
-    slug = `${slug}-${Date.now()}`;
-  }
-
-  return prisma.festival.create({
-    data: {
-      ...data,
-      slug,
-      status: FESTIVAL_STATUS.PENDING,
-    },
-  });
+/* Legacy server mutation helpers are intentionally disabled by F-08. Use the producer
+ * submission and editorial workflow services so ownership, revisions, history, and
+ * immutable snapshots cannot be bypassed. */
+export async function createFestival() {
+  throw new Error("Legacy festival creation is disabled.");
 }
 
-export async function updateFestival(id, data) {
-  return prisma.festival.update({
-    where: { id },
-    data,
-  });
+export async function updateFestival() {
+  throw new Error("Legacy festival update is disabled.");
 }
 
-export async function deleteFestival(id) {
-  return prisma.festival.delete({
-    where: { id },
-  });
-}
-
-export async function approveFestival(id, status, reason, actorUserId, expectedRevision) {
-  if (!actorUserId) throw new Error("Authenticated moderation actor is required.");
-  const workflowState = status === FESTIVAL_STATUS.APPROVED ? "approved" : "rejected";
-  return prisma.$transaction(async (transaction) => {
-    const current = await transaction.festival.findUnique({
-      where: { id },
-      select: { id: true, workflow_state: true, status: true, revision: true },
-    });
-    if (!current) return null;
-    if (
-      current.workflow_state !== "pending_review"
-      || current.status !== FESTIVAL_STATUS.PENDING
-      || current.revision !== expectedRevision
-    ) {
-      throw new ConflictError("Festival is not pending review at the expected revision");
-    }
-
-    const nextRevision = expectedRevision + 1;
-    const changed = await transaction.festival.updateMany({
-      where: {
-        id,
-        workflow_state: "pending_review",
-        status: FESTIVAL_STATUS.PENDING,
-        revision: expectedRevision,
-      },
-      data: {
-        status,
-        workflow_state: workflowState,
-        revision: nextRevision,
-        rejection_reason: status === FESTIVAL_STATUS.REJECTED ? reason || null : null,
-      },
-    });
-    if (changed.count !== 1) {
-      throw new ConflictError("Festival changed while moderation was in progress");
-    }
-
-    await transaction.festivalTransition.create({
-      data: {
-        festival_id: id,
-        actor_user_id: actorUserId,
-        from_state: "pending_review",
-        to_state: workflowState,
-        revision: nextRevision,
-        reason: status === FESTIVAL_STATUS.REJECTED ? reason || null : null,
-      },
-    });
-    const festival = await transaction.festival.findUnique({ where: { id } });
-    return { festival, reason };
-  });
+export async function deleteFestival() {
+  throw new Error("Festival hard-delete is disabled; use an archival transition.");
 }

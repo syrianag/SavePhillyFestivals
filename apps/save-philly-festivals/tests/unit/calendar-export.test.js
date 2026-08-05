@@ -161,8 +161,9 @@ describe("calendar repository resolution", () => {
 
     const festivalQuery = prisma.festival.findMany.mock.calls[0][0];
     const eventQuery = prisma.schedule.findMany.mock.calls[0][0];
-    expect(JSON.stringify(festivalQuery.where)).toContain('"status":"approved"');
-    expect(JSON.stringify(festivalQuery.where)).toContain('"calendar_published_at":{"not":null}');
+    expect(JSON.stringify(festivalQuery.where)).toContain('"workflow_state":"published"');
+    expect(JSON.stringify(festivalQuery.where)).toContain('"workflow_state":"canceled"');
+    expect(JSON.stringify(festivalQuery.where)).toContain('"first_published_at":{"not":null}');
     expect(JSON.stringify(eventQuery.where)).toContain('"festival"');
     expect(JSON.stringify(festivalQuery.where)).toContain('"start_date":{"not":null}');
     expect(JSON.stringify(festivalQuery.where)).toContain('"all_day_start":{"not":null}');

@@ -101,6 +101,32 @@ describe("draft, revision, and submission service contracts", () => {
     expect(result).toMatchObject({ ownerUserId: user.id, expectedRevision: 4 });
     expect(result.data.start_date).toBeInstanceOf(Date);
   });
+  it("edits a changes-requested festival in place and resubmits its next revision", async () => {
+    let state = { ...completeFestival, workflow_state: "changes_requested", revision: 4 };
+    const repository = {
+      updateOwnedEditable: vi.fn(async ({ expectedRevision, data }) => {
+        expect(expectedRevision).toBe(state.revision);
+        expect(state.workflow_state).toBe("changes_requested");
+        state = { ...state, ...data, revision: state.revision + 1 };
+        return state;
+      }),
+      submitOwned: vi.fn(async ({ expectedRevision, assertComplete }) => {
+        expect(expectedRevision).toBe(5);
+        expect(state.workflow_state).toBe("changes_requested");
+        assertComplete(state);
+        state = { ...state, workflow_state: "pending_review", revision: state.revision + 1 };
+        return { festival: state, replayed: false };
+      }),
+      claimSubmissionNotification: vi.fn().mockResolvedValue(null),
+    };
+    const edited = await patchOwnedFestival(completeFestival.id, { expected_revision: 4, description: "A complete revised description after feedback." }, { repository, user });
+    expect(edited).toMatchObject({ workflow_state: "changes_requested", revision: 5 });
+    const resubmitted = await submitOwnedFestival(completeFestival.id, { ...submitInput, expected_revision: 5 }, { repository, user });
+    expect(resubmitted.festival).toMatchObject({ workflow_state: "pending_review", revision: 6 });
+    expect(repository.updateOwnedEditable).toHaveBeenCalledWith(expect.objectContaining({ ownerUserId: user.id, expectedRevision: 4 }));
+    expect(repository.submitOwned).toHaveBeenCalledWith(expect.objectContaining({ ownerUserId: user.id, expectedRevision: 5 }));
+  });
+
   it("attempts both providers after persistence, targets contact email/team env alias, and escapes HTML", async () => {
     const repository = notificationRepository();
     const provider = { send: vi.fn(async () => ({ success: true, id: "provider-id" })) };

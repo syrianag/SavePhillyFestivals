@@ -12,7 +12,8 @@ describe("F-05 persistence and orchestration contract", () => {
     for (const model of ["OrganizerIntegration", "OrganizerMailingConsent", "OrganizerMailingConsentOrganizer", "OrganizerMailingOutbox"]) expect(schema).toContain(`model ${model}`);
     for (const status of ["pending", "processing", "completed", "failed", "suppressed"]) expect(schema).toContain(status);
     expect(schema).toMatch(/management_token_hash\s+String\s+@unique/);
-    expect(schema).not.toMatch(/OrganizerMailingConsent[\s\S]*?Json/);
+    const consentModel = schema.match(/model OrganizerMailingConsent \{[\s\S]*?\n\}/)?.[0];
+        expect(consentModel).not.toContain("Json");
     expect(migration).toContain('CREATE UNIQUE INDEX "OrganizerMailingOutbox_idempotency_key_key"');
     expect(migration).not.toMatch(/API_KEY|Bearer [A-Za-z0-9]|credential/i);
   });
@@ -31,7 +32,7 @@ describe("F-05 persistence and orchestration contract", () => {
     const repo = read("src/features/organizer-consent/organizer-consent-repository.js");
     const claim = read("src/app/api/internal/n8n/organizer-subscriptions/claim/route.js");
     expect(form).not.toMatch(/localStorage.*(?:email|consent)/i);
-    expect(repo).toContain("status: FESTIVAL_STATUS.APPROVED");
+    expect(repo).toContain("publishedSelectionWhere");
     expect(repo).toContain('authorization_status: "authorized"');
     expect(claim).toContain("authorizeN8nRequest(request)");
     expect(form).not.toMatch(/N8N_ORGANIZER_OUTBOX_SECRET|provider_result_id/);

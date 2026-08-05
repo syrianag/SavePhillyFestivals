@@ -166,26 +166,26 @@ describe("public festival fallback mapping", () => {
   });
 });
 
-describe("approved-only public Prisma lookup", () => {
-  it("queries by slug and approved status with only the public select", async () => {
+describe("published/tombstone-only public Prisma lookup", () => {
+  it("queries by slug and workflow publication policy with only the public select", async () => {
     findFirst.mockResolvedValue(rawFestival());
 
     const result = await getPublicFestivalBySlug("public-festival");
 
     expect(findFirst).toHaveBeenCalledWith({
-      where: { slug: "public-festival", status: "approved" },
+      where: { slug: "public-festival", OR: [{ workflow_state: "published" }, { workflow_state: "canceled", first_published_at: { not: null } }] },
       select: PUBLIC_FESTIVAL_SELECT,
     });
     expect(result).toMatchObject({ name: "Public Festival", slug: "public-festival" });
   });
 
-  it("uses the same approved public DTO contract for ID lookups", async () => {
+  it("uses the same public detail DTO contract for ID lookups", async () => {
     findFirst.mockResolvedValue(rawFestival());
 
     const result = await getApprovedFestivalById("festival-1");
 
     expect(findFirst).toHaveBeenCalledWith({
-      where: { id: "festival-1", status: "approved" },
+      where: { id: "festival-1", OR: [{ workflow_state: "published" }, { workflow_state: "canceled", first_published_at: { not: null } }] },
       select: PUBLIC_FESTIVAL_SELECT,
     });
     expect(result).not.toHaveProperty("contact_email");

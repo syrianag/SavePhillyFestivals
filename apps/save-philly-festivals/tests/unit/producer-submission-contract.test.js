@@ -149,7 +149,9 @@ describe("database, moderation, and static route contracts", () => {
   it("atomically aligns producer submit and creates contact-targeted outbox records", () => {
     const repository = read("src/features/producer-submission/producer-submission-repository.js");
     expect(repository).toContain('workflow_state: "pending_review"');
-    expect(repository).toContain('status: "pending"');
+    expect(repository).not.toMatch(/workflow_state:\s*"pending_review",\s*status:/);
+    expect(repository).toContain("transaction.festivalRevision.create");
+    expect(repository).toContain("transaction.festivalOccurrence.upsert");
     expect(repository).toContain("recipient_email: current.contact_email");
     expect(repository).toContain("transaction.festivalTransition.create");
     expect(repository).toContain("transaction.producerSubmissionNotification.createMany");
@@ -158,30 +160,24 @@ describe("database, moderation, and static route contracts", () => {
     expect(repository).toContain("markSubmissionNotificationFailed");
   });
 
-  it("keeps legacy admin moderation coherent with an authenticated transition actor", () => {
-    const queries = read("src/features/festivals/festival-queries.js");
+  it("retires legacy moderation in favor of the central authenticated transition route", () => {
     const route = read("src/app/api/festivals/[id]/approve/route.js");
-    const dialog = read("src/components/admin/FestivalReviewDialog.jsx");
-    expect(queries).toContain("return prisma.$transaction(async (transaction) =>");
-    expect(queries).toContain("transaction.festival.updateMany");
-    expect(queries).toContain('workflow_state: "pending_review"');
-    expect(queries).toContain("status: FESTIVAL_STATUS.PENDING");
-    expect(queries).toContain("revision: expectedRevision");
-    expect(queries).toContain("transaction.festivalTransition.create");
-    expect(route).toContain("session.user.id");
-    expect(route).toContain("expectedRevision");
-    expect(dialog).toContain("expected_revision: festival.revision");
+    const transition = read("src/features/editorial-workflow/editorial-service.js");
+    expect(route).toContain("status: 410");
+    expect(transition).toContain("assertEditorialTransition");
+    expect(transition).toContain("expectedRevision: input.expected_revision");
+    expect(transition).toContain("actorUserId: user.id");
   });
 
-  it("preserves approved-only public behavior, DTO presentation, and pending admin queue", () => {
+  it("preserves public DTO presentation and redirects pending links to the workflow queue", () => {
     const queries = read("src/features/festivals/festival-queries.js");
     const legacyRoute = read("src/app/api/festivals/[id]/route.js");
     const pending = read("src/app/admin/pending/page.jsx");
-    expect(queries).toMatch(/status:\s*FESTIVAL_STATUS\.APPROVED/g);
-    const publicGet = legacyRoute.split("// Updates a festival", 1)[0];
-    expect(publicGet).toContain("getApprovedFestivalById");
-    expect(publicGet).not.toContain("findUnique");
-    expect(pending).toContain("FESTIVAL_STATUS.PENDING");
+    expect(queries).toContain("publishedDiscoveryWhere");
+    expect(queries).toContain("publicDetailWhere");
+    expect(legacyRoute).toContain("getApprovedFestivalById");
+    expect(legacyRoute).not.toContain("findUnique");
+    expect(pending).toContain("state=pending_review");
   });
 
   it("keeps provider clients dynamically server-loaded and private responses uncached", () => {

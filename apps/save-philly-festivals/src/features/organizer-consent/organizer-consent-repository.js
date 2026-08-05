@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { FESTIVAL_STATUS } from "@/lib/constants";
+import { publishedSelectionWhere } from "@/features/editorial-workflow/publication-policy";
 import { eligibleOrganizerResult, parentFestivalIds } from "@/features/organizer-consent/organizer-consent-resolution";
 
 const consentInclude = {
@@ -14,11 +14,11 @@ export const organizerConsentRepository = {
     const eventIds = items.filter((item) => item.type === "event").map((item) => item.id);
     const [festivals, events] = await Promise.all([
       prisma.festival.findMany({
-        where: { id: { in: festivalIds }, status: FESTIVAL_STATUS.APPROVED },
+        where: { id: { in: festivalIds }, ...publishedSelectionWhere },
         select: { id: true },
       }),
       prisma.schedule.findMany({
-        where: { id: { in: eventIds }, festival: { status: FESTIVAL_STATUS.APPROVED } },
+        where: { id: { in: eventIds }, festival: publishedSelectionWhere },
         select: { id: true, festival_id: true },
       }),
     ]);

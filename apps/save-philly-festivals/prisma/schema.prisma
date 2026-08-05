@@ -69,6 +69,22 @@ enum FestivalAssetReconciliationStatus {
   failed
 }
 
+enum FestivalWorkflowNotificationStatus {
+  pending
+  sent
+  failed
+}
+
+enum FestivalWorkflowNotificationAudience {
+  producer
+}
+
+enum FestivalAssetEditorialStatus {
+  pending
+  approved
+  rejected
+}
+
 // ─── Festival ───────────────────────────────────────────────
 model Festival {
   id                             String                @id @default(uuid())
@@ -112,6 +128,10 @@ model Festival {
   calendar_status                CalendarStatus        @default(confirmed)
   calendar_sequence              Int                   @default(0)
   calendar_published_at          DateTime?
+  first_published_at             DateTime?
+  published_at                   DateTime?
+  canceled_at                    DateTime?
+  public_message                 String?
   owner_user_id                  String?
   workflow_state                 FestivalWorkflowState @default(draft)
   revision                       Int                   @default(0)
@@ -133,29 +153,37 @@ model Festival {
   workflow_transitions     FestivalTransition[]
   private_assets           FestivalAsset[]
   submission_notifications ProducerSubmissionNotification[]
+  occurrences              FestivalOccurrence[]
+  revisions                FestivalRevision[]
+  workflow_notifications   FestivalWorkflowNotification[]
 
   @@unique([owner_user_id, submission_key])
   @@index([owner_user_id, workflow_state, updated_at])
   @@index([status])
+  @@index([workflow_state, start_date, id])
   @@index([start_date])
   @@index([slug])
   @@index([calendar_status, calendar_published_at])
 }
 
 model FestivalTransition {
-  id            String                 @id @default(uuid())
-  festival_id   String
-  actor_user_id String
-  from_state    FestivalWorkflowState?
-  to_state      FestivalWorkflowState
-  revision      Int
-  reason        String?
-  created_at    DateTime               @default(now())
+  id               String                 @id @default(uuid())
+  festival_id      String
+  actor_user_id    String
+  from_state       FestivalWorkflowState?
+  to_state         FestivalWorkflowState
+  revision         Int
+  reason           String?
+  producer_message String?
+  public_message   String?
+  created_at       DateTime               @default(now())
 
-  festival Festival @relation(fields: [festival_id], references: [id], onDelete: Restrict)
-  actor    User     @relation("FestivalTransitionActor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+  festival Festival          @relation(fields: [festival_id], references: [id], onDelete: Restrict)
+  actor    User              @relation("FestivalTransitionActor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+  snapshot FestivalRevision?
 
   @@unique([festival_id, revision])
+  @@unique([id, festival_id, revision, actor_user_id])
   @@index([actor_user_id, created_at])
 }
 
@@ -177,13 +205,18 @@ model FestivalAsset {
   provider_version       String?
   scan_status            FestivalAssetScanStatus      @default(pending)
   lifecycle_status       FestivalAssetLifecycleStatus @default(active)
+  editorial_status       FestivalAssetEditorialStatus @default(pending)
+  reviewed_by_user_id    String?
+  reviewed_at            DateTime?
+  editorial_reason       String?
   created_at             DateTime                     @default(now())
   updated_at             DateTime                     @updatedAt
 
   festival Festival @relation(fields: [festival_id], references: [id], onDelete: Restrict)
   uploader User     @relation("FestivalAssetUploader", fields: [uploader_user_id], references: [id], onDelete: Restrict)
+  reviewer User?    @relation("FestivalAssetReviewer", fields: [reviewed_by_user_id], references: [id], onDelete: Restrict)
 
-  @@index([festival_id, lifecycle_status, created_at])
+  @@index([festival_id, lifecycle_status, editorial_status, created_at])
   @@index([uploader_user_id, created_at])
   @@index([scan_status, created_at])
 }
@@ -229,10 +262,78 @@ model ProducerSubmissionNotification {
   @@index([delivery_status, created_at])
 }
 
+model FestivalOccurrence {
+  id                    String           @id @default(uuid())
+  festival_id           String
+  source_key            String?
+  is_primary            Boolean          @default(false)
+  calendar_date_type    CalendarDateType @default(timed)
+  time_zone             String           @default("America/New_York")
+  start_at              DateTime?
+  end_at                DateTime?
+  all_day_start         DateTime?        @db.Date
+  all_day_end           DateTime?        @db.Date
+  calendar_status       CalendarStatus   @default(confirmed)
+  calendar_sequence     Int              @default(0)
+  calendar_published_at DateTime?
+  created_at            DateTime         @default(now())
+  updated_at            DateTime         @updatedAt
+
+  festival  Festival   @relation(fields: [festival_id], references: [id], onDelete: Restrict)
+  schedules Schedule[]
+
+  @@unique([festival_id, source_key])
+  @@unique([id, festival_id])
+  @@index([festival_id, is_primary])
+  @@index([calendar_status, calendar_published_at])
+}
+
+model FestivalRevision {
+  id                String   @id @default(uuid())
+  festival_id       String
+  workflow_revision Int
+  transition_id     String   @unique
+  actor_user_id     String
+  snapshot          Json
+  created_at        DateTime @default(now())
+
+  festival   Festival           @relation(fields: [festival_id], references: [id], onDelete: Restrict)
+  transition FestivalTransition @relation(fields: [transition_id, festival_id, workflow_revision, actor_user_id], references: [id, festival_id, revision, actor_user_id], onDelete: Restrict)
+  actor      User               @relation("FestivalRevisionActor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@unique([festival_id, workflow_revision])
+  @@unique([transition_id, festival_id, workflow_revision, actor_user_id])
+  @@index([actor_user_id, created_at])
+}
+
+model FestivalWorkflowNotification {
+  id                  String                               @id @default(uuid())
+  festival_id         String
+  workflow_revision   Int
+  audience            FestivalWorkflowNotificationAudience @default(producer)
+  delivery_status     FestivalWorkflowNotificationStatus   @default(pending)
+  recipient_email     String?
+  attempts            Int                                  @default(0)
+  provider_message_id String?
+  failure_code        String?
+  attempt_token       String?                              @unique
+  attempt_started_at  DateTime?
+  attempted_at        DateTime?
+  sent_at             DateTime?
+  created_at          DateTime                             @default(now())
+  updated_at          DateTime                             @updatedAt
+
+  festival Festival @relation(fields: [festival_id], references: [id], onDelete: Restrict)
+
+  @@unique([festival_id, workflow_revision, audience])
+  @@index([delivery_status, created_at])
+}
+
 // ─── Schedule (individual events within a festival) ────────
 model Schedule {
   id                    String           @id @default(uuid())
   festival_id           String
+  occurrence_id         String?
   title                 String
   description           String?
   location              String?
@@ -251,10 +352,12 @@ model Schedule {
   created_at            DateTime         @default(now())
   updated_at            DateTime         @updatedAt
 
-  festival        Festival        @relation(fields: [festival_id], references: [id], onDelete: Cascade)
+  festival        Festival            @relation(fields: [festival_id], references: [id], onDelete: Cascade)
+  occurrence      FestivalOccurrence? @relation(fields: [occurrence_id, festival_id], references: [id, festival_id], onDelete: Restrict)
   saved_schedules SavedSchedule[]
 
   @@index([festival_id])
+  @@index([occurrence_id, festival_id])
   @@index([start_time])
   @@index([calendar_status, calendar_published_at])
 }
@@ -533,6 +636,8 @@ model User {
   owned_festivals          Festival[]           @relation("FestivalOwner")
   festival_transitions     FestivalTransition[] @relation("FestivalTransitionActor")
   uploaded_festival_assets FestivalAsset[]      @relation("FestivalAssetUploader")
+  reviewed_festival_assets FestivalAsset[]      @relation("FestivalAssetReviewer")
+  festival_revisions       FestivalRevision[]   @relation("FestivalRevisionActor")
 }
 
 model Account {
