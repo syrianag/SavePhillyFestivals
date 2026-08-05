@@ -2,7 +2,7 @@
 
 **Source:** `docs/Festivals_Postgres_Export.csv`
 **Target:** Application PostgreSQL database managed through Prisma migrations
-**Status:** Plan only; no database import has been executed
+**Status:** Transactional importer implemented; no production database import has been executed
 **Authoritative time zone:** `America/New_York`
 
 ## 1. Objective
@@ -40,8 +40,8 @@ The profile is evidence about the current file, not a permanent contract. The im
 3. Never infer ambiguous dates, recurrence, email ownership, categories, or consent.
 4. Keep source contact email and phone private; they are producer/editorial data and must not enter public DTOs, calendar organizer fields, logs, or analytics.
 5. Treat `Email sent?` as source operational history only. It does not establish marketing consent, delivery evidence, or application notification state.
-6. Make every import replay-safe and attributable to an immutable source checksum, row number, and normalized row hash.
-7. Run the same transformation in dry-run mode before any write.
+6. Make every import replay-safe and attributable to an immutable source checksum, category-map checksum, prepared row/count digest, row number, and normalized row hash.
+7. Run the same transformation in dry-run mode before any write. The confirmed source-only result is `434 total / 102 ready / 0 duplicate / 332 quarantined`; database target matches can only add quarantines.
 8. Import into a disposable migrated PostgreSQL database before a controlled target environment.
 9. Back up the target database and record the backup identifier before a production import.
 10. Require editorial reconciliation and owner sign-off before any imported record can become public.
@@ -109,7 +109,7 @@ Until that decision is implemented, import only an unambiguous primary occurrenc
 ### Text
 
 - Decode as UTF-8 with optional BOM.
-- Normalize line endings and trim leading/trailing Unicode whitespace.
+- Normalize line endings, collapse quoted internal line breaks to spaces, and trim leading/trailing Unicode whitespace.
 - Preserve apostrophes, accents, ampersands, and non-ASCII names.
 - Reject embedded NUL/control characters.
 - Enforce application field-length limits before writes.
@@ -145,29 +145,25 @@ Create a reviewed mapping file, for example `tools/data/festival-category-map.js
 
 ## 6. Import implementation
 
-Add versioned tools rather than embedding CSV logic in a route:
+The versioned implementation is application code, not a route:
 
-- `tools/scripts/profile-festival-import.mjs`
-- `tools/scripts/import-festivals.mjs`
-- `tools/data/festival-category-map.json`
-- Unit fixtures under `apps/save-philly-festivals/tests/fixtures/festival-import/`
+- `apps/save-philly-festivals/src/features/festival-import/` — parser, normalizer, profile, repository, transactional service, and redacted report contracts;
+- `apps/save-philly-festivals/scripts/festival-import.mjs` — `dry-run`, `prepare`, `apply`, and `report` modes;
+- `apps/save-philly-festivals/scripts/festival-import-test.mjs` — disposable PostgreSQL rehearsal;
+- `tools/data/festival-category-map.json` — reviewed byte-exact category aliases;
+- unit fixtures under `apps/save-philly-festivals/tests/fixtures/festival-import/`.
 
-Suggested commands:
-
-```sh
-pnpm exec nx run save-philly-festivals:festival-import-profile -- --file docs/Festivals_Postgres_Export.csv
-pnpm exec nx run save-philly-festivals:festival-import-dry-run -- --file docs/Festivals_Postgres_Export.csv
-pnpm exec nx run save-philly-festivals:festival-import-apply -- --batch-id <approved-batch-id>
-```
+Use the exact commands and current checksums in `docs/FESTIVAL-DATA-IMPORT-RUNBOOK.md`. Every file-bearing command requires explicit expected source and category-map SHA-256 values.
 
 The apply target must require:
 
 - an approved local/staging/production environment classification;
 - exact expected file checksum;
 - pre-created prepared batch ID;
+- a detached Ed25519 post-prepare approval whose verified signature derives the distinct reviewer identity and binds source/map/prepared evidence plus complete backup provider/artifact/version and restore-test evidence;
 - explicit confirmation token for production;
 - a local/test database guard for automated tests;
-- a transaction per bounded chunk or one transaction if measured safe;
+- one atomic transaction per target row, an expiring fenced attempt token/heartbeat on every row and terminal transition, durable failed-batch counts, and explicit evidence-revalidating `--resume` recovery of failed or expired-running attempts;
 - no external email, Drive, N8N, geocoding, social, or other provider calls.
 
 Use Prisma transactions and parameterized queries only. Do not construct SQL from CSV values.
@@ -187,8 +183,8 @@ Use Prisma transactions and parameterized queries only. Do not construct SQL fro
 1. Add lineage schema through a forward Prisma migration.
 2. Implement pure parsing/normalization functions with fixture tests.
 3. Implement dry-run output with no writes.
-4. Implement idempotent batch/row writes and deterministic slug collision handling.
-5. Add PostgreSQL integration tests for constraints, transactions, replay, duplicates, quarantine, and rollback.
+4. Implement atomic insert-or-fetch prepare, idempotent row writes, deterministic slug collision handling, and explicit failed-batch resume.
+5. Add PostgreSQL integration tests for constraints, concurrent prepare, injected mid-batch failure/resume, replay, duplicates, and quarantine.
 6. Assert public festival APIs cannot expose imported drafts or private contact/import metadata.
 
 ### Phase C — Rehearse
@@ -205,12 +201,13 @@ Use Prisma transactions and parameterized queries only. Do not construct SQL fro
 
 1. Freeze application writes or use a maintenance window if concurrent editorial changes can collide.
 2. Take and verify a database backup; record backup ID and restore command.
-3. Confirm the exact release SHA, importer version, source checksum, category map checksum, operator, reviewer, and approved batch.
+3. Confirm the exact release SHA, importer version, source checksum, category map checksum, operator, and prepared batch digest.
 4. Execute dry-run against the target and compare it with rehearsal evidence.
-5. Apply the approved batch.
-6. Run reconciliation queries and application smoke tests.
-7. Keep imported rows private pending editorial review.
-8. Record completion evidence and assign quarantined rows to an owner.
+5. Have a distinct reviewer sign the canonical immutable Ed25519 approval for the prepared batch plus backup and restore-test evidence; verify it against the configured public key.
+6. Apply the approved batch; if it fails after durable row commits, investigate and explicitly resume with the exact inputs.
+7. Run reconciliation queries and application smoke tests.
+8. Keep imported rows private pending editorial review.
+9. Record completion evidence and assign quarantined rows to an owner.
 
 ## 8. Validation and acceptance criteria
 
@@ -245,22 +242,17 @@ The implementation should generate, without exposing contact values in routine l
 
 Do not print full raw rows, contact emails, phones, or URLs containing query tokens to CI logs.
 
-## 10. Rollback and forward recovery
+## 10. Archive and forward recovery
 
-Preferred recovery before editorial edits:
+The importer intentionally provides no delete or rollback command. A failed technical run or expired `running` lease is resumable only with explicit `--resume` after exact input/operator/signed-review revalidation. Apply attempts are token-fenced so stale processes cannot write after recovery; a wrong completed batch uses archive-and-forward recovery that preserves lineage and workflow audit history:
 
-1. Mark the batch `rolled_back`.
-2. In a transaction, delete only category links, target festivals, and lineage rows proven to belong exclusively to that batch and not subsequently edited or referenced.
-3. Verify counts and public visibility.
+1. Stop editorial processing for the affected batch.
+2. Transition affected festivals to `archived` through the normal audited workflow so they remain private.
+3. Retain the batch, row lineage, transitions, revisions, occurrences, and category evidence.
+4. Correct data through a reviewed forward repair and explicitly reconcile dependent records.
+5. Verify public exclusion and preserve the recovery report.
 
-After editorial edits or downstream references exist, do not blindly delete. Use forward recovery:
-
-- mark affected records archived/private;
-- correct data through a reviewed repair batch;
-- retain transition/import history;
-- reconcile dependent records explicitly.
-
-A full database restore is the emergency option when the import causes broad corruption and the approved recovery point meets the required data-loss window. Practice restore in isolation before production execution.
+Do not delete imported records even before editorial edits: references and audit evidence may already exist. A verified full-database restore is the emergency option for broad corruption only when the approved recovery point meets the data-loss window. Practice restore in isolation before production execution. See `docs/FESTIVAL-DATA-IMPORT-RUNBOOK.md`.
 
 ## 11. Ownership and approvals
 

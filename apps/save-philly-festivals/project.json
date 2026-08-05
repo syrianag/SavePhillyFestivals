@@ -108,6 +108,22 @@
         "cwd": "{projectRoot}"
       }
     },
+    "festival-import": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsx scripts/festival-import.mjs",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "festival-import-test": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsx scripts/festival-import-test.mjs",
+        "cwd": "{projectRoot}"
+      }
+    },
     "audit": {
       "executor": "nx:run-commands",
       "cache": false,
