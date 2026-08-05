@@ -13,6 +13,8 @@
     "test:coverage": "nx run save-philly-festivals:test-coverage",
     "e2e": "nx run save-philly-festivals:e2e",
     "migrate:test": "nx run save-philly-festivals:migrate-test",
+    "festival:import": "nx run save-philly-festivals:festival-import",
+    "festival:import:test": "nx run save-philly-festivals:festival-import-test",
     "db:seed": "nx run save-philly-festivals:seed",
     "db:verify-admin": "nx run save-philly-festivals:verify-seeded-admin",
     "verify": "nx run save-philly-festivals:prisma-validate --outputStyle=static && nx run save-philly-festivals:audit --outputStyle=static && nx run save-philly-festivals:test-coverage --outputStyle=static && nx run n8n:test --outputStyle=static && nx run n8n:validate --outputStyle=static && nx run-many -t lint build --projects=save-philly-festivals --outputStyle=static",

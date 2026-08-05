@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "categories": [
+    { "slug": "music", "aliases": ["Music"] },
+    { "slug": "food", "aliases": ["Food & Drink"] },
+    { "slug": "art", "aliases": ["Arts & Crafts"] },
+    { "slug": "cultural", "aliases": ["Cultural Heritage"] },
+    { "slug": "community", "aliases": ["community"] },
+    { "slug": "caribbean", "aliases": ["Caribbean"] }
+  ]
+}

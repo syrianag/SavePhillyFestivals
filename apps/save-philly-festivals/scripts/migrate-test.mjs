@@ -17,6 +17,7 @@ const migrationsRoot = join(projectRoot, "prisma/migrations");
 const f07Migration = "20260804050000_producer_submission_workflow";
 const f08Migration = "20260804060000_editorial_workflow";
 const f09Migration = "20260804070000_moderated_social_feed";
+const festivalImportMigration = "20260805000000_festival_data_import";
 const snapshotFieldSql = FESTIVAL_REVISION_SNAPSHOT_FIELDS
   .map((field) => `'${field.replaceAll("'", "''")}'`)
   .join(", ");
@@ -63,6 +64,7 @@ const preF07 = migrationNames.filter((name) => name < f07Migration);
 if (!migrationNames.includes(f07Migration)) throw new Error(`Missing ${f07Migration} migration.`);
 if (!migrationNames.includes(f08Migration)) throw new Error(`Missing ${f08Migration} migration.`);
 if (!migrationNames.includes(f09Migration)) throw new Error(`Missing ${f09Migration} migration.`);
+if (!migrationNames.includes(festivalImportMigration)) throw new Error(`Missing ${festivalImportMigration} migration.`);
 
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
@@ -493,6 +495,135 @@ try {
     await client.query(`DELETE FROM "SocialPostModerationTransition" WHERE "id" = '82000000-0000-4000-8000-000000000001'`);
   }, "Social moderation audit delete", /immutable/);
   console.log("Verified F-09 pending-only ingestion, source-generation isolation, revision/content/attribution coherence, deferred immutable moderation audit chains, approved-only filtering, hidden exclusion, and audit mutation protection.");
+
+  await client.query(readFileSync(join(migrationsRoot, festivalImportMigration, "migration.sql"), "utf8"));
+  const importConstraints = [
+    "FestivalImportBatch_source_checksum_sha256_format", "FestivalImportBatch_bound_digests_format", "FestivalImportBatch_prepared_counts_object", "FestivalImportBatch_row_counts_coherent",
+    "FestivalImportBatch_status_coherence", "FestivalImportBatch_review_coherence", "FestivalImportBatch_backup_coherence", "FestivalImportBatch_production_completion_coherence",
+    "FestivalImportBatch_backup_override_coherence", "FestivalImportRow_hashes_format",
+    "FestivalImportRow_normalized_data_redacted", "FestivalImportRow_disposition_coherence",
+    "FestivalImportRow_review_coherence", "FestivalImportRow_override_coherence",
+    "FestivalImportIssue_code_stable", "FestivalImportIssue_safe_details_redacted", "FestivalImportIssue_row_id_batch_id_fkey",
+  ];
+  const importConstraintRows = await client.query(`SELECT conname FROM pg_constraint WHERE conname = ANY($1::text[])`, [importConstraints]);
+  if (importConstraintRows.rowCount !== importConstraints.length) throw new Error("Festival import lineage constraints are incomplete.");
+  const importEvidenceTriggers = await client.query(`SELECT tgname FROM pg_trigger WHERE NOT tgisinternal AND tgname = ANY($1::text[])`, [[
+    "FestivalImportBatch_evidence_immutable_trigger", "FestivalImportRow_prepared_evidence_immutable_trigger",
+    "FestivalImportIssue_append_only_update_trigger", "FestivalImportIssue_append_only_delete_trigger",
+  ]]);
+  if (importEvidenceTriggers.rowCount !== 4) throw new Error("Festival import immutable-evidence triggers are incomplete.");
+  const attemptTokenIndex = await client.query(`SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'FestivalImportBatch_apply_attempt_token_key'`);
+  if (attemptTokenIndex.rowCount !== 1 || !/UNIQUE/.test(attemptTokenIndex.rows[0].indexdef)) throw new Error("Festival import apply-attempt token uniqueness is missing.");
+  const importedTargetIndex = await client.query(`SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'FestivalImportRow_imported_target_festival_id_key'`);
+  if (importedTargetIndex.rowCount !== 1 || !/UNIQUE/.test(importedTargetIndex.rows[0].indexdef) || !/disposition.*imported/.test(importedTargetIndex.rows[0].indexdef)) {
+    throw new Error("Imported-target partial uniqueness is missing.");
+  }
+
+  const importBatchId = "90000000-0000-4000-8000-000000000001";
+  await client.query(`INSERT INTO "FestivalImportBatch" (
+    "id", "source_name", "source_checksum_sha256", "category_map_checksum_sha256", "prepared_digest_sha256", "prepared_counts", "import_profile", "import_profile_version", "environment",
+    "operator_user_id", "total_row_count", "ready_row_count", "updated_at"
+  ) VALUES ($1, 'review-fixture.csv', $2, repeat('1', 64), repeat('2', 64), '{"total":2,"ready":2}'::jsonb, 'festival_csv', 1, 'staging', $3, 2, 2, CURRENT_TIMESTAMP)`, [importBatchId, "b".repeat(64), actorId]);
+
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "FestivalImportBatch" (
+      "id", "source_name", "source_checksum_sha256", "category_map_checksum_sha256", "prepared_digest_sha256", "prepared_counts", "import_profile", "import_profile_version", "environment",
+      "operator_user_id", "updated_at"
+    ) VALUES ('90000000-0000-4000-8000-000000000002', 'same-source.csv', $1, repeat('1', 64), repeat('2', 64), '{}'::jsonb, 'festival_csv', 1, 'staging', $2, CURRENT_TIMESTAMP)`, ["b".repeat(64), actorId]);
+  }, "Duplicate source checksum across import batches", /source_checksum_sha256_key/);
+
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "FestivalImportBatch" (
+      "id", "source_name", "source_checksum_sha256", "category_map_checksum_sha256", "prepared_digest_sha256", "prepared_counts", "import_profile", "import_profile_version", "environment",
+      "operator_user_id", "total_row_count", "ready_row_count", "updated_at"
+    ) VALUES ('90000000-0000-4000-8000-000000000002', 'bad-count.csv', $1, repeat('1', 64), repeat('2', 64), '{}'::jsonb, 'festival_csv', 1, 'staging', $2, 2, 1, CURRENT_TIMESTAMP)`, ["c".repeat(64), actorId]);
+  }, "Incoherent import batch counts", /row_counts_coherent/);
+
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "FestivalImportBatch" (
+      "id", "source_name", "source_checksum_sha256", "category_map_checksum_sha256", "prepared_digest_sha256", "prepared_counts", "import_profile", "import_profile_version", "environment",
+      "operator_user_id", "status", "started_at", "completed_at", "updated_at"
+    ) VALUES ('90000000-0000-4000-8000-000000000003', 'unsafe-production.csv', $1, repeat('1', 64), repeat('2', 64), '{}'::jsonb, 'festival_csv', 1, 'production', $2, 'completed', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, ["d".repeat(64), actorId]);
+  }, "Production import completion without reviewer and backup", /production_completion_coherence/);
+
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "FestivalImportBatch" (
+      "id", "source_name", "source_checksum_sha256", "category_map_checksum_sha256", "prepared_digest_sha256", "prepared_counts", "import_profile", "import_profile_version", "environment",
+      "operator_user_id", "status", "started_at", "updated_at"
+    ) VALUES ('90000000-0000-4000-8000-000000000006', 'running-without-lease.csv', $1, repeat('1', 64), repeat('2', 64), '{}'::jsonb, 'festival_csv', 1, 'staging', $2, 'running', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, ["9".repeat(64), actorId]);
+  }, "Running import batch without a fenced lease", /status_coherence/);
+
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "FestivalImportBatch" (
+      "id", "source_name", "source_checksum_sha256", "category_map_checksum_sha256", "prepared_digest_sha256", "prepared_counts", "import_profile", "import_profile_version", "environment",
+      "operator_user_id", "backup_override_reason", "updated_at"
+    ) VALUES ('90000000-0000-4000-8000-000000000004', 'partial-override.csv', $1, repeat('1', 64), repeat('2', 64), '{}'::jsonb, 'festival_csv', 1, 'staging', $2, 'No backup available', CURRENT_TIMESTAMP)`, ["e".repeat(64), actorId]);
+  }, "Partial backup override evidence", /backup_override_coherence/);
+
+  const importedRowId = "91000000-0000-4000-8000-000000000001";
+  await client.query(`INSERT INTO "FestivalImportRow" (
+    "id", "batch_id", "row_number", "source_record_id", "source_start_line", "source_hash_sha256",
+    "normalized_hash_sha256", "normalized_data", "prepared_disposition", "prepared_digest_sha256", "disposition", "target_festival_id", "updated_at"
+  ) VALUES ($1, $2, 1, 'record-1', 2, $3, $4, '{"name":"Redacted festival"}'::jsonb, 'imported', repeat('9', 64), 'imported', $5, CURRENT_TIMESTAMP)`,
+  [importedRowId, importBatchId, "1".repeat(64), "2".repeat(64), approvedId]);
+
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "FestivalImportRow" (
+      "id", "batch_id", "row_number", "source_record_id", "source_start_line", "source_hash_sha256",
+      "normalized_hash_sha256", "normalized_data", "prepared_disposition", "prepared_digest_sha256", "updated_at"
+    ) VALUES ('91000000-0000-4000-8000-000000000002', $1, 1, 'same-row-number', 3, $2, $3, '{"name":"Same row"}'::jsonb, 'ready', repeat('9', 64), CURRENT_TIMESTAMP)`,
+    [importBatchId, "3".repeat(64), "4".repeat(64)]);
+  }, "Duplicate row number within an import batch", /batch_id_row_number_key/);
+
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "FestivalImportRow" (
+      "id", "batch_id", "row_number", "source_record_id", "source_start_line", "source_hash_sha256",
+      "normalized_hash_sha256", "normalized_data", "prepared_disposition", "prepared_digest_sha256", "updated_at"
+    ) VALUES ('91000000-0000-4000-8000-000000000002', $1, 2, 'bad-hash', 3, 'NOT-A-SHA256', $2, '{"name":"Bad hash"}'::jsonb, 'ready', repeat('9', 64), CURRENT_TIMESTAMP)`,
+    [importBatchId, "4".repeat(64)]);
+  }, "Invalid import row hash", /hashes_format/);
+
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "FestivalImportRow" (
+      "id", "batch_id", "row_number", "source_record_id", "source_start_line", "source_hash_sha256",
+      "normalized_hash_sha256", "normalized_data", "prepared_disposition", "prepared_digest_sha256", "disposition", "target_festival_id", "updated_at"
+    ) VALUES ('91000000-0000-4000-8000-000000000002', $1, 2, 'record-2', 3, $2, $3, '{"name":"Second"}'::jsonb, 'imported', repeat('9', 64), 'imported', $4, CURRENT_TIMESTAMP)`,
+    [importBatchId, "3".repeat(64), "4".repeat(64), approvedId]);
+  }, "Second imported row for one target festival", /imported_target_festival_id_key/);
+
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "FestivalImportRow" (
+      "id", "batch_id", "row_number", "source_record_id", "source_start_line", "source_hash_sha256",
+      "normalized_hash_sha256", "normalized_data", "prepared_disposition", "prepared_digest_sha256", "disposition", "updated_at"
+    ) VALUES ('91000000-0000-4000-8000-000000000003', $1, 2, 'record-3', 4, $2, $3, '{"nested":{"contactEmail":"must-not-persist@example.test"}}'::jsonb, 'ready', repeat('9', 64), 'ready', CURRENT_TIMESTAMP)`,
+    [importBatchId, "5".repeat(64), "6".repeat(64)]);
+  }, "Nested raw contact data in normalized import evidence", /normalized_data_redacted/);
+
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "FestivalImportRow" (
+      "id", "batch_id", "row_number", "source_record_id", "source_start_line", "source_hash_sha256",
+      "normalized_hash_sha256", "normalized_data", "prepared_disposition", "prepared_digest_sha256", "disposition", "updated_at"
+    ) VALUES ('91000000-0000-4000-8000-000000000004', $1, 2, 'record-4', 5, $2, $3, '{"name":"Missing target"}'::jsonb, 'imported', repeat('9', 64), 'imported', CURRENT_TIMESTAMP)`,
+    [importBatchId, "7".repeat(64), "8".repeat(64)]);
+  }, "Imported disposition without target lineage", /disposition_coherence/);
+
+  const secondImportBatchId = "90000000-0000-4000-8000-000000000005";
+  await client.query(`INSERT INTO "FestivalImportBatch" (
+    "id", "source_name", "source_checksum_sha256", "category_map_checksum_sha256", "prepared_digest_sha256", "prepared_counts", "import_profile", "import_profile_version", "environment",
+    "operator_user_id", "updated_at"
+  ) VALUES ($1, 'second-fixture.csv', $2, repeat('1', 64), repeat('2', 64), '{}'::jsonb, 'festival_csv', 1, 'staging', $3, CURRENT_TIMESTAMP)`, [secondImportBatchId, "f".repeat(64), actorId]);
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "FestivalImportIssue" ("id", "batch_id", "row_id", "severity", "code", "message")
+      VALUES ('92000000-0000-4000-8000-000000000001', $1, $2, 'error', 'row_mismatch', 'Safe mismatch evidence')`,
+    [secondImportBatchId, importedRowId]);
+  }, "Import issue linked to a row in another batch", /row_id_batch_id_fkey/);
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "FestivalImportIssue" ("id", "batch_id", "severity", "code", "message", "safe_details")
+      VALUES ('92000000-0000-4000-8000-000000000002', $1, 'warning', 'unsafe_details', 'Safe summary only', '{"nested":{"raw-contact":"must-not-persist"}}'::jsonb)`,
+    [importBatchId]);
+  }, "Nested raw contact data in import issue safe details", /safe_details_redacted/);
+
+  console.log("Verified festival import migration presence, ordinary source uniqueness, imported-target partial uniqueness, redacted lineage fields, Restrict relations, and representative hash/count/status/production/override/disposition/issue coherence rejections.");
 } finally {
   await client.end();
 }
