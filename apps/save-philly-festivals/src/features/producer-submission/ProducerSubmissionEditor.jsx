@@ -26,6 +26,7 @@ const emptyForm = {
 
 const inputClass = "mt-2 min-h-11 w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200 disabled:bg-slate-100 disabled:text-slate-600";
 const labelClass = "block min-w-0 text-sm font-semibold text-slate-800";
+const workflowLabels = { draft: "Draft", pending_review: "Pending review", changes_requested: "Changes requested", approved: "Approved", rejected: "Rejected", published: "Published", unpublished: "Unpublished", canceled: "Canceled", archived: "Archived" };
 
 function formFromFestival(festival) {
   return {
@@ -226,7 +227,7 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
 
   async function saveDraft(event) {
     event?.preventDefault();
-    if (!festival || festival.workflow_state === "pending_review" || !mutationsEnabled) return festival;
+    if (!festival || !["draft", "changes_requested"].includes(festival.workflow_state) || !mutationsEnabled) return festival;
     setPendingAction("save");
     setError({ message: "", issues: [] });
     setNotice("");
@@ -292,16 +293,19 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
   if (!festival) return <ErrorSummary message={error.message} issues={error.issues} />;
 
   const pendingReview = festival.workflow_state === "pending_review";
+  const editableState = ["draft", "changes_requested"].includes(festival.workflow_state);
   const capabilityReadOnly = !mutationsEnabled;
-  const readOnly = pendingReview || capabilityReadOnly;
+  const readOnly = !editableState || capabilityReadOnly;
+  const latestProducerMessage = [...(festival.workflow_transitions || [])].reverse().find((item) => item.producer_message)?.producer_message;
   return (
     <div className="min-w-0 space-y-6">
       <header className="min-w-0">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="font-heading text-3xl font-bold sm:text-4xl">{pendingReview ? "Submission pending review" : reviewing ? "Review submission" : "Festival submission"}</h1>
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-900">{pendingReview ? "Pending review" : capabilityReadOnly ? "Draft — changes unavailable" : "Draft"}</span>
+          <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-900">{workflowLabels[festival.workflow_state] || festival.workflow_state}{capabilityReadOnly && editableState ? " — changes unavailable" : ""}</span>
         </div>
-        <p className="mt-2 max-w-3xl text-slate-600">{pendingReview ? "Your submission is read-only while the Philly Festivals team reviews it." : capabilityReadOnly ? "This draft is still private. Changes are temporarily unavailable until required production protections are restored." : "Save as often as you need. Your festival is not public until it is reviewed and approved."}</p>
+        <p className="mt-2 max-w-3xl text-slate-600">{pendingReview ? "Your submission is read-only while the Philly Festivals team reviews it." : festival.workflow_state === "changes_requested" ? "Review the producer-safe feedback, update your festival, and resubmit when ready." : !editableState ? "This submission is read-only. Contact the Philly Festivals team if you need help." : capabilityReadOnly ? "This draft is still private. Changes are temporarily unavailable until required production protections are restored." : "Save as often as you need. Approval is separate from publication, and this record remains private until published."}</p>
+        {latestProducerMessage && <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-950"><b>Editorial message:</b> {latestProducerMessage}</p>}
       </header>
 
       <div aria-live="polite" aria-atomic="true">{notice && <p className="rounded-lg border border-green-200 bg-green-50 p-4 text-green-900" role="status">{notice}</p>}</div>
@@ -368,6 +372,8 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
           )}
         </form>
       )}
+
+      {(festival.workflow_transitions || []).length > 0 && <section className="rounded-xl border border-slate-200 bg-white p-5"><h2 className="font-heading text-xl font-bold">Submission timeline</h2><ol className="mt-3 space-y-3">{festival.workflow_transitions.map((item) => <li key={item.revision} className="border-l-2 border-slate-300 pl-3"><b>{item.to_state.replaceAll("_", " ")}</b> · {new Date(item.created_at).toLocaleString()}{item.producer_message && <p className="text-slate-700">{item.producer_message}</p>}</li>)}</ol></section>}
 
       {!reviewing && (uploadsEnabled
         ? <AssetUploader festivalId={festival.id} disabled={readOnly} />

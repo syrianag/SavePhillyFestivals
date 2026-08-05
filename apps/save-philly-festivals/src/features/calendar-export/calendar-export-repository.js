@@ -1,4 +1,5 @@
 import { mapCalendarSelections } from "@/features/calendar-export/calendar-export-resolution";
+import { calendarSelectionWhere } from "@/features/editorial-workflow/publication-policy";
 
 const festivalCalendarSelect = Object.freeze({
   id: true,
@@ -17,13 +18,19 @@ const festivalCalendarSelect = Object.freeze({
   calendar_published_at: true,
   created_at: true,
   updated_at: true,
+  occurrences: {
+    where: { is_primary: true },
+    take: 1,
+    select: { calendar_date_type: true, time_zone: true, start_at: true, end_at: true, all_day_start: true, all_day_end: true, calendar_status: true, calendar_sequence: true, calendar_published_at: true, created_at: true, updated_at: true },
+  },
 });
 
 const parentCalendarSelect = Object.freeze({
   id: true,
   slug: true,
   location: true,
-  status: true,
+  workflow_state: true,
+  first_published_at: true,
   calendar_status: true,
   calendar_sequence: true,
   calendar_published_at: true,
@@ -63,35 +70,15 @@ const validEventInterval = {
   ],
 };
 
-const availableFestival = {
-  AND: [
-    {
-      OR: [
-        { status: "approved", calendar_status: { not: "canceled" } },
-        { calendar_status: "canceled", calendar_published_at: { not: null } },
-      ],
-    },
-    validFestivalInterval,
-  ],
-};
-
-const availableParent = {
-  OR: [
-    { status: "approved", calendar_status: { not: "canceled" } },
-    { calendar_status: "canceled", calendar_published_at: { not: null } },
-  ],
-};
+const availableFestival = { AND: [calendarSelectionWhere, validFestivalInterval] };
+const availableParent = calendarSelectionWhere;
 
 const availableEvent = {
   AND: [
     {
       OR: [
         { calendar_status: { not: "canceled" }, festival: availableParent },
-        {
-          calendar_status: "canceled",
-          calendar_published_at: { not: null },
-          festival: availableParent,
-        },
+        { calendar_status: "canceled", calendar_published_at: { not: null }, festival: availableParent },
       ],
     },
     validEventInterval,

@@ -31,8 +31,8 @@ describe("F-04 persistence and security contract", () => {
     const repository = read("src/features/schedule-email/schedule-email-repository.js");
     const schema = read("src/features/schedule-email/schedule-email-schema.js");
 
-    expect(repository).toContain("status: FESTIVAL_STATUS.APPROVED");
-    expect(repository).toContain("festival: { status: FESTIVAL_STATUS.APPROVED }");
+    expect(repository).toContain("publishedSelectionWhere");
+    expect(repository).toContain("festival: publishedSelectionWhere");
     expect(repository).not.toMatch(/description:\s*true|website_url:\s*true/);
     expect(schema).toContain(".strict()");
     expect(schema).not.toMatch(/title|start_time|website_url/);

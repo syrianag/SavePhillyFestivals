@@ -1,9 +1,14 @@
+import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "dotenv";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import bcrypt from "bcryptjs";
+import {
+  buildFestivalRevisionSnapshot,
+  FESTIVAL_REVISION_SNAPSHOT_SELECT,
+} from "../src/features/editorial-workflow/festival-revision-snapshot.js";
 
 const prismaDirectory = dirname(fileURLToPath(import.meta.url));
 
@@ -589,6 +594,15 @@ async function seedUsers() {
     });
   }
   console.log(`Seeded ${users.length} users`);
+
+  const admin = await prisma.user.findUnique({
+    where: { email: users[0].email },
+    select: { id: true, role: true },
+  });
+  if (!admin || !["admin", "super_admin"].includes(admin.role)) {
+    throw new Error("Seed audit actor must exist with an admin or super_admin role");
+  }
+  return admin;
 }
 
 async function seedCategories() {
@@ -613,53 +627,137 @@ async function seedTags() {
   console.log(`Seeded ${tags.length} tags`);
 }
 
-async function seedFestivals() {
+const seedWorkflowState = Object.freeze({
+  draft: "draft",
+  pending: "pending_review",
+  approved: "approved",
+  rejected: "rejected",
+});
+
+function seedFestivalData(festival, slug) {
+  const workflowState = seedWorkflowState[festival.status];
+  if (!workflowState) throw new Error(`Unsupported seed workflow state: ${festival.status}`);
+  return {
+    name: festival.name,
+    slug,
+    description: festival.description,
+    location: festival.location,
+    city: festival.city,
+    state: festival.state,
+    zip_code: festival.zip_code,
+    website_url: festival.website_url,
+    logo_url: null,
+    image_url: null,
+    rejection_reason: null,
+    submitted_by: festival.submitted_by,
+    contact_name: festival.contact_name,
+    contact_email: festival.contact_email,
+    contact_phone: festival.contact_phone,
+    story: festival.story,
+    mission: festival.mission,
+    history: festival.history,
+    start_date: festival.start_date,
+    end_date: festival.end_date,
+    calendar_date_type: "timed",
+    time_zone: "America/New_York",
+    all_day_start: null,
+    all_day_end: null,
+    calendar_status: "confirmed",
+    calendar_sequence: 0,
+    calendar_published_at: null,
+    first_published_at: null,
+    published_at: null,
+    canceled_at: null,
+    public_message: null,
+    workflow_state: workflowState,
+    revision: 0,
+  };
+}
+
+function comparableSeedValue(value) {
+  return value instanceof Date ? value.toISOString() : value ?? null;
+}
+
+function assertSeedFestivalStable(current, desired) {
+  const drifted = Object.entries(desired)
+    .filter(([field, value]) => comparableSeedValue(current[field]) !== comparableSeedValue(value))
+    .map(([field]) => field);
+  if (drifted.length > 0) {
+    throw new Error(`Seed festival ${desired.slug} differs in ${drifted.join(", ")}; refusing an unaudited fixture mutation`);
+  }
+}
+
+async function ensureFestivalAudit(transaction, festival, actor) {
+  const existingTransition = await transaction.festivalTransition.findUnique({
+    where: {
+      festival_id_revision: {
+        festival_id: festival.id,
+        revision: festival.revision,
+      },
+    },
+    select: { id: true, actor_user_id: true, from_state: true, to_state: true },
+  });
+  const transition = existingTransition || await transaction.festivalTransition.create({
+    data: {
+      id: randomUUID(),
+      festival_id: festival.id,
+      actor_user_id: actor.id,
+      from_state: null,
+      to_state: festival.workflow_state,
+      revision: festival.revision,
+      reason: festival.workflow_state === "rejected" ? "Seed fixture rejection" : null,
+      producer_message: festival.workflow_state === "rejected" ? "This sample festival was not accepted." : null,
+    },
+    select: { id: true, actor_user_id: true, from_state: true, to_state: true },
+  });
+  if (transition.from_state !== null || transition.to_state !== festival.workflow_state) {
+    throw new Error(`Seed festival ${festival.slug} has incompatible revision ${festival.revision} transition evidence`);
+  }
+  const transitionActor = await transaction.user.findUnique({
+    where: { id: transition.actor_user_id },
+    select: { role: true },
+  });
+  if (!transitionActor || !["admin", "super_admin"].includes(transitionActor.role)) {
+    throw new Error(`Seed festival ${festival.slug} audit actor has an invalid role snapshot`);
+  }
+  const existingRevision = await transaction.festivalRevision.findUnique({
+    where: { transition_id: transition.id },
+    select: { id: true },
+  });
+  if (!existingRevision) {
+    await transaction.festivalRevision.create({
+      data: {
+        id: randomUUID(),
+        festival_id: festival.id,
+        workflow_revision: festival.revision,
+        transition_id: transition.id,
+        actor_user_id: transition.actor_user_id,
+        snapshot: buildFestivalRevisionSnapshot(festival),
+      },
+    });
+  }
+}
+
+async function seedFestivals(actor) {
   for (const f of festivals) {
     const slug = generateSlug(f.name);
-
-    const festival = await prisma.festival.upsert({
-      where: { slug },
-      update: {
-        name: f.name,
-        description: f.description,
-        location: f.location,
-        city: f.city,
-        state: f.state,
-        zip_code: f.zip_code,
-        website_url: f.website_url,
-        status: f.status,
-        submitted_by: f.submitted_by,
-        contact_name: f.contact_name,
-        contact_email: f.contact_email,
-        contact_phone: f.contact_phone,
-        story: f.story,
-        mission: f.mission,
-        history: f.history,
-        start_date: f.start_date,
-        end_date: f.end_date,
-        image_url: null,
-      },
-      create: {
-        name: f.name,
-        slug,
-        description: f.description,
-        location: f.location,
-        city: f.city,
-        state: f.state,
-        zip_code: f.zip_code,
-        website_url: f.website_url,
-        status: f.status,
-        submitted_by: f.submitted_by,
-        contact_name: f.contact_name,
-        contact_email: f.contact_email,
-        contact_phone: f.contact_phone,
-        story: f.story,
-        mission: f.mission,
-        history: f.history,
-        start_date: f.start_date,
-        end_date: f.end_date,
-        image_url: null,
-      },
+    const desired = seedFestivalData(f, slug);
+    const festival = await prisma.$transaction(async (transaction) => {
+      const existing = await transaction.festival.findUnique({
+        where: { slug },
+        select: FESTIVAL_REVISION_SNAPSHOT_SELECT,
+      });
+      if (existing) {
+        assertSeedFestivalStable(existing, desired);
+        await ensureFestivalAudit(transaction, existing, actor);
+        return existing;
+      }
+      const created = await transaction.festival.create({
+        data: { id: randomUUID(), ...desired },
+        select: FESTIVAL_REVISION_SNAPSHOT_SELECT,
+      });
+      await ensureFestivalAudit(transaction, created, actor);
+      return created;
     });
 
     // ── Festival-Category links ─────────────────────────────
@@ -754,10 +852,10 @@ async function seedSchedules() {
 // ─── Main ──────────────────────────────────────────────────
 
 async function main() {
-  await seedUsers();
+  const auditActor = await seedUsers();
   await seedCategories();
   await seedTags();
-  await seedFestivals();
+  await seedFestivals(auditActor);
   await seedSchedules();
   console.log("\nSeed complete!");
 }

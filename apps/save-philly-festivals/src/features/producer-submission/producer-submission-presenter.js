@@ -3,11 +3,19 @@ const FESTIVAL_RESPONSE_FIELDS = Object.freeze([
   "contact_name", "contact_email", "contact_phone", "website_url",
   "calendar_date_type", "time_zone", "start_date", "end_date",
   "all_day_start", "all_day_end", "workflow_state", "revision",
-  "created_at", "updated_at",
+  "created_at", "updated_at", "workflow_transitions",
 ]);
 
 export function presentProducerFestival(festival) {
-  return Object.fromEntries(FESTIVAL_RESPONSE_FIELDS.map((field) => [field, festival[field] ?? null]));
+  const presented = Object.fromEntries(FESTIVAL_RESPONSE_FIELDS.map((field) => [field, festival[field] ?? null]));
+  presented.workflow_transitions = (festival.workflow_transitions || []).map((item) => ({
+    from_state: item.from_state,
+    to_state: item.to_state,
+    revision: item.revision,
+    producer_message: item.producer_message || null,
+    created_at: item.created_at,
+  }));
+  return presented;
 }
 
 export function presentFestivalAsset(asset) {

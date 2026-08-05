@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { FESTIVAL_STATUS, STATUS_COLORS } from "@/lib/constants";
+import { STATUS_COLORS } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,8 @@ export default async function StaffHub({ user }) {
   const [totalFestivals, pendingFestivals, approvedFestivals, totalSchedules] =
     await Promise.all([
       prisma.festival.count(),
-      prisma.festival.count({ where: { status: FESTIVAL_STATUS.PENDING } }),
-      prisma.festival.count({ where: { status: FESTIVAL_STATUS.APPROVED } }),
+      prisma.festival.count({ where: { workflow_state: "pending_review" } }),
+      prisma.festival.count({ where: { workflow_state: "approved" } }),
       prisma.schedule.count(),
     ]);
 
@@ -30,7 +30,7 @@ export default async function StaffHub({ user }) {
     select: {
       id: true,
       name: true,
-      status: true,
+      workflow_state: true,
       created_at: true,
     },
   });
@@ -123,13 +123,13 @@ export default async function StaffHub({ user }) {
                       <span className="font-medium">{f.name}</span>
                       <Badge
                         className={
-                          STATUS_COLORS[f.status]?.bg && STATUS_COLORS[f.status]?.text
-                            ? `${STATUS_COLORS[f.status].bg} ${STATUS_COLORS[f.status].text}`
+                          STATUS_COLORS[f.workflow_state]?.bg && STATUS_COLORS[f.workflow_state]?.text
+                            ? `${STATUS_COLORS[f.workflow_state].bg} ${STATUS_COLORS[f.workflow_state].text}`
                             : `${STATUS_COLORS.draft.bg} ${STATUS_COLORS.draft.text}`
                         }
                         variant="outline"
                       >
-                        {f.status}
+                        {f.workflow_state.replaceAll("_", " ")}
                       </Badge>
                     </li>
                   ))}

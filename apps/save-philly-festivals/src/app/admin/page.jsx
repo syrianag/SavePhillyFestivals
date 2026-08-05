@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { FESTIVAL_STATUS, STATUS_COLORS } from "@/lib/constants";
+import { STATUS_COLORS } from "@/lib/constants";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Plus,
+
   Settings,
 } from "lucide-react";
 
@@ -20,9 +20,9 @@ export default async function AdminPage() {
   const [totalFestivals, pendingFestivals, approvedFestivals, rejectedFestivals] =
     await Promise.all([
       prisma.festival.count(),
-      prisma.festival.count({ where: { status: FESTIVAL_STATUS.PENDING } }),
-      prisma.festival.count({ where: { status: FESTIVAL_STATUS.APPROVED } }),
-      prisma.festival.count({ where: { status: FESTIVAL_STATUS.REJECTED } }),
+      prisma.festival.count({ where: { workflow_state: "pending_review" } }),
+      prisma.festival.count({ where: { workflow_state: "approved" } }),
+      prisma.festival.count({ where: { workflow_state: "rejected" } }),
     ]);
 
   const recentFestivals = await prisma.festival.findMany({
@@ -31,7 +31,7 @@ export default async function AdminPage() {
     select: {
       id: true,
       name: true,
-      status: true,
+      workflow_state: true,
       created_at: true,
     },
   });
@@ -120,10 +120,10 @@ export default async function AdminPage() {
                   >
                     <span className="font-medium">{f.name}</span>
                     <Badge
-                      className={`${STATUS_COLORS[f.status]?.bg} ${STATUS_COLORS[f.status]?.text}`}
+                      className={`${STATUS_COLORS[f.workflow_state]?.bg || ""} ${STATUS_COLORS[f.workflow_state]?.text || ""}`}
                       variant="outline"
                     >
-                      {f.status}
+                      {f.workflow_state.replaceAll("_", " ")}
                     </Badge>
                   </li>
                 ))}
@@ -137,12 +137,7 @@ export default async function AdminPage() {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
-            <Link href="/admin/submit">
-              <Button variant="outline" className="w-full justify-start gap-2">
-                <Plus className="size-4" />
-                Submit Festival
-              </Button>
-            </Link>
+
             <Link href="/admin/festivals">
               <Button variant="outline" className="w-full justify-start gap-2">
                 <Calendar className="size-4" />

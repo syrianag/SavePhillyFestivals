@@ -16,12 +16,12 @@ function secretsMatch(supplied, expected) {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-function producerCallback(value) {
+function fixtureCallback(value) {
   if (typeof value !== "string" || value.startsWith("//")) return "/producer/dashboard";
   try {
     const parsed = new URL(value, "https://fixture.invalid");
-    const producerPath = parsed.pathname === "/producer" || parsed.pathname.startsWith("/producer/");
-    if (parsed.origin !== "https://fixture.invalid" || !producerPath) return "/producer/dashboard";
+    const allowedPath = parsed.pathname === "/producer" || parsed.pathname.startsWith("/producer/") || parsed.pathname === "/admin" || parsed.pathname.startsWith("/admin/");
+    if (parsed.origin !== "https://fixture.invalid" || !allowedPath) return "/producer/dashboard";
     return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
     return "/producer/dashboard";
@@ -34,14 +34,15 @@ export function GET(request) {
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const response = NextResponse.redirect(new URL(producerCallback(url.searchParams.get("callbackUrl")), url.origin));
+  const response = NextResponse.redirect(new URL(fixtureCallback(url.searchParams.get("callbackUrl")), url.origin));
   if (url.searchParams.get("action") === "logout") {
     response.cookies.delete(PRODUCER_E2E_COOKIE);
     return response;
   }
 
-  resetProducerE2EFixture();
-  const value = url.searchParams.get("as") === "denied" ? "denied" : "producer-a";
+  const requestedRole = url.searchParams.get("as");
+  if (url.searchParams.get("preserve") !== "1") resetProducerE2EFixture();
+  const value = requestedRole === "denied" ? "denied" : requestedRole === "admin" ? "admin" : "producer-a";
   response.cookies.set(PRODUCER_E2E_COOKIE, signProducerE2ECookie(value), {
     httpOnly: true,
     sameSite: "lax",

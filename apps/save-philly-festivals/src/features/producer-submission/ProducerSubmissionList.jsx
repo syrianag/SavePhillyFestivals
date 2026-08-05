@@ -9,6 +9,12 @@ const statusLabels = {
   draft: "Draft",
   changes_requested: "Changes requested",
   pending_review: "Pending review",
+  approved: "Approved — not yet published",
+  rejected: "Rejected",
+  published: "Published",
+  unpublished: "Unpublished",
+  canceled: "Canceled",
+  archived: "Archived",
 };
 
 export default function ProducerSubmissionList({ compact = false }) {
@@ -46,7 +52,7 @@ export default function ProducerSubmissionList({ compact = false }) {
             <div className="flex shrink-0 flex-wrap items-center gap-3">
               <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">{statusLabels[festival.workflow_state] || festival.workflow_state}</span>
               <Link href={`/producer/submit?id=${encodeURIComponent(festival.id)}`} className="rounded-md border border-slate-300 px-4 py-2 font-semibold hover:bg-slate-50">
-                {festival.workflow_state === "pending_review" ? "View" : "Resume"}
+                {["draft", "changes_requested"].includes(festival.workflow_state) ? "Resume" : "View"}
               </Link>
             </div>
           </div>

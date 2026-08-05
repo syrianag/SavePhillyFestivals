@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  AlertTriangle,
   ArrowLeft,
   Calendar,
   Clock,
@@ -78,6 +79,15 @@ export default async function FestivalDetailPage({ params }) {
         Back to Festivals
       </Link>
 
+      {festival.canceled && (
+        <section role="status" data-testid="cancellation-tombstone" className="mb-8 rounded-2xl border-2 border-red-700 bg-red-50 p-6 text-red-950">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-1 size-6 shrink-0" aria-hidden="true" />
+            <div><p className="font-ui text-sm font-bold uppercase tracking-wide">Canceled</p><h1 className="mt-1 font-heading text-2xl font-bold">This festival has been canceled</h1><p className="mt-2 font-body text-lg">{festival.public_message}</p></div>
+          </div>
+        </section>
+      )}
+
       {festival.image_url ? (
         <div className="relative mb-8 aspect-[21/9] overflow-hidden rounded-2xl bg-[#E8E6E1]">
           <Image
@@ -120,13 +130,13 @@ export default async function FestivalDetailPage({ params }) {
           <p className="mt-3 font-body text-lg leading-relaxed text-[#45556C]">
             {festival.description}
           </p>
-          <div className="mt-5">
+          {!festival.canceled && <div className="mt-5">
             <ScheduleSaveButton
               type="festival"
               id={festival.id}
               name={festival.name}
             />
-          </div>
+          </div>}
         </header>
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -157,7 +167,7 @@ export default async function FestivalDetailPage({ params }) {
           </Card>
         </div>
 
-        {festival.website_url ? (
+        {!festival.canceled && (festival.website_url ? (
           <a
             href={festival.website_url}
             target="_blank"
@@ -168,9 +178,9 @@ export default async function FestivalDetailPage({ params }) {
           </a>
         ) : (
           <p className="font-ui text-sm text-[#848484]">Official website coming soon</p>
-        )}
+        ))}
 
-        <section aria-labelledby="official-social-heading">
+        {!festival.canceled && <section aria-labelledby="official-social-heading">
           <h2 id="official-social-heading" className="font-heading text-xl font-semibold">
             Official social channels
           </h2>
@@ -191,7 +201,7 @@ export default async function FestivalDetailPage({ params }) {
           ) : (
             <p className="mt-2 text-sm text-[#848484]">No official social channels listed.</p>
           )}
-        </section>
+        </section>}
 
         {(festival.story || festival.mission || festival.history) && (
           <div className="space-y-6">
@@ -233,7 +243,9 @@ export default async function FestivalDetailPage({ params }) {
           <h2 id="program-heading" className="font-heading text-2xl font-semibold">
             Schedule &amp; program
           </h2>
-          {festival.schedules.length ? (
+          {festival.canceled ? (
+            <p className="mt-2 rounded-lg bg-red-50 p-4 text-sm font-medium text-red-900">Program and schedule actions are unavailable because this festival is canceled.</p>
+          ) : festival.schedules.length ? (
             <div className="mt-4 space-y-3">
               {festival.schedules.map((event) => (
                 <Card key={event.id} data-testid="program-item">

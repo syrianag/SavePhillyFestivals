@@ -31,7 +31,7 @@ describe("F-06 source and response security contract", () => {
     const schema = read("prisma/schema.prisma");
     const migration = read("prisma/migrations/20260804040000_calendar_export_semantics/migration.sql");
 
-    expect(schema.match(/@@index\(\[calendar_status, calendar_published_at\]\)/g)).toHaveLength(2);
+    expect(schema.match(/@@index\(\[calendar_status, calendar_published_at\]\)/g)).toHaveLength(3);
     expect(migration).toContain('NEW."calendar_sequence" := OLD."calendar_sequence" + 1');
     expect(migration).toContain('NEW."calendar_published_at" := OLD."calendar_published_at"');
     expect(migration).toContain('NEW."calendar_published_at" := NULL');

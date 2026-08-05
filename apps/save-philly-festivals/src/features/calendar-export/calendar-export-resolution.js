@@ -39,16 +39,31 @@ function baseCalendarFields(record) {
 }
 
 export function normalizeFestivalCalendarRecord(record, siteOrigin) {
+  const occurrence = record.occurrences?.[0];
+  const calendarRecord = occurrence ? {
+    ...record,
+    calendar_date_type: occurrence.calendar_date_type,
+    time_zone: occurrence.time_zone,
+    start_date: occurrence.start_at,
+    end_date: occurrence.end_at,
+    all_day_start: occurrence.all_day_start,
+    all_day_end: occurrence.all_day_end,
+    calendar_status: occurrence.calendar_status,
+    calendar_sequence: occurrence.calendar_sequence,
+    calendar_published_at: occurrence.calendar_published_at,
+    created_at: occurrence.created_at,
+    updated_at: occurrence.updated_at,
+  } : record;
   return {
     type: "festival",
     id: record.id,
     title: record.name,
     description: record.description,
     location: record.location,
-    start: record.start_date,
-    end: record.end_date,
+    start: calendarRecord.start_date,
+    end: calendarRecord.end_date,
     canonicalUrl: festivalCanonicalUrl(siteOrigin, record.slug),
-    ...baseCalendarFields(record),
+    ...baseCalendarFields(calendarRecord),
   };
 }
 

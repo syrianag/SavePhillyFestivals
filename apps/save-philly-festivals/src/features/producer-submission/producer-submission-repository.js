@@ -1,30 +1,19 @@
+import { randomUUID } from "node:crypto";
+
 import { prisma } from "@/lib/db";
+import { buildFestivalRevisionSnapshot, FESTIVAL_REVISION_SNAPSHOT_SELECT } from "@/features/editorial-workflow/festival-revision-snapshot";
 import { ProducerFestivalConflictError, ProducerFestivalNotFoundError } from "./producer-submission-errors";
 
 const editableStates = ["draft", "changes_requested"];
 const festivalSelect = {
-  id: true,
-  name: true,
-  description: true,
-  location: true,
-  city: true,
-  state: true,
-  zip_code: true,
-  contact_name: true,
-  contact_email: true,
-  contact_phone: true,
-  website_url: true,
-  calendar_date_type: true,
-  time_zone: true,
-  start_date: true,
-  end_date: true,
-  all_day_start: true,
-  all_day_end: true,
+  ...FESTIVAL_REVISION_SNAPSHOT_SELECT,
   status: true,
-  workflow_state: true,
-  revision: true,
   created_at: true,
   updated_at: true,
+  workflow_transitions: {
+    select: { from_state: true, to_state: true, revision: true, producer_message: true, created_at: true },
+    orderBy: { revision: "asc" },
+  },
 };
 
 export const producerSubmissionRepository = {
@@ -67,19 +56,27 @@ export const producerSubmissionRepository = {
           submission_key: submissionKey,
           name: "",
           slug,
-          status: "draft",
           workflow_state: "draft",
           revision: 0,
         },
         select: festivalSelect,
       });
-      await transaction.festivalTransition.create({
+      const transition = await transaction.festivalTransition.create({
         data: {
           festival_id: id,
           actor_user_id: ownerUserId,
           from_state: null,
           to_state: "draft",
           revision: 0,
+        },
+      });
+      await transaction.festivalRevision.create({
+        data: {
+          festival_id: id,
+          workflow_revision: 0,
+          transition_id: transition.id,
+          actor_user_id: ownerUserId,
+          snapshot: buildFestivalRevisionSnapshot(festival),
         },
       });
       return festival;
@@ -107,10 +104,29 @@ export const producerSubmissionRepository = {
         data: { ...data, revision: { increment: 1 } },
       });
       if (updated.count !== 1) throw new ProducerFestivalConflictError();
-      return transaction.festival.findFirst({
+      const festival = await transaction.festival.findFirst({
         where: { id: festivalId, owner_user_id: ownerUserId },
         select: festivalSelect,
       });
+      const transition = await transaction.festivalTransition.create({
+        data: {
+          festival_id: festivalId,
+          actor_user_id: ownerUserId,
+          from_state: current.workflow_state,
+          to_state: current.workflow_state,
+          revision: festival.revision,
+        },
+      });
+      await transaction.festivalRevision.create({
+        data: {
+          festival_id: festivalId,
+          workflow_revision: festival.revision,
+          transition_id: transition.id,
+          actor_user_id: ownerUserId,
+          snapshot: buildFestivalRevisionSnapshot(festival),
+        },
+      });
+      return festival;
     });
   },
 
@@ -155,7 +171,6 @@ export const producerSubmissionRepository = {
         },
         data: {
           workflow_state: "pending_review",
-          status: "pending",
           rejection_reason: null,
           revision: nextRevision,
           representation_acknowledged_at: acknowledgments.at,
@@ -166,7 +181,7 @@ export const producerSubmissionRepository = {
       });
       if (changed.count !== 1) throw new ProducerFestivalConflictError();
 
-      await transaction.festivalTransition.create({
+      const transition = await transaction.festivalTransition.create({
         data: {
           festival_id: festivalId,
           actor_user_id: ownerUserId,
@@ -175,6 +190,31 @@ export const producerSubmissionRepository = {
           revision: nextRevision,
         },
       });
+      const transitionedFestival = await transaction.festival.findFirst({
+        where: { id: festivalId, owner_user_id: ownerUserId },
+        select: festivalSelect,
+      });
+      await transaction.festivalRevision.create({
+        data: {
+          festival_id: festivalId,
+          workflow_revision: nextRevision,
+          transition_id: transition.id,
+          actor_user_id: ownerUserId,
+          snapshot: buildFestivalRevisionSnapshot(transitionedFestival),
+        },
+      });
+      const occurrenceData = current.calendar_date_type === "timed"
+        ? { calendar_date_type: "timed", time_zone: current.time_zone, start_at: current.start_date, end_at: current.end_date, all_day_start: null, all_day_end: null }
+        : { calendar_date_type: "all_day", time_zone: current.time_zone, start_at: null, end_at: null, all_day_start: current.all_day_start, all_day_end: current.all_day_end };
+      const primaryOccurrence = await transaction.festivalOccurrence.upsert({
+        where: { festival_id_source_key: { festival_id: festivalId, source_key: "legacy-primary" } },
+        create: { id: randomUUID(), festival_id: festivalId, source_key: "legacy-primary", is_primary: true, ...occurrenceData },
+        update: { is_primary: true, ...occurrenceData },
+        select: { id: true, festival_id: true, is_primary: true },
+      });
+      if (primaryOccurrence.festival_id !== festivalId || !primaryOccurrence.is_primary) {
+        throw new ProducerFestivalConflictError();
+      }
       await transaction.producerSubmissionNotification.createMany({
         data: [
           {
@@ -191,11 +231,7 @@ export const producerSubmissionRepository = {
           },
         ],
       });
-      const festival = await transaction.festival.findFirst({
-        where: { id: festivalId, owner_user_id: ownerUserId },
-        select: festivalSelect,
-      });
-      return { festival, replayed: false };
+      return { festival: transitionedFestival, replayed: false };
     });
   },
 

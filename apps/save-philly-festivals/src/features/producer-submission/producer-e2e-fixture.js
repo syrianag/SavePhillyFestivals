@@ -4,6 +4,7 @@ import { ProducerFestivalConflictError, ProducerFestivalNotFoundError } from "./
 import { PRODUCER_SUBMISSION_TEAM_ALIAS } from "./producer-submission-notifications";
 
 export const PRODUCER_E2E_COOKIE = "producer-e2e-user";
+export const EDITORIAL_E2E_USER = Object.freeze({ id: "10000000-0000-4000-8000-00000000000b", email: "admin@example.test", email_verified: new Date("2026-08-04T00:00:00.000Z"), role: "admin", name: "Fixture Editor" });
 export const PRODUCER_E2E_USER = Object.freeze({
   id: "10000000-0000-4000-8000-00000000000a",
   email: "producer-a@example.test",
@@ -44,10 +45,10 @@ export function verifyProducerE2ECookie(cookie, secret = fixtureSecret()) {
 }
 
 function emptyState() {
-  return { sequence: 0, festivals: new Map(), submissionKeys: new Map(), assets: [], notifications: new Map() };
+  return { sequence: 0, festivals: new Map(), submissionKeys: new Map(), assets: [], notifications: new Map(), workflowNotifications: new Map(), revisions: [] };
 }
 
-function state() {
+export function producerE2EState() {
   globalThis[STATE_KEY] ||= emptyState();
   return globalThis[STATE_KEY];
 }
@@ -57,7 +58,7 @@ export function resetProducerE2EFixture() {
 }
 
 function nextUuid() {
-  const fixture = state();
+  const fixture = producerE2EState();
   fixture.sequence += 1;
   return `20000000-0000-4000-8000-${String(fixture.sequence).padStart(12, "0")}`;
 }
@@ -67,7 +68,7 @@ function cloneFestival(festival) {
 }
 
 function owned(ownerUserId, festivalId) {
-  const festival = state().festivals.get(festivalId);
+  const festival = producerE2EState().festivals.get(festivalId);
   return festival?.owner_user_id === ownerUserId ? festival : null;
 }
 
@@ -78,29 +79,31 @@ function assertEditable(festival) {
 const repository = {
   async findCurrentUser(id) {
     if (id === PRODUCER_E2E_USER.id) return { ...PRODUCER_E2E_USER };
+    if (id === EDITORIAL_E2E_USER.id) return { ...EDITORIAL_E2E_USER };
     if (id === "10000000-0000-4000-8000-00000000000d") return { id, email: "unverified@example.test", email_verified: null, role: "producer" };
     return null;
   },
   async findOwnedBySubmissionKey(ownerUserId, submissionKey) {
-    const id = state().submissionKeys.get(`${ownerUserId}:${submissionKey}`);
+    const id = producerE2EState().submissionKeys.get(`${ownerUserId}:${submissionKey}`);
     return cloneFestival(id ? owned(ownerUserId, id) : null);
   },
   async listOwned(ownerUserId) {
-    return [...state().festivals.values()].filter((festival) => festival.owner_user_id === ownerUserId)
+    return [...producerE2EState().festivals.values()].filter((festival) => festival.owner_user_id === ownerUserId)
       .sort((a, b) => b.updated_at - a.updated_at).map(cloneFestival);
   },
   async findOwned(ownerUserId, festivalId) { return cloneFestival(owned(ownerUserId, festivalId)); },
-  async createOwnedDraft({ id, ownerUserId, submissionKey }) {
+  async createOwnedDraft({ id, ownerUserId, submissionKey, slug }) {
     const now = new Date();
     const festival = {
-      id, owner_user_id: ownerUserId, name: "", description: null, location: null, city: null, state: null,
+      id, slug, owner_user_id: ownerUserId, name: "", description: null, location: null, city: null, state: null,
       zip_code: null, contact_name: null, contact_email: null, contact_phone: null, website_url: null,
       calendar_date_type: "timed", time_zone: "America/New_York", start_date: null, end_date: null,
       all_day_start: null, all_day_end: null, status: "draft", workflow_state: "draft", revision: 0,
       created_at: now, updated_at: now,
+      workflow_transitions: [{ id: nextUuid(), from_state: null, to_state: "draft", revision: 0, producer_message: null, created_at: now }],
     };
-    state().festivals.set(id, festival);
-    state().submissionKeys.set(`${ownerUserId}:${submissionKey}`, id);
+    producerE2EState().festivals.set(id, festival);
+    producerE2EState().submissionKeys.set(`${ownerUserId}:${submissionKey}`, id);
     return cloneFestival(festival);
   },
   async updateOwnedEditable({ ownerUserId, festivalId, expectedRevision, data }) {
@@ -118,13 +121,15 @@ const repository = {
     assertEditable(festival);
     if (festival.revision !== expectedRevision) throw new ProducerFestivalConflictError();
     assertComplete(festival);
+    const fromState = festival.workflow_state;
     festival.workflow_state = "pending_review";
     festival.status = "pending";
     festival.revision += 1;
     festival.updated_at = new Date();
+    festival.workflow_transitions.push({ id: nextUuid(), from_state: fromState, to_state: "pending_review", revision: festival.revision, producer_message: null, created_at: festival.updated_at });
     for (const type of ["producer_receipt", "team_notification"]) {
       const id = nextUuid();
-      state().notifications.set(`${festival.id}:${festival.revision}:${type}`, {
+      producerE2EState().notifications.set(`${festival.id}:${festival.revision}:${type}`, {
         id, festival_id: festival.id, workflow_revision: festival.revision, notification_type: type,
         recipient_email: type === "producer_receipt" ? festival.contact_email : null,
         recipient_alias: type === "team_notification" ? PRODUCER_SUBMISSION_TEAM_ALIAS : null,
@@ -134,17 +139,17 @@ const repository = {
     return { festival: cloneFestival(festival), replayed: false };
   },
   async claimSubmissionNotification({ festivalId, workflowRevision, notificationType, attemptToken }) {
-    const notification = state().notifications.get(`${festivalId}:${workflowRevision}:${notificationType}`);
+    const notification = producerE2EState().notifications.get(`${festivalId}:${workflowRevision}:${notificationType}`);
     if (!notification || notification.delivery_status === "sent" || notification.attempt_token) return null;
     Object.assign(notification, { delivery_status: "pending", attempt_token: attemptToken, attempts: notification.attempts + 1 });
     return { ...notification };
   },
   async markSubmissionNotificationSent({ notificationId, attemptToken, providerMessageId }) {
-    const notification = [...state().notifications.values()].find((item) => item.id === notificationId && item.attempt_token === attemptToken);
+    const notification = [...producerE2EState().notifications.values()].find((item) => item.id === notificationId && item.attempt_token === attemptToken);
     if (notification) Object.assign(notification, { delivery_status: "sent", provider_message_id: providerMessageId, attempt_token: null });
   },
   async markSubmissionNotificationFailed({ notificationId, attemptToken, failureCode }) {
-    const notification = [...state().notifications.values()].find((item) => item.id === notificationId && item.attempt_token === attemptToken);
+    const notification = [...producerE2EState().notifications.values()].find((item) => item.id === notificationId && item.attempt_token === attemptToken);
     if (notification) Object.assign(notification, { delivery_status: "failed", failure_code: failureCode, attempt_token: null });
   },
   async assertOwnedEditable(ownerUserId, festivalId) {
@@ -162,7 +167,7 @@ const repository = {
       byte_size: asset.byteSize, checksum_sha256: asset.checksumSha256, purpose: asset.purpose, alt_text: asset.altText,
       rights_version: asset.rightsVersion, scan_status: "pending", lifecycle_status: "active", created_at: new Date(),
     };
-    state().assets.push(record);
+    producerE2EState().assets.push(record);
     return { ...record };
   },
 };
@@ -185,11 +190,17 @@ const provider = {
 const notificationProvider = { async send() { return { success: true, id: `fixture-mail-${nextUuid()}` }; } };
 const rateLimiter = { consume: () => true };
 
-export async function producerE2EDependencies() {
+export async function producerE2ESelectedIdentity() {
   if (!producerE2EFixtureEnabled()) return null;
   const { cookies } = await import("next/headers");
-  const selectedUser = verifyProducerE2ECookie((await cookies()).get(PRODUCER_E2E_COOKIE)?.value);
+  return verifyProducerE2ECookie((await cookies()).get(PRODUCER_E2E_COOKIE)?.value);
+}
+
+export async function producerE2EDependencies() {
+  if (!producerE2EFixtureEnabled()) return null;
+  const selectedUser = await producerE2ESelectedIdentity();
   const sessionUserId = selectedUser === "producer-a" ? PRODUCER_E2E_USER.id
+    : selectedUser === "admin" ? EDITORIAL_E2E_USER.id
     : selectedUser === "denied" ? "10000000-0000-4000-8000-00000000000d" : null;
   return {
     getSession: async () => sessionUserId ? { user: { id: sessionUserId } } : null,
