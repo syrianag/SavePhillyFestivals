@@ -16,6 +16,7 @@ const tsxBin = join(workspaceRoot, "node_modules/.bin/tsx");
 const migrationsRoot = join(projectRoot, "prisma/migrations");
 const f07Migration = "20260804050000_producer_submission_workflow";
 const f08Migration = "20260804060000_editorial_workflow";
+const f09Migration = "20260804070000_moderated_social_feed";
 const snapshotFieldSql = FESTIVAL_REVISION_SNAPSHOT_FIELDS
   .map((field) => `'${field.replaceAll("'", "''")}'`)
   .join(", ");
@@ -61,6 +62,7 @@ const migrationNames = readdirSync(migrationsRoot, { withFileTypes: true })
 const preF07 = migrationNames.filter((name) => name < f07Migration);
 if (!migrationNames.includes(f07Migration)) throw new Error(`Missing ${f07Migration} migration.`);
 if (!migrationNames.includes(f08Migration)) throw new Error(`Missing ${f08Migration} migration.`);
+if (!migrationNames.includes(f09Migration)) throw new Error(`Missing ${f09Migration} migration.`);
 
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
@@ -409,6 +411,88 @@ try {
   if (staleRace.rowCount !== 0) throw new Error("Stale transition race predicate updated a row.");
 
   console.log("Verified F-08 deferred state-only/audit/snapshot/outbox/actor/reason rules, shared approved-private semantics, publication primary requirement, composite schedule parent FK, primary deletion protection, serialized asset-review/transition race behavior, and stale transition race behavior.");
+
+  await client.query(readFileSync(join(migrationsRoot, f09Migration, "migration.sql"), "utf8"));
+  const f09Constraints = [
+    "FestivalSocialFeed_hashtag_normalized", "FestivalSocialFeed_provider_feed_id_safe",
+    "FestivalSocialFeed_error_code_redacted", "FestivalSocialFeed_sync_attempt_coherence", "FestivalSocialFeed_source_revision_positive",
+    "SocialPost_source_revision_positive", "SocialPost_review_coherence",
+    "SocialPostModerationTransition_status_changed", "SocialPostModerationTransition_reason_required",
+  ];
+  const f09ConstraintRows = await client.query(`SELECT conname FROM pg_constraint WHERE conname = ANY($1::text[])`, [f09Constraints]);
+  if (f09ConstraintRows.rowCount !== f09Constraints.length) throw new Error("F-09 social-feed constraints are incomplete.");
+  const f09Triggers = [
+    "SocialPostModerationTransition_immutable_trigger", "SocialPost_moderation_revision_trigger",
+    "SocialPost_moderation_audit_commit_trigger", "SocialPostModerationTransition_coherence_commit_trigger",
+  ];
+  const f09TriggerRows = await client.query(`SELECT tgname, tgdeferrable, tginitdeferred FROM pg_trigger WHERE NOT tgisinternal AND tgname = ANY($1::text[])`, [f09Triggers]);
+  if (f09TriggerRows.rowCount !== f09Triggers.length) throw new Error("F-09 social-feed triggers are incomplete.");
+  const moderationCommitTrigger = f09TriggerRows.rows.find((row) => row.tgname === "SocialPost_moderation_audit_commit_trigger");
+  if (!moderationCommitTrigger?.tgdeferrable || !moderationCommitTrigger?.tginitdeferred) throw new Error("F-09 moderation audit trigger is not initially deferred.");
+
+  const socialFeedId = "80000000-0000-4000-8000-000000000001";
+  const socialPostId = "81000000-0000-4000-8000-000000000001";
+  await client.query(`INSERT INTO "FestivalSocialFeed" ("id", "festival_id", "hashtag", "enabled", "provider", "provider_feed_id", "revision", "updated_at") VALUES ($1, $2, 'LegacyApprovedFest', TRUE, 'curator', 'f09-test-feed', 1, CURRENT_TIMESTAMP)`, [socialFeedId, approvedId]);
+  await client.query(`INSERT INTO "SocialPost" ("id", "social_feed_id", "provider_item_id", "network", "canonical_url", "author_name", "text_excerpt", "updated_at") VALUES ($1, $2, 'provider-post-1', 'instagram', 'https://www.instagram.com/p/f09-test/', 'Fixture Author', 'Approved-only database evidence.', CURRENT_TIMESTAMP)`, [socialPostId, socialFeedId]);
+
+  await expectTransactionRejected(async () => {
+    await client.query(`UPDATE "SocialPost" SET "moderation_status" = 'approved', "moderation_revision" = 1, "reviewed_by_user_id" = $2, "reviewed_at" = CURRENT_TIMESTAMP, "updated_at" = CURRENT_TIMESTAMP WHERE "id" = $1`, [socialPostId, actorId]);
+  }, "Social moderation without immutable audit", /matching immutable audit transition/);
+
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "SocialPost" ("id", "social_feed_id", "provider_item_id", "network", "canonical_url", "text_excerpt", "moderation_status", "moderation_revision", "reviewed_by_user_id", "reviewed_at", "updated_at") VALUES ('81000000-0000-4000-8000-000000000002', $1, 'provider-post-unsafe', 'instagram', 'https://www.instagram.com/p/f09-unsafe/', 'Unsafe direct approval.', 'approved', 1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, [socialFeedId, actorId]);
+  }, "Initially approved social post", /must enter pending moderation/);
+
+  await client.query("BEGIN");
+  await client.query(`UPDATE "SocialPost" SET "moderation_status" = 'approved', "moderation_revision" = 1, "reviewed_by_user_id" = $2, "reviewed_at" = CURRENT_TIMESTAMP, "updated_at" = CURRENT_TIMESTAMP WHERE "id" = $1`, [socialPostId, actorId]);
+  await client.query(`INSERT INTO "SocialPostModerationTransition" ("id", "social_post_id", "actor_user_id", "from_status", "to_status", "revision") VALUES ('82000000-0000-4000-8000-000000000001', $1, $2, 'pending', 'approved', 1)`, [socialPostId, actorId]);
+  await client.query("SET CONSTRAINTS ALL IMMEDIATE");
+  await client.query("COMMIT");
+
+  const secondSocialFeedId = "80000000-0000-4000-8000-000000000002";
+  const pendingPayloadPostId = "81000000-0000-4000-8000-000000000004";
+  await client.query(`INSERT INTO "FestivalSocialFeed" ("id", "festival_id", "hashtag", "enabled", "provider", "provider_feed_id", "revision", "updated_at") VALUES ($1, $2, 'SecondEvidenceFest', TRUE, 'curator', 'second-evidence-feed', 1, CURRENT_TIMESTAMP)`, [secondSocialFeedId, pendingId]);
+  await client.query(`INSERT INTO "SocialPost" ("id", "social_feed_id", "provider_item_id", "network", "canonical_url", "text_excerpt", "updated_at") VALUES ($1, $2, 'provider-post-payload', 'instagram', 'https://www.instagram.com/p/f09-payload/', 'Pending payload evidence.', CURRENT_TIMESTAMP)`, [pendingPayloadPostId, socialFeedId]);
+  await expectTransactionRejected(async () => {
+    await client.query(`UPDATE "SocialPost" SET "text_excerpt" = 'Replacement during approval', "canonical_url" = 'https://www.instagram.com/p/replacement-during-approval/', "moderation_status" = 'approved', "moderation_revision" = 1, "reviewed_by_user_id" = $2, "reviewed_at" = CURRENT_TIMESTAMP, "updated_at" = CURRENT_TIMESTAMP WHERE "id" = $1`, [pendingPayloadPostId, actorId]);
+    await client.query(`INSERT INTO "SocialPostModerationTransition" ("id", "social_post_id", "actor_user_id", "from_status", "to_status", "revision") VALUES ('82000000-0000-4000-8000-000000000004', $1, $2, 'pending', 'approved', 1)`, [pendingPayloadPostId, actorId]);
+  }, "Payload replacement during approval", /content is immutable/);
+  await expectTransactionRejected(async () => {
+    await client.query(`UPDATE "SocialPost" SET "social_feed_id" = $2, "updated_at" = CURRENT_TIMESTAMP WHERE "id" = $1`, [pendingPayloadPostId, secondSocialFeedId]);
+  }, "Pending social post feed move", /source identity is immutable/);
+  await expectTransactionRejected(async () => {
+    await client.query(`UPDATE "SocialPost" SET "social_feed_id" = $2, "updated_at" = CURRENT_TIMESTAMP WHERE "id" = $1`, [socialPostId, secondSocialFeedId]);
+  }, "Approved social post feed move", /source identity is immutable/);
+
+  await client.query(`INSERT INTO "SocialPost" ("id", "social_feed_id", "provider_item_id", "network", "canonical_url", "text_excerpt", "updated_at") VALUES ('81000000-0000-4000-8000-000000000003', $1, 'provider-post-hidden', 'facebook', 'https://www.facebook.com/f09-hidden/', 'Hidden database evidence.', CURRENT_TIMESTAMP)`, [socialFeedId]);
+  await client.query("BEGIN");
+  await client.query(`UPDATE "SocialPost" SET "moderation_status" = 'hidden', "moderation_revision" = 1, "reviewed_by_user_id" = $1, "reviewed_at" = CURRENT_TIMESTAMP, "updated_at" = CURRENT_TIMESTAMP WHERE "id" = '81000000-0000-4000-8000-000000000003'`, [actorId]);
+  await client.query(`INSERT INTO "SocialPostModerationTransition" ("id", "social_post_id", "actor_user_id", "from_status", "to_status", "revision", "reason") VALUES ('82000000-0000-4000-8000-000000000002', '81000000-0000-4000-8000-000000000003', $1, 'pending', 'hidden', 1, 'Not relevant to the festival')`, [actorId]);
+  await client.query("SET CONSTRAINTS ALL IMMEDIATE");
+  await client.query("COMMIT");
+
+  await expectTransactionRejected(async () => {
+    await client.query(`UPDATE "SocialPost" SET "text_excerpt" = 'Unreviewed replacement content', "canonical_url" = 'https://www.instagram.com/p/replaced/', "updated_at" = CURRENT_TIMESTAMP WHERE "id" = $1`, [socialPostId]);
+  }, "Reviewed social content mutation", /content is immutable/);
+  await expectTransactionRejected(async () => {
+    await client.query(`UPDATE "SocialPost" SET "reviewed_by_user_id" = $2, "reviewed_at" = CURRENT_TIMESTAMP, "updated_at" = CURRENT_TIMESTAMP WHERE "id" = $1`, [socialPostId, producerId]);
+  }, "Social review attribution mutation", /attribution cannot change/);
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "SocialPostModerationTransition" ("id", "social_post_id", "actor_user_id", "from_status", "to_status", "revision", "reason") VALUES ('82000000-0000-4000-8000-000000000003', $1, $2, 'approved', 'hidden', 2, 'Pre-seeded transition')`, [socialPostId, actorId]);
+  }, "Orphan social moderation transition", /matching post state/);
+
+  const publicSocialPosts = await client.query(`SELECT post."text_excerpt" FROM "SocialPost" post JOIN "FestivalSocialFeed" feed ON feed."id" = post."social_feed_id" AND feed."source_revision" = post."source_revision" WHERE feed."id" = $1 AND post."moderation_status" = 'approved' ORDER BY post."id"`, [socialFeedId]);
+  if (publicSocialPosts.rowCount !== 1 || publicSocialPosts.rows[0].text_excerpt !== "Approved-only database evidence.") throw new Error("F-09 approved-only public filtering evidence failed.");
+  await client.query(`UPDATE "FestivalSocialFeed" SET "hashtag" = 'ChangedSourceFest', "provider" = 'flockler', "provider_feed_id" = 'changed-source-feed', "revision" = 2, "source_revision" = 2, "sync_cursor" = NULL, "last_sync_status" = 'never', "updated_at" = CURRENT_TIMESTAMP WHERE "id" = $1`, [socialFeedId]);
+  const changedSourcePosts = await client.query(`SELECT count(*)::int AS count FROM "SocialPost" post JOIN "FestivalSocialFeed" feed ON feed."id" = post."social_feed_id" AND feed."source_revision" = post."source_revision" WHERE feed."id" = $1 AND post."moderation_status" = 'approved'`, [socialFeedId]);
+  if (changedSourcePosts.rows[0].count !== 0) throw new Error("F-09 source generation exposed previously approved content.");
+  await expectTransactionRejected(async () => {
+    await client.query(`UPDATE "SocialPostModerationTransition" SET "reason" = 'tampered' WHERE "id" = '82000000-0000-4000-8000-000000000001'`);
+  }, "Social moderation audit update", /immutable/);
+  await expectTransactionRejected(async () => {
+    await client.query(`DELETE FROM "SocialPostModerationTransition" WHERE "id" = '82000000-0000-4000-8000-000000000001'`);
+  }, "Social moderation audit delete", /immutable/);
+  console.log("Verified F-09 pending-only ingestion, source-generation isolation, revision/content/attribution coherence, deferred immutable moderation audit chains, approved-only filtering, hidden exclusion, and audit mutation protection.");
 } finally {
   await client.end();
 }

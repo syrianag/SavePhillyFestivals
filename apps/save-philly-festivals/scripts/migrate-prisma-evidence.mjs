@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client.ts";
 import { buildFestivalRevisionSnapshot } from "../src/features/editorial-workflow/festival-revision-snapshot.js";
+import { createSocialFeedRepository } from "../src/features/social-feed/social-feed-repository-core.js";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -133,6 +134,76 @@ try {
   });
   if (reconciliationClaim.count !== 1) throw new Error("Generated reconciliation operation did not update one row.");
 
+  const socialRepository = createSocialFeedRepository(prisma);
+  const publishedFestivalId = "00000000-0000-4000-8000-000000000106";
+  const feed = await socialRepository.configureFeed({
+    festivalId: publishedFestivalId, expectedRevision: 0, hashtag: "GeneratedEvidenceFest",
+    enabled: true, provider: "curator", providerFeedId: "generated-evidence-feed",
+  });
+  const claimedFeed = await socialRepository.claimSyncFeed({
+    feedId: feed.id, attemptToken: "f09-generated-sync-attempt", attemptedAt: now,
+    staleBefore: new Date("2026-08-04T11:55:00.000Z"),
+  });
+  await socialRepository.ingestItems({
+    feedId: feed.id, expectedRevision: feed.revision, sourceRevision: feed.source_revision,
+    expectedCursor: null, attemptToken: claimedFeed.sync_attempt_token, nextCursor: "generated-next", attemptedAt: now,
+    items: [
+      { providerItemId: "generated-approved", network: "instagram", canonicalUrl: "https://www.instagram.com/p/generated-approved/", authorName: "Approved Author", authorHandle: "approved", textExcerpt: "Generated approved public post.", sourcePublishedAt: now },
+      { providerItemId: "generated-hidden", network: "facebook", canonicalUrl: "https://www.facebook.com/generated-hidden/", authorName: "Hidden Author", authorHandle: null, textExcerpt: "Generated hidden post.", sourcePublishedAt: now },
+    ],
+  });
+  const pendingSocial = await socialRepository.listPosts(publishedFestivalId, { status: "pending", page: 1, limit: 24 });
+  const approvedCandidate = pendingSocial.posts.find((post) => post.provider_item_id === "generated-approved");
+  const hiddenCandidate = pendingSocial.posts.find((post) => post.provider_item_id === "generated-hidden");
+  await socialRepository.moderatePost({ festivalId: publishedFestivalId, postId: approvedCandidate.id, expectedRevision: 0, status: "approved", actorUserId: actorId, now });
+  await socialRepository.moderatePost({ festivalId: publishedFestivalId, postId: hiddenCandidate.id, expectedRevision: 0, status: "hidden", reason: "Generated hidden evidence", actorUserId: actorId, now });
+  const publicSocial = await socialRepository.getPublicFeed(publishedFestivalId);
+  if (publicSocial.posts.length !== 1 || publicSocial.posts[0].text !== "Generated approved public post." || JSON.stringify(publicSocial).includes("Generated hidden post.")) {
+    throw new Error("Generated Prisma approved-only social repository evidence failed.");
+  }
+  const changedFeed = await socialRepository.configureFeed({
+    festivalId: publishedFestivalId, expectedRevision: feed.revision, hashtag: "ChangedEvidenceFest",
+    enabled: true, provider: "flockler", providerFeedId: "changed-evidence-feed",
+  });
+  const changedSourcePublic = await socialRepository.getPublicFeed(publishedFestivalId);
+  if (changedSourcePublic.posts.length !== 0 || changedSourcePublic.hashtag !== "#ChangedEvidenceFest") {
+    throw new Error("Generated Prisma source-generation isolation evidence failed.");
+  }
+  const firstNullCursorClaim = await socialRepository.claimSyncFeed({
+    feedId: changedFeed.id, attemptToken: "f09-null-cursor-attempt-a", attemptedAt: now,
+    staleBefore: new Date("2026-08-04T11:55:00.000Z"),
+  });
+  let overlappingClaimRejected = false;
+  try {
+    await socialRepository.claimSyncFeed({ feedId: changedFeed.id, attemptToken: "f09-null-cursor-attempt-b", attemptedAt: now, staleBefore: new Date("2026-08-04T11:55:00.000Z") });
+  } catch (error) {
+    overlappingClaimRejected = error?.code === "revision_conflict";
+  }
+  if (!overlappingClaimRejected) throw new Error("Generated overlapping null-cursor sync claim was not rejected.");
+  await socialRepository.recordSyncFailure({
+    feedId: changedFeed.id, expectedRevision: changedFeed.revision, sourceRevision: changedFeed.source_revision,
+    expectedCursor: null, attemptToken: firstNullCursorClaim.sync_attempt_token, attemptedAt: now, errorCode: "provider_error",
+  });
+  const secondNullCursorClaim = await socialRepository.claimSyncFeed({
+    feedId: changedFeed.id, attemptToken: "f09-null-cursor-attempt-b", attemptedAt: new Date("2026-08-04T12:01:00.000Z"),
+    staleBefore: new Date("2026-08-04T11:56:00.000Z"),
+  });
+  const obsoleteFailure = await socialRepository.recordSyncFailure({
+    feedId: changedFeed.id, expectedRevision: changedFeed.revision, sourceRevision: changedFeed.source_revision,
+    expectedCursor: null, attemptToken: firstNullCursorClaim.sync_attempt_token, attemptedAt: new Date("2026-08-04T11:59:00.000Z"), errorCode: "provider_error",
+  });
+  if (obsoleteFailure.count !== 0) throw new Error("Obsolete sync failure overwrote a newer null-cursor claim.");
+  await socialRepository.ingestItems({
+    feedId: changedFeed.id, expectedRevision: changedFeed.revision, sourceRevision: changedFeed.source_revision,
+    expectedCursor: null, attemptToken: secondNullCursorClaim.sync_attempt_token, items: [], nextCursor: null,
+    attemptedAt: new Date("2026-08-04T12:01:00.000Z"),
+  });
+  const failureAfterSuccess = await socialRepository.recordSyncFailure({
+    feedId: changedFeed.id, expectedRevision: changedFeed.revision, sourceRevision: changedFeed.source_revision,
+    expectedCursor: null, attemptToken: firstNullCursorClaim.sync_attempt_token, attemptedAt: new Date("2026-08-04T11:59:00.000Z"), errorCode: "provider_error",
+  });
+  if (failureAfterSuccess.count !== 0) throw new Error("Older failure overwrote a newer successful null-cursor sync.");
+
   const emailRequest = await prisma.scheduleEmailRequest.create({
     data: {
       recipient_email: "visitor@example.test",
@@ -147,7 +218,7 @@ try {
     throw new Error("Generated ScheduleEmailRequest failure_message operation failed.");
   }
 
-  console.log("Executed generated Prisma notification claims, editorial transition/snapshot/outbox/occurrence, expired workflow lease recovery, failed/sent retry state, duplicate retry suppression, reconciliation, and restored schedule-email field operations.");
+  console.log("Executed generated Prisma notification claims, editorial transition/snapshot/outbox/occurrence, expired workflow lease recovery, failed/sent retry state, duplicate retry suppression, reconciliation, approved-only/source-isolated social repository operations, and restored schedule-email field operations.");
 } finally {
   await prisma.$disconnect();
 }

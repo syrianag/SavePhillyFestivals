@@ -120,20 +120,21 @@ Google credentials, folder IDs that convey access, and N8N secrets stay outside 
 
 ## Social recommendation
 
-Core release:
+Implemented release:
 
-- Validated official Instagram, Facebook, TikTok, YouTube, and X links.
-- Approved hashtag display.
-- Stable empty/failure states.
-- Optional editorially curated post links.
+- Validated official Instagram, Facebook, TikTok, YouTube, and X links remain above the feed.
+- Curator.io and Flockler adapters use fixed API origins and server-only credentials.
+- Provider posts are normalized into a PostgreSQL cache as pending text cards; no third-party scripts, HTML, iframes, media embeds, or tracking widgets are rendered.
+- Local editorial approval with optimistic revisions and immutable audit history is required before publication.
+- Hidden and rejected items are excluded by the public database query.
+- Each festival has a kill switch, configured hashtag, stable empty/failure state, and approved cached-post fallback.
 
-Follow-on live aggregation:
+Production activation:
 
-- Run a proof of concept with Curator.io and Flockler.
-- Evaluate account eligibility, moderation/audit features, accessibility, privacy/cookies, retention, vendor lock-in, performance, and cost.
-- Prefer server-side ingestion into a moderated cache where supported.
-- Require approval before publication and a per-festival kill switch.
-- Do not let provider failure break a festival page.
+- Use Curator.io for the initial controlled proof because the handoff identifies stronger Instagram support and a lower entry price; retain Flockler as the supported alternative.
+- Verify purchased-plan endpoints, account eligibility, accessibility, privacy terms, retention, quotas, performance, and cost before activation.
+- Synchronize every 30 minutes initially and apply bounded retry outside public page requests.
+- Follow `docs/SOCIAL-FEED-OPERATIONS.md` for moderation ownership/SLA, retention, secrets, proof, monitoring, incident response, and explicit activation approval.
 
 ## Quality targets to finalize before production
 
