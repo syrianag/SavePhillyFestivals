@@ -126,6 +126,22 @@
         "cwd": "{projectRoot}"
       }
     },
+    "festival-publish-batch": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsx --tsconfig jsconfig.json scripts/festival-publish-batch.mjs",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "festival-geocode": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsx --tsconfig jsconfig.json scripts/festival-geocode.mjs",
+        "cwd": "{projectRoot}"
+      }
+    },
     "festival-import-test": {
       "executor": "nx:run-commands",
       "cache": false,

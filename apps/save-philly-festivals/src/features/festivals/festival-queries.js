@@ -110,6 +110,36 @@ export async function getPublicFestivalCatalog() {
   return festivals.map(mapPublicFestival);
 }
 
+/**
+ * Map pins for published festivals that have been geocoded.
+ *
+ * Deliberately a narrow select rather than reusing PUBLIC_FESTIVAL_SELECT: a pin needs five
+ * fields, and this runs for the whole catalog at once. Festivals without coordinates are
+ * excluded by the query, so an ungeocoded festival is simply absent from the map rather
+ * than rendering at (0, 0) in the Atlantic.
+ */
+export async function getPublicFestivalMapPins() {
+  const fixture = getDiscoveryE2eFestivalCatalog();
+  if (fixture !== undefined) {
+    return [...fixture, ...editorialE2EPublicCatalog()]
+      .filter((festival) => festival.latitude != null && festival.longitude != null)
+      .map((festival) => ({
+        id: festival.id,
+        slug: festival.slug,
+        name: festival.name,
+        location: festival.location || null,
+        latitude: festival.latitude,
+        longitude: festival.longitude,
+      }));
+  }
+
+  return prisma.festival.findMany({
+    where: { ...publishedDiscoveryWhere, latitude: { not: null }, longitude: { not: null } },
+    select: { id: true, slug: true, name: true, location: true, latitude: true, longitude: true },
+    orderBy: { name: "asc" },
+  });
+}
+
 // Public callers must use the approved-only DTO. Private admin lookups remain ID-based.
 export const getFestivalBySlug = getPublicFestivalBySlug;
 

@@ -13,6 +13,9 @@ export const DISCOVERY_E2E_FESTIVALS = [
     end_date: new Date("2026-09-13T22:00:00.000Z"),
     created_at: new Date("2026-07-01T12:00:00.000Z"),
     image_url: null,
+    // Real Penn's Landing coordinates so the map fixture exercises actual pin rendering.
+    latitude: 39.9457,
+    longitude: -75.1407,
     categories: [{ category: { name: "Art", slug: "art" } }],
   },
   {
@@ -26,6 +29,8 @@ export const DISCOVERY_E2E_FESTIVALS = [
     end_date: null,
     created_at: new Date("2026-07-15T12:00:00.000Z"),
     image_url: null,
+    latitude: 39.9312,
+    longitude: -75.1585,
     categories: [{ category: { name: "Food", slug: "food" } }],
   },
 ];

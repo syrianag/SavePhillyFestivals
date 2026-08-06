@@ -78,12 +78,12 @@ export default async function Home({ searchParams }) {
           >
             Featured
           </button>
-          <span 
-            aria-disabled="true" 
-            className="flex items-center gap-2 pb-2.5 font-ui text-sm font-semibold text-slate-300 cursor-not-allowed md:text-base"
+          <Link
+            href="/map"
+            className="flex items-center gap-2 pb-2.5 font-ui text-sm font-semibold text-slate-500 hover:text-slate-900 md:text-base transition-colors"
           >
             Map
-          </span>
+          </Link>
           <Link 
             href="/calendar" 
             className="flex items-center gap-2 pb-2.5 font-ui text-sm font-semibold text-slate-500 hover:text-slate-900 md:text-base transition-colors"

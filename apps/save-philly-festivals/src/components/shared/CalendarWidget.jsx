@@ -35,7 +35,7 @@ export function CalendarWidget({
   year = 2025,
   month = 10,
   festivalDates = [],
-  selectedDay = 1,
+  selectedDay = null,
   onSelectDay,
   onPrevMonth,
   onNextMonth,
@@ -48,11 +48,13 @@ export function CalendarWidget({
   ];
   const monthLabel = `${monthNames[month]} ${year}`;
 
+  /* Scope the dots to the month actually on screen. Keying on getDate() alone marked the
+   * same day number in every month as having a festival. */
   const festivalDaySet = new Set(
-    festivalDates.map((d) => {
-      const dt = new Date(d);
-      return dt.getDate();
-    })
+    festivalDates
+      .map((value) => new Date(value))
+      .filter((date) => !Number.isNaN(date.getTime()) && date.getFullYear() === year && date.getMonth() === month)
+      .map((date) => date.getDate())
   );
 
   const today = new Date();

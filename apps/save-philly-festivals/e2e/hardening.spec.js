@@ -48,7 +48,20 @@ test("calendar exposes selected-day and month-control semantics", async ({ page 
 
   await expect(page.getByRole("button", { name: /show previous month/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /show next month/i })).toBeVisible();
+
+  // The calendar loads unfiltered so it never opens pre-filtered to a day with no festivals.
+  await expect(page.getByRole("button", { pressed: true })).toHaveCount(0);
+
+  // Selecting a day marks exactly that day pressed and filters the list to it.
+  const day = page.getByRole("button", { name: /^[A-Z][a-z]+ 15, \d{4}/ });
+  await day.click();
   await expect(page.getByRole("button", { pressed: true })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /clear date/i })).toBeVisible();
+
+  // Selecting it again clears the filter, as does the Clear control.
+  await day.click();
+  await expect(page.getByRole("button", { pressed: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /clear date/i })).toHaveCount(0);
 });
 
 test("mobile navigation reports and manages expanded state", async ({ page }) => {

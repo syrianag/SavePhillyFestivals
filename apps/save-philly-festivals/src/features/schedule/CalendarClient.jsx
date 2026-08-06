@@ -37,6 +37,17 @@ function formatDateKey(value) {
   return date.toISOString().slice(0, 10);
 }
 
+/* Build the same YYYY-MM-DD key the festival list is grouped by, from the calendar's
+ * own year/month/day. Day-of-month alone is ambiguous once the user pages between months. */
+function toSelectedDateKey(year, month, day) {
+  if (!day) return null;
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function formatSelectedDateLabel(dateKey) {
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(new Date(`${dateKey}T12:00:00`));
+}
+
 function groupByDate(list) {
   const groups = new Map();
   for (const festival of list) {
@@ -290,11 +301,14 @@ export function CalendarClient({ festivals }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
-  const [selectedDay, setSelectedDay] = useState(now.getDate());
+  /* Starts unselected so the page never loads pre-filtered to a day with no festivals. */
+  const [selectedDay, setSelectedDay] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({ date: "", type: "", area: "" });
   const [toast, setToast] = useState(null);
   const cards = useMemo(() => festivals.map(toCard), [festivals]);
+
+  const selectedDateKey = toSelectedDateKey(year, month, selectedDay);
 
   const grouped = useMemo(() => {
     let filtered = cards;
@@ -311,8 +325,11 @@ export function CalendarClient({ festivals }) {
         festival.location.toLowerCase().includes(filters.area.toLowerCase())
       );
     }
+    if (selectedDateKey) {
+      filtered = filtered.filter((festival) => formatDateKey(festival.rawDate) === selectedDateKey);
+    }
     return groupByDate(filterByDate(filtered, filters.date));
-  }, [cards, filters, searchQuery]);
+  }, [cards, filters, searchQuery, selectedDateKey]);
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-12">
@@ -342,7 +359,7 @@ export function CalendarClient({ festivals }) {
               month={month}
               festivalDates={cards.map((festival) => festival.rawDate)}
               selectedDay={selectedDay}
-              onSelectDay={setSelectedDay}
+              onSelectDay={(day) => setSelectedDay((current) => (current === day ? null : day))}
               onPrevMonth={() => {
                 if (month === 0) {
                   setMonth(11);
@@ -381,9 +398,30 @@ export function CalendarClient({ festivals }) {
               <SearchBar onSearch={setSearchQuery} filters={filters} onFilterChange={setFilters} />
             </div>
 
+            {selectedDateKey && (
+              <div
+                aria-live="polite"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-orange/30 bg-brand-orange/5 px-5 py-3.5"
+              >
+                <p className="font-ui text-sm font-semibold text-slate-800">
+                  Showing festivals on {formatSelectedDateLabel(selectedDateKey)}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDay(null)}
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 font-ui text-sm font-bold text-slate-800 shadow-2xs transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange"
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                  Clear date
+                </button>
+              </div>
+            )}
+
             {grouped.length === 0 ? (
               <div className="rounded-2xl border border-slate-200/60 bg-white py-16 text-center text-slate-500 shadow-2xs">
-                No approved festivals found matching your search.
+                {selectedDateKey
+                  ? `No approved festivals on ${formatSelectedDateLabel(selectedDateKey)}. Pick another date or clear the filter.`
+                  : "No approved festivals found matching your search."}
               </div>
             ) : (
               grouped.map(([dateKey, entries]) => (

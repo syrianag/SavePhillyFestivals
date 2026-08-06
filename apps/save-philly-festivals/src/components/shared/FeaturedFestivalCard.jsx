@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { MapPin, Calendar, ArrowRight } from "lucide-react";
+import { FestivalImagePlaceholder } from "@/components/shared/FestivalImagePlaceholder";
 
 export function FeaturedFestivalCard({
   className,
@@ -38,14 +39,7 @@ export function FeaturedFestivalCard({
             className="object-cover transition-transform duration-500 hover:scale-105"
           />
         ) : (
-          <div 
-            className="absolute inset-0 bg-gradient-to-br" 
-            style={{ 
-              backgroundImage: `linear-gradient(135deg, ${bgColor}dd, #0f172a)`
-            }} 
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.15),transparent)]" />
-          </div>
+          <FestivalImagePlaceholder title={title} bgColor={bgColor} className="absolute inset-0" />
         )}
         
         {badge && (

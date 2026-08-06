@@ -155,6 +155,12 @@ model Festival {
   city          String?  @default("Philadelphia")
   state         String?  @default("PA")
   zip_code      String?
+  // Map pins. Populated by scripts/festival-geocode.mjs from the free-text location,
+  // never by the CSV import (the source spreadsheet carries no coordinates).
+  latitude      Float?
+  longitude     Float?
+  geocoded_at   DateTime?
+  geocode_source String?
   website_url   String?
   logo_url      String?
   image_url     String?
