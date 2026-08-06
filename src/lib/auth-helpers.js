@@ -33,6 +33,10 @@ export async function requireRole(role, redirectTo = "/login") {
   return session;
 }
 
+export async function requireProducer() {
+  return requireRole(ROLES.PRODUCER);
+}
+
 export async function requireAdmin() {
   return requireRole(ROLES.ADMIN);
 }

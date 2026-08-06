@@ -1,46 +1,19 @@
-"use client";
-
-import { useCallback, useMemo, useState } from "react";
-import { festivals, articles } from "@/lib/festivals";
-import { getFeatured, getUpcoming } from "@/lib/festival-filters";
+import { getFestivals } from "@/features/festivals/festival-queries";
+import { mapFestivalsToCards } from "@/lib/festival-mapper";
+import { FESTIVAL_STATUS } from "@/lib/constants";
+import { articles } from "@/lib/festivals";
 import { neighborhoods } from "@/lib/neighborhoods";
-import { Hero } from "@/components/home/Hero";
-import { FeaturedFestivals } from "@/components/home/FeaturedFestivals";
-import { DiscoverFestivals } from "@/components/home/DiscoverFestivals";
-import { WhyPhilly } from "@/components/home/WhyPhilly";
-import { UpcomingThisMonth } from "@/components/home/UpcomingThisMonth";
-import { ExploreNeighborhoods } from "@/components/home/ExploreNeighborhoods";
-import { CommunityStories } from "@/components/home/CommunityStories";
-import { FinalCTA } from "@/components/home/FinalCTA";
+import { HomeClient } from "@/components/home/HomeClient";
 
-export default function Home() {
-  const [query, setQuery] = useState("");
-  const [filters, setFilters] = useState({ date: "", type: "", area: "" });
+export default async function Home() {
+  const { festivals: dbFestivals } = await getFestivals({
+    status: FESTIVAL_STATUS.APPROVED,
+    limit: 100,
+  });
 
-  const featured = useMemo(() => getFeatured(festivals, 4), []);
-  const upcoming = useMemo(() => getUpcoming(festivals, 8), []);
-
-  const handleSelectArea = useCallback((area) => {
-    setFilters((prev) => ({ ...prev, area }));
-    document.getElementById("discover")?.scrollIntoView({ behavior: "smooth" });
-  }, []);
+  const festivals = mapFestivalsToCards(dbFestivals);
 
   return (
-    <>
-      <Hero />
-      <FeaturedFestivals festivals={featured} />
-      <DiscoverFestivals
-        festivals={festivals}
-        query={query}
-        onQueryChange={setQuery}
-        filters={filters}
-        onFiltersChange={setFilters}
-      />
-      <WhyPhilly />
-      <UpcomingThisMonth festivals={upcoming} />
-      <ExploreNeighborhoods neighborhoods={neighborhoods} onSelectArea={handleSelectArea} />
-      <CommunityStories articles={articles} />
-      <FinalCTA />
-    </>
+    <HomeClient festivals={festivals} articles={articles} neighborhoods={neighborhoods} />
   );
 }

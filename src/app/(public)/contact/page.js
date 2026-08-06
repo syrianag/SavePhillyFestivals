@@ -6,10 +6,37 @@ import { ArrowLeft, Mail, Phone, MapPin } from "lucide-react";
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({ name: "", email: "", message: "" });
 
-  function handleSubmit(e) {
+  function updateField(field, value) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault();
-    setSubmitted(true);
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to send message");
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -76,6 +103,8 @@ export default function ContactPage() {
                   id="name"
                   type="text"
                   required
+                  value={form.name}
+                  onChange={(e) => updateField("name", e.target.value)}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50"
                 />
               </div>
@@ -90,6 +119,8 @@ export default function ContactPage() {
                   id="email"
                   type="email"
                   required
+                  value={form.email}
+                  onChange={(e) => updateField("email", e.target.value)}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50"
                 />
               </div>
@@ -104,14 +135,18 @@ export default function ContactPage() {
                   id="message"
                   rows={4}
                   required
+                  value={form.message}
+                  onChange={(e) => updateField("message", e.target.value)}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50"
                 />
               </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
               <button
                 type="submit"
-                className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+                disabled={loading}
+                className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-60"
               >
-                Send Message
+                {loading ? "Sending..." : "Send Message"}
               </button>
             </form>
           )}

@@ -16,11 +16,8 @@ const publicLinks = [
 ];
 
 const staffLinks = [
-  { href: "/", label: "Dashboard" },
-  { href: "/admin/festivals", label: "Festivals" },
-  { href: "/admin/view-festivals", label: "View Festivals" },
+  { href: "/admin/festivals", label: "Dashboard" },
   { href: "/admin/pending", label: "Pending Review" },
-  { href: "/admin/submit", label: "Submit Festival" },
   { href: "/admin/settings", label: "Settings" },
 ];
 

@@ -6,6 +6,39 @@ const resend = process.env.RESEND_API_KEY
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "noreply@savephillyfestivals.com";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://savephillyfestivals.com";
+const CONTACT_EMAIL = process.env.CONTACT_EMAIL || "info@savephillyfestivals.org";
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export async function sendContactMessage({ name, email, message }) {
+  const safeName = escapeHtml(name);
+  const safeEmail = escapeHtml(email);
+  const safeMessage = escapeHtml(message);
+
+  const html = `
+    <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 32px;">
+      <h2 style="margin: 0 0 8px;">New Contact Message</h2>
+      <p style="color: #555; margin: 0 0 24px;">A visitor submitted the contact form.</p>
+
+      <div style="background: #f7f7f7; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+        <p style="margin: 0 0 4px;"><strong>Name:</strong> ${safeName}</p>
+        <p style="margin: 0 0 4px;"><strong>Email:</strong> ${safeEmail}</p>
+        <p style="margin: 0; white-space: pre-wrap;"><strong>Message:</strong><br />${safeMessage}</p>
+      </div>
+
+      <p style="color: #999; font-size: 12px; margin-top: 32px;">Save Philly Festivals</p>
+    </div>
+  `.trim();
+
+  return sendEmail({ to: CONTACT_EMAIL, subject: `New contact message from ${safeName}`, html });
+}
 
 export async function sendScheduleConfirmation({ to, festivalName, scheduleTitle, startTime, endTime }) {
   const startStr = startTime ? new Date(startTime).toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" }) : "";

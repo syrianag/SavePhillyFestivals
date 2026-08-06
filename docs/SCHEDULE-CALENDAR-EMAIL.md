@@ -27,6 +27,12 @@ When `RESEND_API_KEY` is set, emails send live via Resend. When unset, all email
 | `sendSubmissionConfirmation` | Festival is submitted | Submitter's `contact_email` |
 | `sendFestivalApproved` | Admin approves a festival | Festival's `contact_email` |
 | `sendFestivalRejected` | Admin rejects a festival | Festival's `contact_email` |
+| `sendContactMessage` | Visitor submits a contact form | `CONTACT_EMAIL` |
+
+**Additional configuration:**
+```
+CONTACT_EMAIL=info@savephillyfestivals.org
+```
 
 ---
 
@@ -90,7 +96,7 @@ Visitor                React Hook Form           API Route              Prisma  
 
 ### Step by step
 
-1. **Visitor** opens `SaveScheduleForm` (passing `scheduleId` and `festivalName` as props)
+1. **Visitor** opens `SaveScheduleForm` (passing `scheduleId` and `festivalName` as props) — mounted on the festival detail page (`/festivals/[slug]`) under each schedule event
 2. **React Hook Form** validates the email field with Zod before submission
 3. **Form submits** to `POST /api/schedules/save` with `{ email, schedule_id, receive_updates }`
 4. **API route** validates input with `saveScheduleWithOptInSchema`
@@ -126,6 +132,12 @@ Visitor                React Hook Form           API Route              Prisma  
 3. Returns the raw `.ics` string via `ics.createEvents()`
 
 This function is not wired to a route or UI yet. When connected, it can be served as a downloadable `.ics` file or embedded in a page.
+
+---
+
+## 5. Contact Form Flow
+
+The contact forms on `/contact` and the About page's Contact tab post to `POST /api/contact`, which validates the message with `contactMessageSchema` (`src/features/contact/contact-schemas.js`) and sends it via `sendContactMessage()`. The response includes `{ success, stubbed }` where `stubbed: true` means the email was only logged (no `RESEND_API_KEY`). The `/contact` page and About tab each show loading, error, and success states.
 
 ---
 

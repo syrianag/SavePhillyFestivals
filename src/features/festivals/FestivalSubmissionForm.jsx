@@ -182,7 +182,7 @@ export default function FestivalSubmissionForm() {
       }
 
       const isStaffArea = window.location.pathname.startsWith("/admin");
-      router.push(isStaffArea ? "/" : "/producer/success");
+      router.push(isStaffArea ? "/admin/festivals" : "/producer/success");
     } catch (err) {
       setSubmitError(err.message);
     } finally {

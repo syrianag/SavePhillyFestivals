@@ -21,12 +21,15 @@ A plain-English guide to what the website is, how it works, and how to keep it r
 
 | Feature | What It Does |
 |---|---|
-| Discover Festivals | Homepage with featured festivals, a map view, and a calendar view |
+| Discover Festivals | Homepage with featured festivals, a map view, and a calendar view, powered by live database data |
 | Festival Search | Text search plus filters by date, type, and neighborhood |
-| Schedule Builder | Save festivals to a personal schedule |
+| Schedule Builder | Save festivals to a personal schedule and get an email confirmation |
+| Email Notifications | Auto-emails for schedule saves, submissions, approvals/rejections, and contact messages |
 | Calendar Export | Download a `.ics` file importable into Google or Apple calendars |
 | Festival Submission | Step-by-step form for adding a new festival |
+| Contact Form | Contact page and About page forms send messages by email |
 | Admin Portal | Internal back office for reviewing submissions and managing the site |
+| Producer Portal | Producers manage their festivals; Overview includes a real schedule calendar |
 
 ---
 
@@ -444,13 +447,13 @@ Figma is a browser-based design tool where the website's look (colors, layouts, 
 
 | Problem | Solution |
 |---|---|
-| Submitter says they never got a confirmation email | Email notifications aren't wired up yet — notify them manually; feature **not built** |
+| Submitter says they never got a confirmation email | Check that `RESEND_API_KEY` is set in the environment. When it isn't, emails are logged to the server console instead of sent. |
 
 ### Contact Form
 
 | Problem | Solution |
 |---|---|
-| Form says "Message Sent" but no one received a message | The form only shows a confirmation — it doesn't send mail yet; share your email/phone directly. Feature **not built** |
+| Form says "Message Sent" but no one received a message | Check that `RESEND_API_KEY` and `CONTACT_EMAIL` are set. When `RESEND_API_KEY` is missing, the message is logged to the server console and `CONTACT_EMAIL` (default `info@savephillyfestivals.org`) is not used. |
 
 ---
 
@@ -458,14 +461,17 @@ Figma is a browser-based design tool where the website's look (colors, layouts, 
 
 Use the checkboxes to track what still needs work.
 
-- [ ] No festival editing (admin edit screen)
-- [ ] No email notifications
-- [ ] Contact form not connected
+- [ ] No festival editing (admin edit screen) — *not built*
+- [x] Email notifications — *built: schedule saves, submissions, approvals/rejections, contact messages*
+- [x] Contact form connected — *built: sends email via `POST /api/contact`*
 - [ ] Featured companies not implemented
-- [ ] Manual deployment (deploy automation is a placeholder)
+- [ ] Manual deployment (deploy automation is a placeholder) — *not built*
 - [ ] Image backup not implemented
-- [ ] Producer dashboard calendar is a placeholder
+- [x] Producer dashboard calendar — *built: real calendar of the producer's festival dates*
 - [ ] Homepage "Learn more" links to a `/calendar` page that doesn't exist
+- [ ] Interactive map is a placeholder box on the homepage
+- [ ] Sponsors, story pages, tours booking, and resources downloads are static/marketing only
+- [ ] `/my-schedule` page (view/remove saved schedules) not yet linked from the UI
 
 ---
 
@@ -511,4 +517,4 @@ Use the checkboxes to track what still needs work.
 
 ---
 
-*Last updated: 2026-08-03. For anything marked "needs developer," contact the development team.*
+*Last updated: 2026-08-06. For anything marked "needs developer," contact the development team. Developers: see `docs/CORE-FEATURES.md` for the implemented P0+P1 features and deferred P2 list.*

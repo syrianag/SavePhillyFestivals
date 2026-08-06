@@ -14,6 +14,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import SaveScheduleForm from "@/features/schedules/SaveScheduleForm";
 
 function formatDate(dateStr) {
   if (!dateStr) return "TBD";
@@ -216,32 +217,40 @@ export default async function FestivalDetailPage({ params }) {
             <div className="space-y-3">
               {festival.schedules.map((event) => (
                 <Card key={event.id}>
-                  <CardContent className="flex items-start gap-4 py-4">
-                    <div className="shrink-0 text-center min-w-[60px]">
-                      <Clock className="mx-auto size-4 text-muted-foreground" />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatTime(event.start_time)}
-                      </p>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium">{event.title}</h4>
-                        {event.is_headliner && (
-                          <Badge className="bg-brand-yellow text-brand-dark" variant="secondary">
-                            Headliner
-                          </Badge>
+                  <CardContent className="py-4">
+                    <div className="flex items-start gap-4">
+                      <div className="shrink-0 text-center min-w-[60px]">
+                        <Clock className="mx-auto size-4 text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatTime(event.start_time)}
+                        </p>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{event.title}</h4>
+                          {event.is_headliner && (
+                            <Badge className="bg-brand-yellow text-brand-dark" variant="secondary">
+                              Headliner
+                            </Badge>
+                          )}
+                        </div>
+                        {event.performer && (
+                          <p className="text-sm text-muted-foreground">
+                            {event.performer}
+                          </p>
+                        )}
+                        {event.description && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {event.description}
+                          </p>
                         )}
                       </div>
-                      {event.performer && (
-                        <p className="text-sm text-muted-foreground">
-                          {event.performer}
-                        </p>
-                      )}
-                      {event.description && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {event.description}
-                        </p>
-                      )}
+                    </div>
+                    <div className="mt-4 border-t border-border pt-4">
+                      <SaveScheduleForm
+                        scheduleId={event.id}
+                        festivalName={festival.name}
+                      />
                     </div>
                   </CardContent>
                 </Card>

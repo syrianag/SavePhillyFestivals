@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { CalendarWidget } from "@/components/shared/CalendarWidget";
 import {
   Calendar,
   Users,
@@ -10,82 +11,7 @@ import {
   CheckCircle,
   AlertCircle,
   Star,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
-
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
-function PlaceholderCalendar() {
-  const [currentDate] = useState(new Date());
-  const [viewDate, setViewDate] = useState(new Date());
-
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = currentDate.getDate();
-  const isCurrentMonth = currentDate.getMonth() === month && currentDate.getFullYear() === year;
-
-  const blanks = Array.from({ length: firstDay }, (_, i) => i);
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
-  function prevMonth() {
-    setViewDate(new Date(year, month - 1, 1));
-  }
-  function nextMonth() {
-    setViewDate(new Date(year, month + 1, 1));
-  }
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <button onClick={prevMonth} className="rounded-md p-1 hover:bg-muted transition-colors">
-            <ChevronLeft className="size-4" />
-          </button>
-          <CardTitle className="text-sm font-medium">
-            {MONTHS[month]} {year}
-          </CardTitle>
-          <button onClick={nextMonth} className="rounded-md p-1 hover:bg-muted transition-colors">
-            <ChevronRight className="size-4" />
-          </button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-7 gap-1 text-center">
-          {DAYS.map((day) => (
-            <div key={day} className="text-xs font-medium text-muted-foreground py-1">
-              {day}
-            </div>
-          ))}
-          {blanks.map((b) => (
-            <div key={`blank-${b}`} />
-          ))}
-          {days.map((day) => (
-            <div
-              key={day}
-              className={`text-sm py-1.5 rounded-md ${
-                isCurrentMonth && day === today
-                  ? "bg-primary text-primary-foreground font-semibold"
-                  : "text-foreground hover:bg-muted"
-              }`}
-            >
-              {day}
-            </div>
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-muted-foreground text-center">
-          Calendar coming soon — events will appear here
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
 
 function StatCard({ icon: Icon, label, value, color = "text-primary" }) {
   return (
@@ -104,9 +30,14 @@ function StatCard({ icon: Icon, label, value, color = "text-primary" }) {
 }
 
 export default function ProducerOverviewPage() {
-  const [stats, setStats] = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [viewDate, setViewDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [selectedDay, setSelectedDay] = useState(null);
 
   useEffect(() => {
     fetch("/api/producer/stats")
@@ -114,8 +45,8 @@ export default function ProducerOverviewPage() {
         if (!res.ok) throw new Error("Failed to load stats");
         return res.json();
       })
-      .then((data) => {
-        setStats(data.stats);
+      .then((payload) => {
+        setData(payload);
         setLoading(false);
       })
       .catch(() => {
@@ -123,6 +54,40 @@ export default function ProducerOverviewPage() {
         setLoading(false);
       });
   }, []);
+
+  const festivalsByDay = useMemo(() => {
+    const map = new Map();
+    if (!data) return map;
+    for (const f of data.festivals) {
+      if (!f.start_date) continue;
+      const start = new Date(f.start_date);
+      const end = f.end_date ? new Date(f.end_date) : new Date(f.start_date);
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 12);
+      let guard = 0;
+      while (guard < 370) {
+        const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(f);
+        if (d.toDateString() === end.toDateString()) break;
+        d.setDate(d.getDate() + 1);
+        guard++;
+      }
+    }
+    return map;
+  }, [data]);
+
+  const festivalDates = useMemo(() => {
+    return [...festivalsByDay.keys()].map((key) => {
+      const [year, month, day] = key.split("-").map(Number);
+      return new Date(year, month, day, 12).toISOString();
+    });
+  }, [festivalsByDay]);
+
+  const selectedDayFestivals = useMemo(() => {
+    if (!data || !selectedDay) return [];
+    const key = `${viewDate.getFullYear()}-${viewDate.getMonth()}-${selectedDay}`;
+    return festivalsByDay.get(key) || [];
+  }, [data, selectedDay, viewDate, festivalsByDay]);
 
   if (loading) {
     return (
@@ -156,7 +121,7 @@ export default function ProducerOverviewPage() {
     );
   }
 
-  const s = stats || { totalFestivals: 0, approvedFestivals: 0, pendingFestivals: 0, draftFestivals: 0, totalInterested: 0, upcomingCount: 0 };
+  const s = data?.stats || { totalFestivals: 0, approvedFestivals: 0, pendingFestivals: 0, draftFestivals: 0, totalInterested: 0, upcomingCount: 0 };
 
   return (
     <div className="space-y-6">
@@ -170,7 +135,62 @@ export default function ProducerOverviewPage() {
         <StatCard icon={Star} label="Upcoming" value={s.upcomingCount} color="text-purple-600" />
       </div>
 
-      <PlaceholderCalendar />
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            <Calendar className="mr-1 inline-block size-4" />
+            Festival Schedule
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <CalendarWidget
+            year={viewDate.getFullYear()}
+            month={viewDate.getMonth()}
+            festivalDates={festivalDates}
+            selectedDay={selectedDay}
+            onSelectDay={setSelectedDay}
+            onPrevMonth={() =>
+              setViewDate(
+                new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1)
+              )
+            }
+            onNextMonth={() =>
+              setViewDate(
+                new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1)
+              )
+            }
+          />
+
+          {selectedDayFestivals.length > 0 ? (
+            <div className="space-y-2">
+              {selectedDayFestivals.map((f) => (
+                <div
+                  key={f.id}
+                  className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-4 py-3"
+                >
+                  <div>
+                    <p className="font-medium">{f.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {f.location || f.city || "Philadelphia, PA"}
+                    </p>
+                  </div>
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {f.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : selectedDay ? (
+            <p className="text-sm text-muted-foreground">
+              No festivals on this day.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Select a day to see which of your festivals are happening.
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

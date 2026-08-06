@@ -7,7 +7,6 @@ import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard,
   Calendar,
   Clock,
   ListMusic,
@@ -21,12 +20,6 @@ import {
 } from "lucide-react";
 
 const navGroups = [
-  {
-    label: "Overview",
-    links: [
-      { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-    ],
-  },
   {
     label: "Content",
     links: [
@@ -55,10 +48,7 @@ export default function AdminSidebar({ user }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const isActive = (href) => {
-    if (href === "/admin") return pathname === "/admin";
-    return pathname.startsWith(href);
-  };
+  const isActive = (href) => pathname.startsWith(href);
 
   return (
     <>
@@ -84,7 +74,7 @@ export default function AdminSidebar({ user }) {
         )}
       >
         <div className="flex h-16 items-center justify-between border-b px-6">
-          <Link href="/admin" className="flex items-center gap-2">
+          <Link href="/admin/festivals" className="flex items-center gap-2">
             <div className="flex size-8 items-center justify-center rounded-lg bg-brand-yellow text-xs font-bold text-brand-dark">
               SPF
             </div>
