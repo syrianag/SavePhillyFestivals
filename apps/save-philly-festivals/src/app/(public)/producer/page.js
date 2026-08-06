@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function ProducerIntroductionPage() {
   return (
-    <main className="mx-auto max-w-5xl px-5 py-16 sm:px-8 sm:py-24">
+    <div className="mx-auto max-w-5xl px-5 py-16 sm:px-8 sm:py-24">
       <section className="overflow-hidden rounded-3xl bg-[#1E7BF6] px-6 py-14 text-white sm:px-12 sm:py-20">
         <p className="font-ui text-sm font-bold uppercase tracking-widest text-[#F6C847]">For festival producers</p>
         <h1 className="mt-4 max-w-3xl font-heading text-4xl font-bold leading-tight sm:text-6xl">Showcase your festival across Philadelphia</h1>
@@ -19,6 +19,6 @@ export default function ProducerIntroductionPage() {
         <div><h2 className="font-heading text-xl font-bold">2. Save a private draft</h2><p className="mt-2 text-slate-600">Add festival, location, date, and private contact information at your own pace.</p></div>
         <div><h2 className="font-heading text-xl font-bold">3. Submit for review</h2><p className="mt-2 text-slate-600">Confirm the information and send it to the team. Public listing remains subject to editorial approval.</p></div>
       </section>
-    </main>
+    </div>
   );
 }

@@ -1,5 +1,9 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { isIP } from "node:net";
+
+import { extractTrustedRequestIp } from "@/features/public-mutation/public-mutation-security";
+
+// Re-exported from the neutral public-mutation module so consent keeps one shared implementation.
+export { extractTrustedRequestIp };
 
 export function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -18,16 +22,7 @@ export function authorizeN8nRequest(request, secret = process.env.N8N_ORGANIZER_
   return Boolean(match && constantTimeSecretMatches(match[1], secret));
 }
 
-export function extractTrustedRequestIp(request, trustedProxyHops = process.env.CONSENT_TRUSTED_PROXY_HOPS) {
-  const hops = Number.parseInt(trustedProxyHops || "0", 10);
-  if (!Number.isInteger(hops) || hops < 1 || hops > 10) return "unknown";
-  const chain = (request.headers.get("x-forwarded-for") || "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-  const candidate = chain.at(-hops);
-  return candidate && isIP(candidate) ? candidate : "unknown";
-}
+
 
 export function redactedOutboxError(errorCode) {
   return /^[a-z0-9_]{1,80}$/.test(errorCode || "") ? errorCode : "provider_error";

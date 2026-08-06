@@ -131,8 +131,13 @@ describe("database, moderation, and static route contracts", () => {
     expect(notification).toContain("attempt_token");
     expect(notification).toContain("attempt_started_at");
     expect(scheduleEmail).toContain("failure_message");
-    expect(scheduleEmail).not.toContain("attempt_token");
-    expect(scheduleEmail).not.toContain("attempt_started_at");
+    /* F-04 later gained its own delivery lease. The models must stay distinct: schedule email
+     * owns a lease for safe retries but must never take producer-notification routing fields. */
+    expect(scheduleEmail).not.toContain("notification_type");
+    expect(scheduleEmail).not.toContain("recipient_alias");
+    expect(scheduleEmail).not.toContain("workflow_revision");
+    expect(notification).not.toContain("idempotency_key");
+    expect(notification).not.toContain("selection_version");
     expect(migratedNotification).toContain('"attempt_token" TEXT');
     expect(migratedNotification).toContain('"attempt_started_at" TIMESTAMP(3)');
     expect(reconciliation).toContain("provider_file_id");

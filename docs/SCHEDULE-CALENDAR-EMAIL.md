@@ -2,170 +2,73 @@
 
 ## Overview
 
-This document describes how festival schedules, the ICS calendar export, and the Resend email integration work together.
+The public schedule builder is accountless. Its versioned `{type,id}` selection is stored only in the visitor's browser under `savePhillySchedule`; visitor email addresses, organizer consent, preferences, and management tokens are never stored with that browser selection.
 
----
+The active server endpoints are:
 
-## 1. Email Endpoint
-
-All email is sent through `apps/save-philly-festivals/src/lib/mail.js`, which wraps the Resend SDK.
-
-**Configuration (`apps/save-philly-festivals/.env`):**
-```
-RESEND_API_KEY=re_xxxxx
-RESEND_FROM_EMAIL=onboarding@resend.dev
-```
-
-When `RESEND_API_KEY` is set, emails send live via Resend. When unset, delivery returns a truthful `provider_unconfigured` failure and logs only a generic operational message—never the recipient, subject, or email body. `RESEND_FROM_EMAIL` configures the verified sender; no provider credentials are stored in application tables.
-
-**Email functions exported from `apps/save-philly-festivals/src/lib/mail.js`:**
-
-| Function | Trigger | Recipient |
+| Method | Endpoint | Purpose |
 |---|---|---|
-| `sendTransactionalEmail` | Transactional provider boundary (including F-04 mixed schedule summaries) | The visitor |
-| `sendScheduleConfirmation` | Legacy event-only saved-schedule confirmation | The visitor |
-| `sendMailingListForward` | Visitor opts in to updates | Festival's `contact_email` |
-| `sendSubmissionConfirmation` | Festival is submitted | Submitter's `contact_email` |
-| `sendFestivalApproved` | Admin approves a festival | Festival's `contact_email` |
-| `sendFestivalRejected` | Admin rejects a festival | Festival's `contact_email` |
+| `POST` | `/api/schedules/email` | Send a transactional mixed-schedule summary |
+| `POST` | `/api/schedules/calendar` | Download a mixed-schedule ICS snapshot |
+| `POST` | `/api/organizer-consent/eligibility` | Resolve organizers eligible for optional consent |
+| `POST` / `DELETE` | `/api/organizer-consent` | Create or revoke explicit organizer consent |
+
+The old database-backed personal saved-schedule and public filesystem-upload APIs are retired; see [Retired legacy endpoints](#retired-legacy-endpoints).
 
 ---
 
-## 2. Error Handling
+## 1. Transactional Schedule Email (F-04)
 
-Email sending is **non-blocking**. If an email fails, the request still succeeds — the API response includes `email_sent: false` so the client knows.
+The Calendar Schedule Builder sends its complete local selection to `POST /api/schedules/email` with a UUID idempotency key:
 
+```json
+{
+  "email": "visitor@example.com",
+  "idempotency_key": "00000000-0000-4000-8000-000000000000",
+  "selection": {
+    "version": 1,
+    "items": [
+      { "type": "festival", "id": "festival-uuid" },
+      { "type": "event", "id": "event-uuid" }
+    ]
+  }
+}
 ```
-POST /api/schedules/save
-  → saveSchedule() runs (DB write)
-  → sendScheduleConfirmation() runs in try/catch
-  → sendMailingListForward() runs in try/catch (if opted in)
-  → response returned regardless of email outcome
-```
 
-All API routes use `handleApiError()` from `apps/save-philly-festivals/src/lib/errors.js`, which catches:
-- `ValidationError` (400) — invalid input
-- `NotFoundError` (404) — resource doesn't exist
-- `ForbiddenError` (403) — unauthorized access
-- Generic errors (500) — logged server-side
+This action is transactional and independent of organizer marketing consent. The endpoint strictly validates and normalizes the request, resolves only currently public festivals and events, and builds escaped content from server records. Deleted, unknown, or no-longer-public selections are reported as unavailable; a request with no resolvable selection is rejected.
 
-Validation is handled by Zod schemas in `apps/save-philly-festivals/src/features/schedules/schedule-schemas.js` and `apps/save-philly-festivals/src/features/festivals/festival-schemas.js`, processed through the shared `validate()` helper in `apps/save-philly-festivals/src/lib/validate.js`.
+Each accepted submission is stored as a `ScheduleEmailRequest` with ordered `ScheduleEmailItem` rows and a `pending`, `sent`, or `failed` delivery status. The idempotency key prevents duplicate creation and delivery on browser retries. Provider credentials and complete email bodies are not stored.
+
+Email delivery uses `sendTransactionalEmail` through the provider boundary in `apps/save-philly-festivals/src/lib/mail.js`. A delivery failure is reported truthfully as `502` with `email_sent: false`; it does not clear or alter the browser-local schedule. When `RESEND_API_KEY` is unset, delivery reports `provider_unconfigured` without logging recipient data, subject text, or message content.
+
+For Playwright only, `DISCOVERY_E2E_FIXTURE=1` supplies an in-process repository/provider fixture and does not call PostgreSQL or Resend. Production must not enable this flag.
 
 ---
 
-## 3. F-04 Mixed Schedule Email Flow
+## 2. Optional Organizer Consent (F-05)
 
-The Calendar Schedule Builder sends its complete local, versioned `{type,id}` selection to `POST /api/schedules/email` with a UUID idempotency key. This transactional action is independent of marketing consent and has no marketing checkbox.
+Organizer consent remains a separate, optional action. The schedule email works with all consent checkboxes unchecked and never implicitly subscribes a visitor.
 
-The endpoint strictly validates and normalizes the request, resolves only currently approved festivals and events, and builds escaped email content exclusively from server records. Unknown, deleted, or unapproved selections are retained as unavailable child rows and reported safely; a request with no valid resolved selection is rejected.
+`POST /api/organizer-consent/eligibility` accepts only the versioned ID selection and returns display-safe organizer records for currently public parent festivals with enabled, authorized integrations. The visitor then explicitly selects named organizers and at least one preference (`reminders`, `updates`, or `discovery`) and accepts the disclosure.
 
-Each submission is stored in `ScheduleEmailRequest` with normalized ordered `ScheduleEmailItem` rows and a `pending`, `sent`, or `failed` delivery status. The unique idempotency key prevents a browser retry from creating or sending a duplicate request. Provider IDs and redacted operational failures may be stored; provider credentials and complete email bodies are not.
+`POST /api/organizer-consent` re-resolves all IDs and authorization server-side, normalizes the email, stores versioned disclosure evidence and the explicit selections, and creates an idempotent outbox row for each still-authorized organizer. Partial eligibility is reported separately from schedule delivery.
 
-For Playwright only, `DISCOVERY_E2E_FIXTURE=1` supplies an in-process repository/provider fixture. It does not call PostgreSQL or Resend. Production must not enable this flag.
+The raw high-entropy management token is returned only on initial creation and remains in component memory. It is never placed in browser storage, logs, or URLs. `DELETE /api/organizer-consent` hashes the supplied token, revokes the grant, records organizer-scoped suppression, and suppresses pending work.
 
-## F-05 Optional organizer consent
+Operational environment names:
 
-The schedule email remains transactional and available with every consent checkbox unchecked. A separate section lists only server-resolved, approved parent festivals that have an enabled, authorized `OrganizerIntegration`. The visitor explicitly chooses one or more named organizers and one shared preference set (`reminders`, `updates`, `discovery`); no option is preselected. Browser storage continues to contain only the versioned schedule IDs—never email, consent, preferences, or management tokens.
+- `N8N_ORGANIZER_OUTBOX_SECRET`: bearer secret held only in application and N8N secret stores.
+- `CONSENT_TRUSTED_PROXY_HOPS`: trusted right-most `X-Forwarded-For` hops; defaults to `0`.
+- `CONSENT_IP_RETENTION_DAYS`: approved retention period for policy and cleanup operations.
 
-`POST /api/organizer-consent/eligibility` accepts only the versioned ID selection and returns display-safe eligible organizer records. `POST /api/organizer-consent` re-resolves all IDs and authorization server-side, normalizes the email, stores versioned disclosure evidence, selected approved festivals/organizers/preferences, source, timestamp, trusted request IP, revocation/suppression state, and one hashed high-entropy management token. It creates one idempotent outbox row per still-authorized chosen organizer. Partial eligibility is reported separately from schedule delivery.
-
-The raw management token is returned only on initial creation, held only in component memory, and never written to browser storage; the UI offers an immediate revoke action while that page remains open. `DELETE /api/organizer-consent` accepts the consent ID and token, hashes it server-side, persists organizer-scoped email suppressions, revokes the grant, and suppresses pending/processing work. A future full cross-provider preference center may wrap this mechanism; tokens must be delivered only in an approved private channel and must never be logged or placed in URLs.
-
-Operational application environment names:
-
-- `N8N_ORGANIZER_OUTBOX_SECRET`: shared high-entropy bearer secret held only in app/N8N secret stores.
-- `CONSENT_TRUSTED_PROXY_HOPS`: number of trusted right-most `X-Forwarded-For` hops; defaults to `0` (record `unknown`) to prevent spoofing.
-- `CONSENT_IP_RETENTION_DAYS`: documented retention setting for policy/cleanup operations. Configure the approved period; this change does not add a destructive cleanup job.
-
-N8N claims bounded due work under a five-minute lease and reports completion or retryable/permanent failure. Invalid, expired, or replayed leases are rejected. Revoked/suppressed consent or organizer authorization suppresses work before claim and again before report acceptance. Provider details are reduced to allowlisted operational error codes. See `apps/n8n/README.md`; no workflow or ESP is activated by F-05.
-
-### Legacy event-only confirmation flow
-
-The following documents the pre-existing `SavedSchedule` event-only flow, which remains separate from F-04.
-
-#### Confirmation Email — Schedule Save Flow
-
-### Dataflow
-
-```
-Visitor                React Hook Form           API Route              Prisma           Resend
-  │                         │                       │                     │                │
-  │  fills email + checkbox │                       │                     │                │
-  │────────────────────────>│                       │                     │                │
-  │                         │  POST /api/schedules/save                    │                │
-  │                         │  { email, schedule_id, receive_updates }    │                │
-  │                         │──────────────────────>│                     │                │
-  │                         │                       │  schedule.findUnique│                │
-  │                         │                       │────────────────────>│                │
-  │                         │                       │<────────────────────│                │
-  │                         │                       │                     │                │
-  │                         │                       │  saveSchedule()     │                │
-  │                         │                       │  (upsert)           │                │
-  │                         │                       │────────────────────>│                │
-  │                         │                       │<────────────────────│                │
-  │                         │                       │                     │                │
-  │                         │                       │  sendScheduleConfirmation()           │
-  │                         │                       │─────────────────────────────────────>│
-  │                         │                       │<─────────────────────────────────────│
-  │                         │                       │                     │                │
-  │                         │                       │  if receive_updates:                 │
-  │                         │                       │  sendMailingListForward()            │
-  │                         │                       │─────────────────────────────────────>│
-  │                         │                       │<─────────────────────────────────────│
-  │                         │                       │                     │                │
-  │                         │  { saved, email_sent, updates_forwarded }   │                │
-  │                         │<──────────────────────│                     │                │
-  │  sees success message   │                       │                     │                │
-  │<────────────────────────│                       │                     │                │
-```
-
-### Step by step
-
-1. **Visitor** opens `SaveScheduleForm` (passing `scheduleId` and `festivalName` as props)
-2. **React Hook Form** validates the email field with Zod before submission
-3. **Form submits** to `POST /api/schedules/save` with `{ email, schedule_id, receive_updates }`
-4. **API route** validates input with `saveScheduleWithOptInSchema`
-5. **API route** looks up the schedule and its parent festival
-6. **API route** calls `saveSchedule()` — an upsert on `SavedSchedule` (idempotent)
-7. **API route** calls `sendScheduleConfirmation()` — confirmation email to visitor
-8. **If opted in**, API route calls `sendMailingListForward()` — notification to festival's `contact_email`
-9. **Response** returns `{ saved, email_sent, updates_forwarded }`
-
-### Files involved
-
-| File | Role |
-|---|---|
-| `apps/save-philly-festivals/src/features/schedules/SaveScheduleForm.jsx` | React Hook Form component |
-| `apps/save-philly-festivals/src/features/schedules/schedule-schemas.js` | Zod validation schemas |
-| `apps/save-philly-festivals/src/features/schedules/schedule-queries.js` | Prisma queries (save, get, remove) |
-| `apps/save-philly-festivals/src/app/api/schedules/save/route.js` | POST endpoint |
-| `apps/save-philly-festivals/src/app/api/schedules/saved/route.js` | GET (list) + DELETE (remove) endpoints |
-| `apps/save-philly-festivals/src/lib/mail.js` | Resend email functions |
-| `apps/save-philly-festivals/src/lib/errors.js` | Error classes and handler |
-| `apps/save-philly-festivals/src/lib/validate.js` | Zod validation helper |
+See `apps/n8n/README.md` for claim/report behavior. No workflow or ESP is activated merely by the consent feature.
 
 ---
 
-## 4. F-06 Mixed Schedule Calendar Export
+## 3. Calendar Export (F-06)
 
-The schedule builder sends its complete versioned, ID-only selection to `POST /api/schedules/calendar`. The server re-resolves current public records and generates one `.ics` `VEVENT` for every selected whole festival or individual event. A parent festival and one of its program events remain separate entries, and request order is preserved.
+`POST /api/schedules/calendar` accepts the same versioned, ID-only selection and returns a `text/calendar; charset=utf-8` attachment named `philly-fests-schedule.ics`.
 
-The endpoint requires JSON no larger than 32 KiB, accepts at most 100 selections, and returns `400` for an invalid contract, `413` for an oversized body, `415` for an unsupported media type, `422` when no selection is currently exportable, and a generic redacted `500` for operational failure. When only some IDs resolve, it downloads the valid entries and reports the number omitted in `X-Calendar-Omitted-Count`; browser storage is never changed. The response is private, `no-store`, and contains no email, consent, organizer integration, provider credential, or private producer-contact data.
-
-Timed values are persisted as UTC instants while retaining `America/New_York` as their source zone, then emitted as UTC ICS timestamps. Date-only values remain PostgreSQL `date` values. Their producer-facing end date is inclusive, while ICS `DTEND;VALUE=DATE` is exclusive: August 8 ends August 9, and August 8–10 ends August 11. This prevents browser/process timezone shifts and preserves midnight and DST-spanning intervals.
-
-Every entry includes a stable type-prefixed UID, `DTSTAMP`, start/end, title, canonical Philly Fests URL, confirmed/tentative/canceled status, busy/free state, `LAST-MODIFIED`, and `SEQUENCE`; description and location are included when available. No alarms ship initially. Canceled entries are exportable only if they were previously public. Re-import update/cancellation behavior varies by calendar client.
-
-The `.ics` file is the common import path for current Google Calendar, Apple Calendar, and Outlook workflows. It is a snapshot and does not update automatically. Before a production release, manually import the same interoperability fixture into current Google Calendar web, Apple Calendar on macOS/iOS, and Outlook web/desktop, recording client versions and results for summer/winter times, both DST transitions, one-day and multi-day all-day entries, midnight spans, Unicode, mixed selections, and cancellation re-import. Automated unit and browser tests validate the file contract but cannot replace native-client import checks.
-
----
-
-## 5. API Endpoints Reference
-
-### `POST /api/schedules/calendar`
-Generate a calendar snapshot from server-resolved selections.
-
-**Request:**
 ```json
 {
   "selection": {
@@ -178,62 +81,51 @@ Generate a calendar snapshot from server-resolved selections.
 }
 ```
 
-**Successful response:** `text/calendar; charset=utf-8` with attachment filename `philly-fests-schedule.ics` and `X-Calendar-Omitted-Count`.
+The endpoint re-resolves current public records and emits one `VEVENT` for each selected whole festival or individual event, preserving request order. It accepts JSON up to 32 KiB and at most 100 selections. Responses include `Cache-Control: private, no-store`; successful exports include `X-Calendar-Omitted-Count`.
 
-### `POST /api/schedules/save`
-Save a schedule to a visitor's list and trigger email.
+| Status | Meaning |
+|---|---|
+| `200` | Calendar generated; unavailable items may have been omitted |
+| `400` | Invalid JSON or selection contract |
+| `413` | Request body too large |
+| `415` | Content type is not JSON |
+| `422` | No selected item is currently exportable |
+| `500` | Redacted operational failure |
 
-**Request:**
+Timed values are emitted as UTC ICS timestamps from their persisted instants. Date-only festival end dates are converted from the producer-facing inclusive date to the ICS-exclusive `DTEND`. Entries include stable type-prefixed UIDs, canonical Philly Fests URLs, status, busy/free state, `LAST-MODIFIED`, and `SEQUENCE`. Calendar exports are snapshots and do not update automatically.
+
+---
+
+## 4. Retired Legacy Endpoints
+
+The following contracts intentionally return `410 Gone` for every historically supported method. They do not parse request bodies, authenticate, query or mutate a database, send mail, or access the filesystem.
+
+| Method | Endpoint | Replacement |
+|---|---|---|
+| `POST` | `/api/schedules/save` | Browser-local schedule plus `/api/schedules/email` |
+| `GET` / `DELETE` | `/api/schedules/saved` | Browser-local schedule at `/calendar` |
+| `POST` | `/api/upload` | Authenticated private producer assets at `/api/producer/festivals/[id]/assets` |
+
+All retirement responses are JSON with `Cache-Control: private, no-store`:
+
 ```json
 {
-  "email": "visitor@example.com",
-  "schedule_id": "uuid",
-  "receive_updates": true
+  "error": "This legacy saved-schedule endpoint has been retired.",
+  "replacement": "/calendar"
 }
 ```
 
-**Response (201):**
-```json
-{
-  "saved": { "id": "...", "user_email": "...", "schedule_id": "..." },
-  "email_sent": true,
-  "updates_forwarded": true
-}
-```
+The legacy public `SaveScheduleForm` and unmounted public `FestivalSubmissionForm` were removed because no active source or test caller imported them. Current private producer asset upload uses provider-backed storage and is not affected.
 
-### `GET /api/schedules/saved?email=visitor@example.com`
-Retrieve all saved schedules for a visitor.
+---
 
-**Response (200):**
-```json
-{
-  "saved": [
-    {
-      "id": "...",
-      "schedule": {
-        "id": "...",
-        "title": "...",
-        "start_time": "...",
-        "end_time": "...",
-        "festival": { "id": "...", "name": "...", "slug": "..." }
-      }
-    }
-  ]
-}
-```
+## 5. Validation and Error Handling
 
-### `DELETE /api/schedules/saved`
-Remove a schedule from a visitor's list.
+Active endpoint request schemas use strict Zod contracts and server-owned record resolution. Operational errors are logged without recipient, selection, consent, provider credential, or private contact data. Browser-local schedule contents remain unchanged after email, calendar, or organizer-consent success or failure.
 
-**Request:**
-```json
-{
-  "email": "visitor@example.com",
-  "schedule_id": "uuid"
-}
-```
+Focused coverage lives in:
 
-**Response (200):**
-```json
-{ "message": "Schedule removed from your list" }
-```
+- `apps/save-philly-festivals/tests/unit/legacy-route-retirement.test.js`
+- `apps/save-philly-festivals/tests/unit/schedule-email.test.js`
+- `apps/save-philly-festivals/tests/unit/schedule-email-contract.test.js`
+- `apps/save-philly-festivals/e2e/schedule-builder.spec.js`

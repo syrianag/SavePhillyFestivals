@@ -19,6 +19,25 @@ sha256sum docs/Festivals_Postgres_Export.csv tools/data/festival-category-map.js
 
 Every file-bearing mode requires both expected checksums. The byte-exact category-map checksum is embedded in the prepared batch `import_profile`; apply rejects a different file or map. A completed ordinary source checksum is a no-op and cannot create another batch because the database also enforces source-checksum uniqueness.
 
+## Source file handling (required)
+
+The festival source CSV contains organizer contact details. It is **no longer tracked in Git**
+and is ignored by `.gitignore`. Keep it only in approved restricted storage and pass its path
+explicitly to the importer:
+
+```sh
+--file /restricted/path/Festivals_Postgres_Export.csv
+```
+
+The examples below use `docs/Festivals_Postgres_Export.csv` only because that is where an operator
+may place the restricted copy locally. That path is git-ignored; never re-add it to the repository.
+
+**Outstanding owner action:** the file existed in earlier commits, so it remains recoverable from
+Git history. Removing ongoing exposure required untracking it; fully purging it requires an
+approved history rewrite plus repository access review. That rewrite is deliberately **not**
+performed automatically because it invalidates existing clones and forks. Schedule it with the
+repository owner, then rotate access for anyone who no longer needs the data.
+
 ## Authorization and safety
 
 - `--operator-user-id` must identify a database user with role `admin` or `super_admin`.

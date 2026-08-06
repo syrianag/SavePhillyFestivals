@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Bookmark, MapPin, ArrowRight, X } from "lucide-react";
@@ -106,10 +107,13 @@ export function FestivalCard({
     >
       {image ? (
         <div className="relative aspect-[4/3] overflow-hidden">
-          <img
+          <Image
             src={image}
             alt={title}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            fill
+            unoptimized
+            sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
           {badge && (
             <span className="absolute left-2 top-2 rounded bg-brand-yellow px-2 py-0.5 text-xs font-semibold text-brand-dark">

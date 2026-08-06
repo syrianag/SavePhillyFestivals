@@ -18,6 +18,7 @@ const f07Migration = "20260804050000_producer_submission_workflow";
 const f08Migration = "20260804060000_editorial_workflow";
 const f09Migration = "20260804070000_moderated_social_feed";
 const festivalImportMigration = "20260805000000_festival_data_import";
+const userManagementMigration = "20260805010000_user_management_audit";
 const snapshotFieldSql = FESTIVAL_REVISION_SNAPSHOT_FIELDS
   .map((field) => `'${field.replaceAll("'", "''")}'`)
   .join(", ");
@@ -65,6 +66,7 @@ if (!migrationNames.includes(f07Migration)) throw new Error(`Missing ${f07Migrat
 if (!migrationNames.includes(f08Migration)) throw new Error(`Missing ${f08Migration} migration.`);
 if (!migrationNames.includes(f09Migration)) throw new Error(`Missing ${f09Migration} migration.`);
 if (!migrationNames.includes(festivalImportMigration)) throw new Error(`Missing ${festivalImportMigration} migration.`);
+if (!migrationNames.includes(userManagementMigration)) throw new Error(`Missing ${userManagementMigration} migration.`);
 
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
@@ -624,6 +626,63 @@ try {
   }, "Nested raw contact data in import issue safe details", /safe_details_redacted/);
 
   console.log("Verified festival import migration presence, ordinary source uniqueness, imported-target partial uniqueness, redacted lineage fields, Restrict relations, and representative hash/count/status/production/override/disposition/issue coherence rejections.");
+
+  await client.query(readFileSync(join(migrationsRoot, userManagementMigration, "migration.sql"), "utf8"));
+  const userManagementConstraints = [
+    "User_role_allowlist", "User_revision_nonnegative", "User_deactivation_coherence",
+    "UserAccountTransition_shape", "UserAccountTransition_role_allowlist",
+  ];
+  const userConstraintRows = await client.query(`SELECT conname FROM pg_constraint WHERE conname = ANY($1::text[])`, [userManagementConstraints]);
+  if (userConstraintRows.rowCount !== userManagementConstraints.length) throw new Error("User-management constraints are incomplete.");
+  const userManagementTriggers = [
+    "User_account_creation_audit_trigger", "User_account_revision_trigger",
+    "User_account_insert_audit_commit_trigger", "User_account_update_audit_commit_trigger",
+    "UserAccountTransition_immutable_trigger", "UserAccountTransition_coherence_commit_trigger",
+  ];
+  const userTriggerRows = await client.query(`SELECT tgname FROM pg_trigger WHERE NOT tgisinternal AND tgname = ANY($1::text[])`, [userManagementTriggers]);
+  if (userTriggerRows.rowCount !== userManagementTriggers.length) throw new Error("User-management audit triggers are incomplete.");
+
+  await expectTransactionRejected(async () => {
+    await client.query(`INSERT INTO "User" ("id", "email", "password_hash", "role", "created_at", "updated_at") VALUES ('a0000000-0000-4000-8000-000000000001', 'invalid-role@example.test', 'disposable-only', 'owner', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`);
+  }, "User role outside the allowlist", /User_role_allowlist/);
+
+  const firstSuperAdminId = "a0000000-0000-4000-8000-000000000010";
+  const secondSuperAdminId = "a0000000-0000-4000-8000-000000000011";
+  await client.query(`INSERT INTO "User" ("id", "email", "password_hash", "role", "created_at", "updated_at") VALUES ($1, 'super-one@example.test', 'disposable-only', 'super_admin', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, [firstSuperAdminId]);
+  await client.query(`INSERT INTO "User" ("id", "email", "password_hash", "role", "created_at", "updated_at") VALUES ($1, 'super-two@example.test', 'disposable-only', 'super_admin', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, [secondSuperAdminId]);
+  const creationAudits = await client.query(`SELECT count(*)::int AS count FROM "UserAccountTransition" WHERE "user_id" = ANY($1::text[]) AND "action" = 'account_created' AND "revision" = 0`, [[firstSuperAdminId, secondSuperAdminId]]);
+  if (creationAudits.rows[0].count !== 2) throw new Error("Account creation audits were not generated.");
+
+  await client.query("BEGIN");
+  await client.query(`UPDATE "User" SET "role" = 'admin', "revision" = 1, "updated_at" = CURRENT_TIMESTAMP WHERE "id" = $1`, [secondSuperAdminId]);
+  await client.query(`INSERT INTO "UserAccountTransition" ("id", "user_id", "actor_user_id", "action", "from_role", "to_role", "revision") VALUES ('b0000000-0000-4000-8000-000000000011', $1, $2, 'role_changed', 'super_admin', 'admin', 1)`, [secondSuperAdminId, firstSuperAdminId]);
+  await client.query("SET CONSTRAINTS ALL IMMEDIATE");
+  await client.query("COMMIT");
+
+  await expectTransactionRejected(async () => {
+    await client.query(`UPDATE "User" SET "status" = 'deactivated', "deactivated_at" = CURRENT_TIMESTAMP, "revision" = 1, "updated_at" = CURRENT_TIMESTAMP WHERE "id" = $1`, [firstSuperAdminId]);
+    await client.query(`INSERT INTO "UserAccountTransition" ("id", "user_id", "actor_user_id", "action", "from_status", "to_status", "revision") VALUES ('b0000000-0000-4000-8000-000000000010', $1, $1, 'delete_equivalent', 'active', 'deactivated', 1)`, [firstSuperAdminId]);
+  }, "Final active super admin deactivation", /final active super admin/i);
+
+  await client.query("BEGIN");
+  await client.query(`UPDATE "User" SET "status" = 'deactivated', "deactivated_at" = CURRENT_TIMESTAMP, "revision" = 2, "updated_at" = CURRENT_TIMESTAMP WHERE "id" = $1`, [secondSuperAdminId]);
+  await client.query(`INSERT INTO "UserAccountTransition" ("id", "user_id", "actor_user_id", "action", "from_status", "to_status", "revision") VALUES ('b0000000-0000-4000-8000-000000000012', $1, $2, 'delete_equivalent', 'active', 'deactivated', 2)`, [secondSuperAdminId, firstSuperAdminId]);
+  await client.query("SET CONSTRAINTS ALL IMMEDIATE");
+  await client.query("COMMIT");
+
+  await expectTransactionRejected(async () => {
+    await client.query(`UPDATE "UserAccountTransition" SET "reason" = 'rewritten' WHERE "id" = 'b0000000-0000-4000-8000-000000000012'`);
+  }, "User account audit mutation", /immutable/);
+
+  await expectTransactionRejected(async () => {
+    await client.query(`DELETE FROM "User" WHERE "id" = $1`, [secondSuperAdminId]);
+  }, "Physical user deletion", /Hard user deletion is forbidden/);
+
+  await expectTransactionRejected(async () => {
+    await client.query(`UPDATE "User" SET "role" = 'producer', "revision" = 1, "updated_at" = CURRENT_TIMESTAMP WHERE "id" = $1`, [actorId]);
+  }, "Unaudited user role change", /matching immutable audit transition/);
+
+  console.log("Verified user role/status constraints, automatic creation audits, revisioned role and delete-equivalent transitions, final active super-admin protection, hard-delete prohibition, deferred audit coherence, and audit immutability.");
 } finally {
   await client.end();
 }

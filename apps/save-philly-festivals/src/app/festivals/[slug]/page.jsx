@@ -77,7 +77,7 @@ export default async function FestivalDetailPage({ params }) {
     : await getPublicSocialFeed(festival.id, { repository: socialFeedE2ERepository() || socialFeedRepository });
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 md:py-12">
+    <div className="mx-auto max-w-5xl px-4 py-8 md:py-12">
       <Link
         href="/"
         className="mb-6 inline-flex items-center gap-2 font-ui text-sm text-[#848484] transition-colors hover:text-black"
@@ -305,6 +305,6 @@ export default async function FestivalDetailPage({ params }) {
           )}
         </section>
       </div>
-    </main>
+    </div>
   );
 }

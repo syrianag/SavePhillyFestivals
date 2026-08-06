@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Power } from "lucide-react";
 
 const ROLE_COLORS = {
   super_admin: "bg-purple-100 text-purple-700 border-purple-200",
@@ -32,6 +32,15 @@ const ROLE_COLORS = {
 };
 
 const ROLE_OPTIONS = ["public", "producer", "admin", "super_admin"];
+const PRIVILEGED_ROLES = new Set(["admin", "super_admin"]);
+
+function availableRoles(currentUser) {
+  return currentUser?.role === "super_admin" ? ROLE_OPTIONS : ["public", "producer"];
+}
+
+function canManageUser(currentUser, user) {
+  return currentUser?.role === "super_admin" || !PRIVILEGED_ROLES.has(user.role);
+}
 
 function MessageBanner({ message, type }) {
   if (!message) return null;
@@ -92,30 +101,21 @@ export default function AdminSettingsPage() {
       if (!res.ok) throw new Error("Failed to fetch users");
       const data = await res.json();
       setUsers(data.users || []);
+      setCurrentUser(data.current_user || null);
     } catch {
       flash("Failed to load users.", "error");
     }
   }, [flash]);
 
-  const fetchSession = useCallback(async () => {
-    try {
-      const res = await fetch("/api/auth/session");
-      const data = await res.json();
-      if (data?.user) setCurrentUser(data.user);
-    } catch {
-      // session fetch failed silently
-    }
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      await Promise.all([fetchUsers(), fetchSession()]);
+      await fetchUsers();
       if (!cancelled) setLoading(false);
     }
     load();
     return () => { cancelled = true; };
-  }, [fetchUsers, fetchSession]);
+  }, [fetchUsers]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -164,12 +164,17 @@ export default function AdminSettingsPage() {
     if (!deleteUser) return;
     setDeleteLoading(true);
     try {
-      const res = await fetch(`/api/users/${deleteUser.id}`, {
+      const reactivating = deleteUser.status === "deactivated";
+      const res = await fetch(`/api/users/${deleteUser.id}`, reactivating ? {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "active" }),
+      } : {
         method: "DELETE",
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete user");
-      flash("Account deleted.");
+      flash(deleteUser.status === "deactivated" ? "Account reactivated." : "Account deactivated.");
       setDeleteUser(null);
       await fetchUsers();
     } catch (err) {
@@ -279,7 +284,10 @@ export default function AdminSettingsPage() {
                           password: e.target.value,
                         }))
                       }
-                      placeholder="Min. 8 characters"
+                      minLength={12}
+                      maxLength={128}
+                      autoComplete="new-password"
+                      placeholder="12+ chars with upper/lower/number/symbol"
                     />
                   </div>
                   <div className="space-y-2">
@@ -294,7 +302,7 @@ export default function AdminSettingsPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {ROLE_OPTIONS.map((r) => (
+                        {availableRoles(currentUser).map((r) => (
                           <SelectItem key={r} value={r}>
                             {r}
                           </SelectItem>
@@ -319,6 +327,7 @@ export default function AdminSettingsPage() {
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Role</th>
+                <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Created</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
@@ -327,7 +336,7 @@ export default function AdminSettingsPage() {
               {users.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-4 py-8 text-center text-muted-foreground"
                   >
                     No users found.
@@ -348,6 +357,11 @@ export default function AdminSettingsPage() {
                     <td className="px-4 py-3">
                       <RoleBadge role={user.role} />
                     </td>
+                    <td className="px-4 py-3">
+                      <Badge variant={user.status === "active" ? "outline" : "secondary"}>
+                        {user.status}
+                      </Badge>
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {new Date(user.created_at).toLocaleDateString()}
                     </td>
@@ -366,7 +380,12 @@ export default function AdminSettingsPage() {
                         >
                           <DialogTrigger
                             render={
-                              <Button variant="ghost" size="icon-xs" />
+                              <Button
+                                                              variant="ghost"
+                                                              size="icon-xs"
+                                                              aria-label={`Edit role for ${user.name || user.email}`}
+                                                              disabled={!canManageUser(currentUser, user)}
+                                                            />
                             }
                           >
                             <Pencil className="size-3" />
@@ -389,7 +408,7 @@ export default function AdminSettingsPage() {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {ROLE_OPTIONS.map((r) => (
+                                    {availableRoles(currentUser).map((r) => (
                                       <SelectItem key={r} value={r}>
                                         {r}
                                       </SelectItem>
@@ -433,18 +452,20 @@ export default function AdminSettingsPage() {
                                 variant="ghost"
                                 size="icon-xs"
                                 className="text-destructive hover:text-destructive"
+                                aria-label={`${user.status === "deactivated" ? "Reactivate" : "Deactivate"} ${user.name || user.email}`}
+                                disabled={!canManageUser(currentUser, user) || user.id === currentUser?.id}
                               />
                             }
                           >
-                            <Trash2 className="size-3" />
+                            <Power className="size-3" />
                           </DialogTrigger>
                           <DialogContent className="sm:max-w-sm">
                             <DialogHeader>
-                              <DialogTitle>Delete Account</DialogTitle>
+                              <DialogTitle>{user.status === "deactivated" ? "Reactivate Account" : "Deactivate Account"}</DialogTitle>
                               <DialogDescription>
-                                Are you sure you want to delete{" "}
-                                <strong>{user.name || user.email}</strong>? This
-                                action is irreversible.
+                                {user.status === "deactivated" ? "Restore access for " : "Revoke access for "}
+                                <strong>{user.name || user.email}</strong>?
+                                {user.status === "active" && " The account and its audit history will be retained."}
                               </DialogDescription>
                             </DialogHeader>
                             <DialogFooter>
@@ -455,11 +476,11 @@ export default function AdminSettingsPage() {
                                 Cancel
                               </Button>
                               <Button
-                                variant="destructive"
+                                variant={user.status === "active" ? "destructive" : "default"}
                                 onClick={handleDelete}
                                 disabled={deleteLoading}
                               >
-                                {deleteLoading ? "Deleting..." : "Delete"}
+                                {deleteLoading ? "Saving..." : user.status === "deactivated" ? "Reactivate" : "Deactivate"}
                               </Button>
                             </DialogFooter>
                           </DialogContent>

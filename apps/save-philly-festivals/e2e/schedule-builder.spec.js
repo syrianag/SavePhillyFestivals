@@ -13,6 +13,32 @@ async function buildMixedSchedule(page) {
   return page.getByRole("region", { name: "Schedule Builder" });
 }
 
+test("returns 410 for legacy schedule and upload APIs without retiring current APIs", async ({ request }) => {
+  const retired = [
+    [await request.post("/api/schedules/save"), "/api/schedules/email"],
+    [await request.get("/api/schedules/saved?email=visitor@example.com"), "/calendar"],
+    [await request.delete("/api/schedules/saved", { data: { invalid: true } }), "/calendar"],
+    [await request.post("/api/upload", { data: "not-a-file" }), "/api/producer/festivals/[id]/assets"],
+  ];
+
+  for (const [response, replacement] of retired) {
+    expect(response.status()).toBe(410);
+    expect(response.headers()["cache-control"]).toBe("private, no-store");
+    expect(await response.json()).toMatchObject({
+      error: expect.stringContaining("retired"),
+      replacement,
+    });
+  }
+
+  const active = await Promise.all([
+    request.post("/api/schedules/email", { data: {} }),
+    request.post("/api/schedules/calendar", { data: {} }),
+    request.post("/api/organizer-consent/eligibility", { data: {} }),
+    request.post("/api/organizer-consent", { data: {} }),
+  ]);
+  for (const response of active) expect(response.status()).not.toBe(410);
+});
+
 test("builds and persists an accountless mixed schedule", async ({ page }) => {
   await page.goto(detailPath);
 

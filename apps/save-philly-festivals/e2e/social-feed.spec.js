@@ -27,8 +27,15 @@ async function createUniqueFestival(page, ordinal) {
   return festival;
 }
 
+/* The in-memory producer fixture is shared by every browser project in one dev server, so each
+ * project reserves a disjoint block of festivals. Deriving the block from the configured project
+ * order keeps the reservation correct as browsers are added to the support matrix. */
+const TESTS_PER_PROJECT = 3;
+
 function fixtureOrdinal(testInfo, testOffset) {
-  return (testInfo.project.name === "mobile-chromium" ? 4 : 1) + testOffset;
+  const projectNames = testInfo.config.projects.map((project) => project.name);
+  const projectIndex = Math.max(0, projectNames.indexOf(testInfo.project.name));
+  return projectIndex * TESTS_PER_PROJECT + testOffset + 1;
 }
 
 test.describe("F-09 moderated social feed", () => {

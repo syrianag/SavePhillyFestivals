@@ -3,10 +3,16 @@ import {
   festivalOverlapsRange,
   getDiscoveryDateRange,
   paginatePublicResults,
+  publicPageResult,
+  resolvePublicPageWindow,
   sortFestivalRecords,
 } from "@/features/festivals/discovery";
 import { FESTIVAL_STATUS } from "@/lib/constants";
 import { DISCOVERY_E2E_FESTIVALS } from "@/features/festivals/discovery-e2e-fixture";
+
+/* Upper bound on rows scored for application-side relevance ranking. Keeps a text search
+ * from loading an unbounded result set while comfortably covering the public catalog. */
+const RELEVANCE_CANDIDATE_LIMIT = 500;
 
 export const PUBLIC_DISCOVERY_SELECT = {
   id: true,
@@ -104,13 +110,16 @@ export async function discoverApprovedFestivals(filters, { now = new Date() } = 
 
   const { prisma } = await import("@/lib/db");
   const where = buildApprovedDiscoveryWhere(filters, now);
-  const [records, total, categoryRows, locationRows] = await Promise.all([
-    prisma.festival.findMany({
-      where,
-      select: PUBLIC_DISCOVERY_SELECT,
-      orderBy: databaseOrder(filters.sort),
-    }),
-    prisma.festival.count({ where }),
+  /* Relevance ranking is computed in the application, so it still needs a candidate set.
+   * Every other sort is fully expressible in SQL and is paginated by the database. */
+  const usesRelevanceRanking = filters.sort === "relevance" && Boolean(filters.q);
+  const total = await prisma.festival.count({ where });
+  const window = resolvePublicPageWindow(filters.page, total);
+  const pageQuery = usesRelevanceRanking
+    ? { where, select: PUBLIC_DISCOVERY_SELECT, orderBy: databaseOrder(filters.sort), take: RELEVANCE_CANDIDATE_LIMIT }
+    : { where, select: PUBLIC_DISCOVERY_SELECT, orderBy: databaseOrder(filters.sort), skip: window.offset, take: window.take };
+  const [records, categoryRows, locationRows] = await Promise.all([
+    prisma.festival.findMany(pageQuery),
     prisma.category.findMany({
       where: { festivals: { some: { festival: { status: FESTIVAL_STATUS.APPROVED } } } },
       orderBy: { name: "asc" },
@@ -124,9 +133,11 @@ export async function discoverApprovedFestivals(filters, { now = new Date() } = 
     }),
   ]);
 
-  const sorted = sortFestivalRecords(records, filters);
+  const paged = usesRelevanceRanking
+    ? paginatePublicResults(sortFestivalRecords(records, filters), filters.page, total)
+    : publicPageResult(records, filters.page, total);
   return {
-    ...paginatePublicResults(sorted, filters.page, total),
+    ...paged,
     categories: categoryRows.map(({ name }) => name),
     locations: locationRows.map(({ location }) => location).filter(Boolean),
   };

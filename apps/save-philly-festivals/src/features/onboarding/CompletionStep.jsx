@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useOnboarding } from "./onboarding-context";
 
 export function CompletionStep() {
@@ -62,12 +64,12 @@ export function CompletionStep() {
         </ul>
       </div>
 
-      <button
-        onClick={() => { window.location.href = "/"; }}
-        className="flex h-[47px] w-[200px] items-center justify-center rounded-[12px] bg-[#206C4E] font-body text-base font-bold leading-[19px] text-white transition-opacity hover:opacity-90"
+      <Link
+        href="/"
+        className="flex h-[47px] w-[200px] items-center justify-center rounded-[12px] bg-[#206C4E] font-body text-base font-bold leading-[19px] text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#206C4E]"
       >
         Enter the Site
-      </button>
+      </Link>
     </div>
   );
 }

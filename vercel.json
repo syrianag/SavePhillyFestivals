@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "installCommand": "npm ci"
+  "buildCommand": "pnpm exec nx run save-philly-festivals:build",
+  "outputDirectory": "apps/save-philly-festivals/.next",
+  "installCommand": "pnpm install --frozen-lockfile"
 }

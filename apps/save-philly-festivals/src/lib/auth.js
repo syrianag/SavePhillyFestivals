@@ -11,7 +11,7 @@ if (!authSecret) {
   );
 }
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+const nextAuth = NextAuth({
   secret: authSecret,
   providers: [
     Credentials({
@@ -28,7 +28,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const password = String(credentials.password);
         const user = await prisma.user.findUnique({ where: { email } });
 
-        if (!user) {
+        if (!user || user.status !== "active") {
           return null;
         }
 
@@ -69,3 +69,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/login",
   },
 });
+
+export const { handlers, signIn, signOut } = nextAuth;
+const sessionAuth = nextAuth.auth;
+
+export async function auth(...args) {
+  const session = await sessionAuth(...args);
+  const userId = session?.user?.id;
+  if (!userId) return session;
+
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, name: true, role: true, status: true },
+  });
+  if (!currentUser || currentUser.status !== "active") return null;
+
+  return {
+    ...session,
+    user: { ...session.user, id: currentUser.id, email: currentUser.email, name: currentUser.name, role: currentUser.role },
+  };
+}

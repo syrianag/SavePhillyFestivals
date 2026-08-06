@@ -63,8 +63,9 @@ function resolvedSelection() {
 
 function fakeRepository({ resolution = resolvedSelection(), existing = null } = {}) {
   let request = existing;
-  return {
+  const repository = {
     findByIdempotencyKey: vi.fn(async () => request),
+    findById: vi.fn(async () => request),
     resolveApproved: vi.fn(async () => resolution),
     createRequest: vi.fn(async ({ email, idempotencyKey, version, items }) => {
       request = {
@@ -73,6 +74,8 @@ function fakeRepository({ resolution = resolvedSelection(), existing = null } = 
         idempotency_key: idempotencyKey,
         selection_version: version,
         delivery_status: "pending",
+        attempts: 0,
+        attempt_token: null,
         items: items.map((item) => ({
           item_type: item.type,
           item_id: item.id,
@@ -81,18 +84,44 @@ function fakeRepository({ resolution = resolvedSelection(), existing = null } = 
       };
       return request;
     }),
-    markSent: vi.fn(async (_id, providerMessageId) => ({
-      ...request,
-      delivery_status: "sent",
-      provider_message_id: providerMessageId,
-    })),
-    markFailed: vi.fn(async (_id, failure) => ({
-      ...request,
-      delivery_status: "failed",
-      failure_code: failure.code,
-      failure_message: failure.message,
-    })),
+    claimDelivery: vi.fn(async ({ attemptToken, attemptedAt, staleBefore, maxAttempts }) => {
+      if (!request || request.delivery_status === "sent") return null;
+      if (request.attempt_token && request.attempt_started_at >= staleBefore) return null;
+      if ((request.attempts || 0) >= maxAttempts) return null;
+      Object.assign(request, {
+        delivery_status: "pending",
+        attempts: (request.attempts || 0) + 1,
+        attempt_token: attemptToken,
+        attempt_started_at: attemptedAt,
+        failure_code: null,
+        failure_message: null,
+      });
+      return request;
+    }),
+    markSent: vi.fn(async ({ attemptToken, providerMessageId, sentAt }) => {
+      if (request.attempt_token !== attemptToken) return { count: 0 };
+      Object.assign(request, {
+        delivery_status: "sent",
+        provider_message_id: providerMessageId,
+        sent_at: sentAt,
+        attempt_token: null,
+        attempt_started_at: null,
+      });
+      return { count: 1 };
+    }),
+    markFailed: vi.fn(async ({ attemptToken, failure }) => {
+      if (request.attempt_token !== attemptToken) return { count: 0 };
+      Object.assign(request, {
+        delivery_status: "failed",
+        failure_code: failure.code,
+        failure_message: failure.message,
+        attempt_token: null,
+        attempt_started_at: null,
+      });
+      return { count: 1 };
+    }),
   };
+  return repository;
 }
 
 describe("schedule email request schema", () => {
@@ -209,32 +238,23 @@ describe("idempotent delivery service", () => {
     expect(repository.createRequest).toHaveBeenCalledTimes(1);
     expect(repository.createRequest.mock.calls[0][0].items).toHaveLength(2);
     expect(provider.send).toHaveBeenCalledTimes(1);
-    expect(repository.markSent).toHaveBeenCalledWith("request-1", "provider-1");
+    expect(repository.markSent).toHaveBeenCalledWith(expect.objectContaining({
+      id: "request-1",
+      providerMessageId: "provider-1",
+    }));
+    expect(provider.send.mock.calls[0][1]).toEqual({ idempotencyKey: "schedule-email/request-1" });
   });
 
-  it("records a redacted failure and never resends an existing idempotency key", async () => {
+  it("records a redacted provider failure and safely retries the same key", async () => {
     const repository = fakeRepository();
     const provider = {
-      send: vi.fn(async () => ({
-        success: false,
-        code: "provider_error",
-        error: "visitor@example.com rejected; full body follows: secret",
-      })),
+      send: vi.fn()
+        .mockResolvedValueOnce({ success: false, code: "provider_error", error: "visitor@example.com rejected: secret" })
+        .mockResolvedValueOnce({ success: true, id: "provider-retry" }),
     };
 
     const first = await submitScheduleEmail(validInput(), { repository, provider });
-    const storedFailure = repository.markFailed.mock.calls[0][1];
-    repository.findByIdempotencyKey.mockResolvedValue({
-      id: "request-1",
-      delivery_status: "failed",
-      failure_message: storedFailure.message,
-      recipient_email: "visitor@example.com",
-      selection_version: 1,
-      items: [
-        { item_type: "festival", item_id: "festival-1", resolution_status: "resolved" },
-        { item_type: "event", item_id: "event-1", resolution_status: "resolved" },
-      ],
-    });
+    const storedFailure = repository.markFailed.mock.calls[0][0].failure;
     const retry = await submitScheduleEmail(validInput(), { repository, provider });
 
     expect(first).toMatchObject({ status: "failed", email_sent: false });
@@ -243,9 +263,72 @@ describe("idempotent delivery service", () => {
       message: "The email provider could not complete delivery. Your schedule remains saved in this browser.",
     });
     expect(JSON.stringify(storedFailure)).not.toContain("visitor@example.com");
-    expect(retry).toMatchObject({ status: "failed", email_sent: false, replayed: true });
-    expect(provider.send).toHaveBeenCalledTimes(1);
+    expect(retry).toMatchObject({ status: "sent", email_sent: true, replayed: true });
+    expect(provider.send).toHaveBeenCalledTimes(2);
+    expect(provider.send.mock.calls.map((call) => call[1].idempotencyKey)).toEqual([
+      "schedule-email/request-1",
+      "schedule-email/request-1",
+    ]);
     expect(repository.createRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("suppresses a concurrent retry while another delivery lease is active", async () => {
+    const repository = fakeRepository();
+    let completeDelivery;
+    const provider = { send: vi.fn(() => new Promise((resolve) => { completeDelivery = resolve; })) };
+
+    const first = submitScheduleEmail(validInput(), { repository, provider });
+    await vi.waitFor(() => expect(provider.send).toHaveBeenCalledTimes(1));
+    const concurrent = await submitScheduleEmail(validInput(), { repository, provider });
+    expect(concurrent).toMatchObject({ status: "pending", email_sent: false, replayed: true });
+    expect(provider.send).toHaveBeenCalledTimes(1);
+
+    completeDelivery({ success: true, id: "provider-1" });
+    await expect(first).resolves.toMatchObject({ status: "sent", email_sent: true });
+  });
+
+  it("does not claim or send a failed request at the maximum attempt bound", async () => {
+    const repository = fakeRepository({ existing: {
+      id: "request-1",
+      recipient_email: "visitor@example.com",
+      selection_version: 1,
+      delivery_status: "failed",
+      attempts: 3,
+      failure_message: "Delivery exhausted.",
+      items: [
+        { item_type: "festival", item_id: "festival-1", resolution_status: "resolved" },
+        { item_type: "event", item_id: "event-1", resolution_status: "resolved" },
+      ],
+    } });
+    const provider = { send: vi.fn() };
+
+    await expect(submitScheduleEmail(validInput(), { repository, provider }))
+      .resolves.toMatchObject({ status: "failed", replayed: true });
+    expect(provider.send).not.toHaveBeenCalled();
+  });
+
+  it("recovers provider success after bookkeeping failure with one stable provider delivery", async () => {
+    const repository = fakeRepository();
+    const originalMarkSent = repository.markSent.getMockImplementation();
+    repository.markSent.mockRejectedValueOnce(new Error("database unavailable")).mockImplementation(originalMarkSent);
+    const delivered = new Map();
+    let providerDeliveries = 0;
+    const provider = { send: vi.fn(async (_message, { idempotencyKey }) => {
+      if (!delivered.has(idempotencyKey)) {
+        providerDeliveries += 1;
+        delivered.set(idempotencyKey, { success: true, id: "provider-stable" });
+      }
+      return delivered.get(idempotencyKey);
+    }) };
+    const times = [new Date("2026-08-05T12:00:00Z"), new Date("2026-08-05T12:06:00Z")];
+
+    const first = await submitScheduleEmail(validInput(), { repository, provider, now: () => times[0], createAttemptToken: () => "attempt-1" });
+    const recovered = await submitScheduleEmail(validInput(), { repository, provider, now: () => times[1], createAttemptToken: () => "attempt-2" });
+
+    expect(first).toMatchObject({ status: "pending", email_sent: false });
+    expect(recovered).toMatchObject({ status: "sent", email_sent: true, replayed: true });
+    expect(provider.send).toHaveBeenCalledTimes(2);
+    expect(providerDeliveries).toBe(1);
   });
 
   it("rejects reuse of an idempotency key for a different submission", async () => {
@@ -287,7 +370,7 @@ describe("idempotent delivery service", () => {
     const result = await submitScheduleEmail(validInput(), { repository, provider });
 
     expect(result).toMatchObject({ status: "failed", email_sent: false });
-    expect(repository.markFailed.mock.calls[0][1].message).not.toContain("sensitive");
+    expect(repository.markFailed.mock.calls[0][0].failure.message).not.toContain("sensitive");
   });
 });
 

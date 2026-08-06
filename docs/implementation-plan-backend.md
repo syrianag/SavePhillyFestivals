@@ -247,19 +247,14 @@ prisma/
 | `PATCH` | `/api/schedules/[id]` | Partial schedule data | Update schedule |
 | `DELETE` | `/api/schedules/[id]` | — | Delete schedule |
 
-### Saved Schedule Endpoints
+### Schedule Builder Endpoints
 
 | Method | Path | Body / Params | Purpose |
 |--------|------|---------------|---------|
-| `GET` | `/api/saved-schedules` | `?email=` | Get user's saved schedule |
-| `POST` | `/api/saved-schedules` | `{ email, schedule_id }` | Save a schedule item |
-| `DELETE` | `/api/saved-schedules` | `{ email, schedule_id }` | Remove saved item |
-
-### Calendar Endpoint
-
-| Method | Path | Body / Params | Purpose |
-|--------|------|---------------|---------|
-| `GET` | `/api/calendar/[festivalId]` | — | Download .ics file for festival |
+| `POST` | `/api/schedules/email` | `{ email, idempotency_key, selection }` | Email a transactional mixed schedule |
+| `POST` | `/api/schedules/calendar` | `{ selection }` | Download a mixed-schedule ICS snapshot |
+| `POST` | `/api/schedules/save` | Ignored | Retired; always returns `410` |
+| `GET`, `DELETE` | `/api/schedules/saved` | Ignored | Retired; always returns `410` |
 
 ### Email Endpoint
 
@@ -271,7 +266,8 @@ prisma/
 
 | Method | Path | Body / Params | Purpose |
 |--------|------|---------------|---------|
-| `POST` | `/api/upload` | `multipart/form-data` | Upload file (logo, image) |
+| `POST` | `/api/upload` | Ignored | Retired; returns `410` without filesystem access |
+| `POST` | `/api/producer/festivals/[id]/assets` | `multipart/form-data` | Authenticated private producer asset upload |
 
 ### Health Check
 
@@ -408,7 +404,7 @@ npm install -D @types/nodemailer
 15. **`apps/save-philly-festivals/src/app/api/festivals/[id]/approve/route.js`** — Approve/Reject
 16. **`apps/save-philly-festivals/src/app/api/schedules/route.js`** — List + Create
 17. **`apps/save-philly-festivals/src/app/api/schedules/[id]/route.js`** — Get + Update + Delete
-18. **`apps/save-philly-festivals/src/app/api/saved-schedules/route.js`** — Get + Save + Remove
+18. **Legacy saved-schedule routes** — Retired with `410`; browser-local schedule is current
 
 ### Phase 4: Supporting Features
 19. **`apps/save-philly-festivals/src/lib/calendar.js`** — .ics generation
@@ -416,8 +412,8 @@ npm install -D @types/nodemailer
 21. **`apps/save-philly-festivals/src/lib/email.js`** — Nodemailer setup
 22. **`apps/save-philly-festivals/src/features/email/email-templates.js`** — HTML templates
 23. **`apps/save-philly-festivals/src/app/api/email/send/route.js`** — Send email endpoint
-24. **`apps/save-philly-festivals/src/lib/uploads.js`** — File save helper
-25. **`apps/save-philly-festivals/src/app/api/upload/route.js`** — Upload endpoint
+24. **Private producer asset provider** — Current authenticated upload path
+25. **`apps/save-philly-festivals/src/app/api/upload/route.js`** — Legacy endpoint retired with `410`
 
 ### Phase 5: Authentication and Middleware
 26. Auth.js route protection is implemented in `apps/save-philly-festivals/src/proxy.js`, with server-side `auth()` checks on protected handlers.
@@ -478,26 +474,19 @@ curl -X POST http://localhost:3000/api/schedules \
 curl "http://localhost:3000/api/schedules?festival_id=<festival-uuid>"
 ```
 
-### Test saved schedules
+### Test retired saved schedules
 ```bash
-# Save
-curl -X POST http://localhost:3000/api/saved-schedules \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@test.com","schedule_id":"<schedule-uuid>"}'
-
-# Get saved
-curl "http://localhost:3000/api/saved-schedules?email=user@test.com"
-
-# Remove
-curl -X DELETE http://localhost:3000/api/saved-schedules \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@test.com","schedule_id":"<schedule-uuid>"}'
+curl -i -X POST http://localhost:3000/api/schedules/save
+curl -i "http://localhost:3000/api/schedules/saved?email=user@test.com"
+curl -i -X DELETE http://localhost:3000/api/schedules/saved
+# Each returns 410 without database or mail access.
 ```
 
 ### Test calendar download
 ```bash
-curl -o festival.ics http://localhost:3000/api/calendar/<festival-id>
-# Opens as calendar event in any calendar app
+curl -o philly-fests-schedule.ics -X POST http://localhost:3000/api/schedules/calendar \
+  -H "Content-Type: application/json" \
+  -d '{"selection":{"version":1,"items":[{"type":"festival","id":"<festival-id>"}]}}'
 ```
 
 ### Test email (requires SMTP config in `apps/save-philly-festivals/.env`)
@@ -507,11 +496,10 @@ curl -X POST http://localhost:3000/api/email/send \
   -d '{"to":"test@test.com","template":"confirmation","data":{"festivalName":"Test Fest","date":"Aug 1"}}'
 ```
 
-### Test file upload
+### Test retired public upload
 ```bash
-curl -X POST http://localhost:3000/api/upload \
-  -F "file=@./test-image.png" \
-  -F "directory=festivals"
+curl -i -X POST http://localhost:3000/api/upload
+# Returns 410 without reading multipart data or accessing the filesystem.
 ```
 
 ### Test validation (should return 400)
