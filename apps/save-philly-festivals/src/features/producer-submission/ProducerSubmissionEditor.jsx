@@ -315,10 +315,10 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
         <section className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 sm:p-7" aria-labelledby="review-details-heading">
           <h2 id="review-details-heading" className="font-heading text-2xl font-bold">Review festival details</h2>
           <dl className="grid gap-4 sm:grid-cols-2">
-            <div><dt className="font-semibold text-slate-500">Name</dt><dd className="break-words">{form.name}</dd></div>
-            <div><dt className="font-semibold text-slate-500">Contact</dt><dd className="break-words">{form.contact_name}<br />{form.contact_email}<br />{form.contact_phone}</dd></div>
-            <div className="sm:col-span-2"><dt className="font-semibold text-slate-500">Description</dt><dd className="whitespace-pre-wrap break-words">{form.description}</dd></div>
-            <div><dt className="font-semibold text-slate-500">Location</dt><dd className="break-words">{form.location}, {form.city}, {form.state} {form.zip_code}</dd></div>
+            <div><dt className="font-semibold text-slate-500">Name</dt><dd className="wrap-break-word">{form.name}</dd></div>
+            <div><dt className="font-semibold text-slate-500">Contact</dt><dd className="wrap-break-word">{form.contact_name}<br />{form.contact_email}<br />{form.contact_phone}</dd></div>
+            <div className="sm:col-span-2"><dt className="font-semibold text-slate-500">Description</dt><dd className="whitespace-pre-wrap wrap-break-word">{form.description}</dd></div>
+            <div><dt className="font-semibold text-slate-500">Location</dt><dd className="wrap-break-word">{form.location}, {form.city}, {form.state} {form.zip_code}</dd></div>
             <div><dt className="font-semibold text-slate-500">Dates</dt><dd>{form.calendar_date_type === "timed" ? `${form.start_date} to ${form.end_date} America/New_York` : `${form.all_day_start} through ${form.all_day_end} (all day)`}</dd></div>
           </dl>
           <div className="space-y-3 border-t border-slate-200 pt-5">
