@@ -37,7 +37,7 @@
     "migrate:test": "nx run save-philly-festivals:migrate-test",
     "deploy": "pnpm run deploy:web",
     "deploy:preflight": "pnpm run verify",
-    "deploy:web": "sh -c '[ -n \"$RELEASE_SHA\" ] || { echo \"RELEASE_SHA is required: the exact commit SHA that passed all merge gates.\" >&2; exit 1; }; [ -n \"$BACKUP_REFERENCE\" ] || { echo \"BACKUP_REFERENCE is required: the verified database backup taken before this release.\" >&2; exit 1; }; gh workflow run deploy.yml -f release_sha=\"$RELEASE_SHA\" -f backup_reference=\"$BACKUP_REFERENCE\"'",
+    "deploy:web": "sh -c 'command -v gh >/dev/null 2>&1 || { echo \"GitHub CLI (gh) is required to dispatch the gated production workflow. Install it from https://cli.github.com, or run the Deploy workflow from the GitHub Actions UI.\" >&2; exit 1; }; [ -n \"$RELEASE_SHA\" ] || { echo \"RELEASE_SHA is required: the exact commit SHA that passed all merge gates.\" >&2; exit 1; }; [ -n \"$BACKUP_REFERENCE\" ] || { echo \"BACKUP_REFERENCE is required: the verified database backup taken before this release.\" >&2; exit 1; }; gh workflow run deploy.yml -f release_sha=\"$RELEASE_SHA\" -f backup_reference=\"$BACKUP_REFERENCE\"'",
     "deploy:n8n": "nx run n8n:deploy",
     "festival:import": "nx run save-philly-festivals:festival-import",
     "festival:import:test": "nx run save-philly-festivals:festival-import-test",
