@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 
 import { beforeAll, describe, expect, it } from "vitest";
@@ -31,8 +32,16 @@ describe("festival CSV profile", () => {
     expect(profile.errorCounts).toMatchObject({ invalid_start_date: 1, unmapped_category: 1 });
   });
 
-  it("confirms and reproduces the attached source profile", async () => {
-    const source = await readFile(new URL("../../../../docs/Festivals_Postgres_Export.csv", import.meta.url));
+  /* The reviewed source contains organizer contact details, so it is not tracked in Git.
+   * When an operator supplies the restricted copy this reproduces the confirmed profile;
+   * otherwise it skips instead of coupling the suite to private data. */
+  const restrictedSource = process.env.FESTIVAL_IMPORT_SOURCE_FILE
+    ? new URL(process.env.FESTIVAL_IMPORT_SOURCE_FILE, "file://")
+    : new URL("../../../../docs/Festivals_Postgres_Export.csv", import.meta.url);
+  const hasRestrictedSource = existsSync(restrictedSource);
+
+  it.skipIf(!hasRestrictedSource)("confirms and reproduces the attached source profile", async () => {
+    const source = await readFile(restrictedSource);
     const profile = profileFestivalCsv(source, {
       categoryMap,
       expectedChecksum: CONFIRMED_FESTIVAL_CSV_SHA256,
