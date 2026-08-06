@@ -28,9 +28,9 @@ test-results/
 .env.production.local
 
 # Festival import reports and restricted operator artifacts
-festival-import-reports/
-*.festival-import-report.json
-*.festival-import-report.csv
+# festival-import-reports/
+# *.festival-import-report.json
+# *.festival-import-report.csv
 
 # Logs
 npm-debug.log*
