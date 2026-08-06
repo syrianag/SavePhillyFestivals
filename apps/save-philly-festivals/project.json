@@ -9,7 +9,8 @@
       "executor": "nx:run-commands",
       "cache": false,
       "options": {
-        "command": "next dev",
+        "commands": ["node scripts/preflight-dev.mjs", "next dev"],
+        "parallel": false,
         "cwd": "{projectRoot}"
       }
     },
