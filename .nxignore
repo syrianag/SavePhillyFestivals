@@ -1,0 +1,6 @@
+# Local git worktrees hold full copies of apps/, so Nx registers duplicate
+# save-philly-festivals and n8n projects and fails the whole project graph.
+# .gitignore covers this locally, but the Vercel CLI still uploads these paths,
+# so the build box needs an Nx-level rule that does not depend on ignore
+# handling in whatever tool assembled the source tree.
+.worktrees

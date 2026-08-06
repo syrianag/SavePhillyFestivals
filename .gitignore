@@ -68,3 +68,5 @@ apps/n8n/local-files/*
 # restricted storage only. See docs/FESTIVAL-DATA-IMPORT-RUNBOOK.md.
 docs/Festivals_Postgres_Export.csv
 *.festival-source.csv
+.vercel
+.env*

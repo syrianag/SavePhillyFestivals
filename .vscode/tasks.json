@@ -1,0 +1,215 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "check-shell-task",
+			"type": "shell",
+			"command": "pwd",
+			"isBackground": false
+		},
+		{
+			"label": "generate-handover-pdfs",
+			"type": "shell",
+			"command": "node tools/scripts/generate-handover-pdfs.mjs",
+			"isBackground": false
+		},
+		{
+			"label": "check-playwright-cli",
+			"type": "shell",
+			"command": "pnpm exec playwright --version",
+			"isBackground": false
+		},
+		{
+			"label": "generate-handover-pdfs-pnpm",
+			"type": "shell",
+			"command": "pnpm exec node tools/scripts/generate-handover-pdfs.mjs",
+			"isBackground": false
+		},
+		{
+			"label": "generate-handover-pdfs-app-scope",
+			"type": "shell",
+			"command": "cd apps/save-philly-festivals && node scripts/generate-handover-pdfs.mjs",
+			"isBackground": false
+		},
+		{
+			"label": "convert-user-guide-pdf",
+			"type": "shell",
+			"command": "pnpm dlx md-to-pdf docs/Client-UserGuide.md",
+			"isBackground": false
+		},
+		{
+			"label": "convert-user-guide-pdf-noninteractive",
+			"type": "shell",
+			"command": "CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/Client-UserGuide.md",
+			"isBackground": false
+		},
+		{
+			"label": "convert-handoff-pdf-noninteractive",
+			"type": "shell",
+			"command": "CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/Client-Hand-Off.md",
+			"isBackground": false
+		},
+		{
+			"label": "convert-styled-user-guide-pdf",
+			"type": "shell",
+			"command": "CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/handover-pdf-source/client-user-guide.html --dest docs/Client-UserGuide.pdf",
+			"isBackground": false
+		},
+		{
+			"label": "md-to-pdf-help",
+			"type": "shell",
+			"command": "CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf --help",
+			"isBackground": false
+		},
+		{
+			"label": "convert-styled-guides-to-pdf",
+			"type": "shell",
+			"command": "CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/handover-pdf-source/client-user-guide.html && CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/handover-pdf-source/client-handoff-guide.html && mv -f docs/handover-pdf-source/client-user-guide.pdf docs/Client-UserGuide.pdf && mv -f docs/handover-pdf-source/client-handoff-guide.pdf docs/Client-Hand-Off.pdf",
+			"isBackground": false
+		},
+		{
+			"label": "export-handover-guides-pdf",
+			"type": "shell",
+			"command": "CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/Technical-Developer-Guide.md && CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/N8N-Owner-Guide.md && CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/Client-UserGuide.md",
+			"isBackground": false
+		},
+		{
+			"label": "rebuild-client-handoff-pdfs",
+			"type": "shell",
+			"command": "CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/Client-Hand-Off.md && cp docs/Client-Hand-Off.pdf docs/Client-Hand-Off-Full.pdf && if [ -f docs/handover-pdf-source/client-handoff-guide.html ]; then CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/handover-pdf-source/client-handoff-guide.html && mv -f docs/handover-pdf-source/client-handoff-guide.pdf docs/Client-Hand-Off-Summary.pdf; fi",
+			"isBackground": false
+		},
+		{
+			"label": "regenerate-branded-handover-pdfs",
+			"type": "shell",
+			"command": "CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/Client-Hand-Off.md --stylesheet docs/handover-pdf-source/client-brand-pdf.css && cp docs/Client-Hand-Off.pdf docs/Client-Hand-Off-Full.pdf && CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/Client-UserGuide.md --stylesheet docs/handover-pdf-source/client-brand-pdf.css && CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/Technical-Developer-Guide.md --stylesheet docs/handover-pdf-source/client-brand-pdf.css && CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/N8N-Owner-Guide.md --stylesheet docs/handover-pdf-source/client-brand-pdf.css && CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/handover-pdf-source/client-handoff-guide.html && mv -f docs/handover-pdf-source/client-handoff-guide.pdf docs/Client-Hand-Off-Summary.pdf && CI=1 pnpm dlx --allow-build=puppeteer md-to-pdf docs/handover-pdf-source/client-user-guide.html && mv -f docs/handover-pdf-source/client-user-guide.pdf docs/Client-UserGuide-Summary.pdf",
+			"isBackground": false
+		},
+		{
+			"label": "clean-and-rebuild-styled-pdfs",
+			"type": "shell",
+			"command": "set -e\ncd docs\nrm -f Client-Hand-Off-Full.pdf\nCI=1 pnpm dlx --allow-build=puppeteer md-to-pdf Client-Hand-Off.md --stylesheet handover-pdf-source/client-brand-pdf.css\nCI=1 pnpm dlx --allow-build=puppeteer md-to-pdf Client-UserGuide.md --stylesheet handover-pdf-source/client-brand-pdf.css\nCI=1 pnpm dlx --allow-build=puppeteer md-to-pdf Technical-Developer-Guide.md --stylesheet handover-pdf-source/client-brand-pdf.css\nCI=1 pnpm dlx --allow-build=puppeteer md-to-pdf N8N-Owner-Guide.md --stylesheet handover-pdf-source/client-brand-pdf.css\nCI=1 pnpm dlx --allow-build=puppeteer md-to-pdf handover-pdf-source/client-handoff-guide.html\nmv -f handover-pdf-source/client-handoff-guide.pdf Client-Hand-Off-Summary.pdf\nCI=1 pnpm dlx --allow-build=puppeteer md-to-pdf handover-pdf-source/client-user-guide.html\nmv -f handover-pdf-source/client-user-guide.pdf Client-UserGuide-Summary.pdf\nls -lh *.pdf",
+			"isBackground": false
+		},
+		{
+			"label": "git-branch-audit-1",
+			"type": "shell",
+			"command": "git status -sb && echo '---' && git branch -vv && echo '---' && git remote -v",
+			"isBackground": false
+		},
+		{
+			"label": "git-branch-audit-2",
+			"type": "shell",
+			"command": "git fetch --all --prune && echo '--- AHEAD COMMITS ---' && git log --oneline origin/main..main && echo '--- LOCAL BRANCHES NOT MERGED INTO MAIN ---' && git branch --no-merged main && echo '--- REMOTE BRANCHES NOT MERGED INTO ORIGIN/MAIN ---' && git branch -r --no-merged origin/main",
+			"isBackground": false
+		},
+		{
+			"label": "git-branch-audit-3",
+			"type": "shell",
+			"command": "echo 'main vs origin/develop:' && git rev-list --left-right --count main...origin/develop && echo '--- COMMITS ONLY IN origin/develop (top 20) ---' && git log --oneline main..origin/develop | head -20 && echo '--- COMMITS ONLY IN main (top 20) ---' && git log --oneline origin/develop..main | head -20",
+			"isBackground": false
+		},
+		{
+			"label": "push-main",
+			"type": "shell",
+			"command": "git push origin main",
+			"isBackground": false
+		},
+		{
+			"label": "post-push-verification",
+			"type": "shell",
+			"command": "git status -sb && echo '---' && git branch -vv && echo '--- REMOTE BRANCHES NOT MERGED INTO origin/main ---' && git branch -r --no-merged origin/main",
+			"isBackground": false
+		},
+		{
+			"label": "develop-authors-audit",
+			"type": "shell",
+			"command": "echo 'COMMITS ONLY IN origin/develop:' && git log --pretty=format:'%h | %an <%ae> | %ad | %s' --date=short origin/main..origin/develop",
+			"isBackground": false
+		},
+		{
+			"label": "remove-develop-branch",
+			"type": "shell",
+			"command": "set -e\ngit push origin --delete develop\nif git show-ref --verify --quiet refs/heads/dev; then git branch -D dev; fi\ngit fetch --all --prune\necho '--- Remaining remote branches not merged into origin/main ---'\ngit branch -r --no-merged origin/main || true",
+			"isBackground": false
+		},
+		{
+			"label": "verify-branch-cleanup",
+			"type": "shell",
+			"command": "git branch -vv && echo '---' && git branch -r && echo '--- main relation ---' && git status -sb",
+			"isBackground": false
+		},
+		{
+			"label": "create-dev-worktree",
+			"type": "shell",
+			"command": "set -e\ngit fetch origin --prune\nmkdir -p .worktrees\ngit worktree add .worktrees/dev -B dev origin/dev\ngit -C .worktrees/dev status -sb",
+			"isBackground": false
+		},
+		{
+			"label": "inspect-dev-tree-layout",
+			"type": "shell",
+			"command": "cd .worktrees/dev && pwd && ls -la && echo '--- top dirs ---' && find . -maxdepth 2 -type d | head -40",
+			"isBackground": false
+		},
+		{
+			"label": "find-problem-files-dev",
+			"type": "shell",
+			"command": "cd .worktrees/dev && rg -n \"min-h-\\[90px\\]|min-h-\\[70px\\]|min-h-\\[120px\\]|min-h-\\[60px\\]|min-w-\\[768px\\]|min-w-\\[960px\\]|-left-\\[21px\\]|-left-\\[31px\\]|break-words\" src",
+			"isBackground": false
+		},
+		{
+			"label": "find-problem-files-dev-grep",
+			"type": "shell",
+			"command": "cd .worktrees/dev && grep -R -nE \"min-h-\\[90px\\]|min-h-\\[70px\\]|min-h-\\[120px\\]|min-h-\\[60px\\]|min-w-\\[768px\\]|min-w-\\[960px\\]|-left-\\[21px\\]|-left-\\[31px\\]|break-words\" src || true",
+			"isBackground": false
+		},
+		{
+			"label": "recreate-dev-from-main",
+			"type": "shell",
+			"command": "set -e\nif [ -d .worktrees/dev ]; then git worktree remove .worktrees/dev --force; fi\nif git show-ref --verify --quiet refs/heads/dev; then git branch -D dev; fi\ngit fetch origin --prune\ngit worktree add .worktrees/dev -b dev origin/main\ngit -C .worktrees/dev status -sb\n",
+			"isBackground": false
+		},
+		{
+			"label": "locate-15-issues-in-dev-from-main",
+			"type": "shell",
+			"command": "cd .worktrees/dev && grep -R -nE \"min-h-\\[90px\\]|min-h-\\[70px\\]|min-h-\\[120px\\]|min-h-\\[60px\\]|min-w-\\[768px\\]|min-w-\\[960px\\]|-left-\\[21px\\]|-left-\\[31px\\]|break-words\" apps/save-philly-festivals/src || true",
+			"isBackground": false
+		},
+		{
+			"label": "test-dev-fixes",
+			"type": "shell",
+			"command": "set -e\ncd .worktrees/dev\npnpm exec nx run save-philly-festivals:lint --outputStyle=static\npnpm exec nx run save-philly-festivals:test --outputStyle=static",
+			"isBackground": false
+		},
+		{
+			"label": "inspect-dev-worktree-root",
+			"type": "shell",
+			"command": "cd .worktrees/dev && pwd && ls -1 | head -40 && echo '---' && ls -1 apps | head -20",
+			"isBackground": false
+		},
+		{
+			"label": "debug-prisma-config-failure",
+			"type": "shell",
+			"command": "cd .worktrees/dev && ls apps/save-philly-festivals/prisma.config.ts && pnpm exec prisma generate --config apps/save-philly-festivals/prisma.config.ts",
+			"isBackground": false
+		},
+		{
+			"label": "commit-dev-fix",
+			"type": "shell",
+			"command": "set -e\ncd .worktrees/dev\ngit add apps/save-philly-festivals/src/features/producer-submission/ProducerSubmissionEditor.jsx\ngit commit -m \"style: replace deprecated break-words utility in producer summary\"\ngit log --oneline -1",
+			"isBackground": false
+		},
+		{
+			"label": "merge-dev-into-main-and-push",
+			"type": "shell",
+			"command": "set -e\nif [ -d .worktrees/main-merge ]; then git worktree remove .worktrees/main-merge --force; fi\ngit worktree add .worktrees/main-merge -b main-merge origin/main\ncd .worktrees/main-merge\ngit merge --no-ff dev -m \"Merge branch 'dev'\"\ngit push origin HEAD:main\ngit log --oneline -2",
+			"isBackground": false
+		},
+		{
+			"label": "final-git-audit",
+			"type": "shell",
+			"command": "git fetch origin --prune && echo '--- origin/main latest ---' && git log --oneline -3 origin/main && echo '--- local integration branches ---' && git branch --list 'dev' 'main-merge' && echo '--- remote branches not merged into origin/main ---' && git branch -r --no-merged origin/main",
+			"isBackground": false
+		}
+	]
+}

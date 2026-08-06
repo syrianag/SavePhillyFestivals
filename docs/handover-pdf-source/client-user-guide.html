@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Save Philly Festivals - Client User Guide</title>
+  <style>
+    :root {
+      --ink: #11223a;
+      --muted: #4f6078;
+      --brand: #d95f02;
+      --brand-soft: #fff3e8;
+      --line: #d9e0ea;
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --ok: #256f3a;
+      --warn: #8a6500;
+      --alert: #9f1d1d;
+    }
+    @page {
+      size: A4;
+      margin: 16mm;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: linear-gradient(180deg, #f8fbff 0%, #f5f7fb 100%);
+      font: 14px/1.55 "Source Sans 3", "Segoe UI", Tahoma, Arial, sans-serif;
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 22px;
+      background: radial-gradient(circle at 85% 15%, #ffe6cf 0%, #fff8f1 28%, #ffffff 65%);
+      margin-bottom: 16px;
+    }
+    .brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed var(--line);
+    }
+    .brand-row img {
+      width: 270px;
+      max-width: 70%;
+      height: auto;
+    }
+    .doc-chip {
+      border: 1px solid #efc9aa;
+      background: #fff7ef;
+      color: #804016;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-radius: 999px;
+      padding: 6px 10px;
+      white-space: nowrap;
+    }
+    h1, h2, h3 { margin: 0 0 10px; line-height: 1.2; }
+    h1 { font: 700 28px/1.15 "Merriweather", Georgia, serif; color: #1a2d4a; }
+    h2 {
+      margin-top: 26px;
+      font: 700 20px/1.2 "Merriweather", Georgia, serif;
+      color: #1f3559;
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 6px;
+    }
+    h3 { margin-top: 18px; font-size: 16px; color: #274571; }
+    p { margin: 0 0 10px; }
+    .meta { color: var(--muted); font-size: 13px; }
+    .pill {
+      display: inline-block;
+      margin-right: 6px;
+      margin-top: 6px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: var(--brand-soft);
+      color: #803401;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: var(--card);
+    }
+    .callout {
+      border-left: 4px solid var(--brand);
+      padding: 10px 12px;
+      background: #fffaf5;
+      border-radius: 8px;
+      margin: 10px 0;
+    }
+    .ok { border-left-color: var(--ok); background: #f2fbf5; }
+    .warn { border-left-color: var(--warn); background: #fff9ea; }
+    .alert { border-left-color: var(--alert); background: #fff4f4; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 10px 0 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th { background: #edf2f9; color: #22395d; font-weight: 700; }
+    tr:last-child td { border-bottom: 0; }
+    ul, ol { margin: 6px 0 10px 20px; }
+    li { margin: 4px 0; }
+    .footer {
+      margin-top: 24px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    @media print {
+      .hero, .card, table { break-inside: avoid; }
+      h2, h3 { break-after: avoid; }
+      p, li { orphans: 3; widows: 3; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="brand-row">
+        <img src="../../apps/save-philly-festivals/public/logos/SPF%20One%20Line%20Logo.png" alt="Save Philly Festivals logo" />
+        <span class="doc-chip">Client Guide</span>
+      </div>
+      <h1>Save Philly Festivals<br/>Client User Guide</h1>
+      <p class="meta">Audience: Client operations, producers, and editorial staff</p>
+      <p class="meta">Application timezone: America/New_York</p>
+      <span class="pill">Public Discovery</span>
+      <span class="pill">Producer Submission</span>
+      <span class="pill">Editorial Workflow</span>
+      <span class="pill">Schedule + Calendar Export</span>
+      <div class="callout warn" style="margin-top:12px">
+        This guide reflects the current implemented behavior. Some external integrations are intentionally disabled and require explicit activation before launch.
+      </div>
+    </section>
+
+    <h2>1) Fast Orientation</h2>
+    <div class="grid">
+      <article class="card">
+        <h3>Visitor paths</h3>
+        <ul>
+          <li>Browse and filter festivals on the home page.</li>
+          <li>Read festival details and official links.</li>
+          <li>Save festivals or events in local browser schedule.</li>
+          <li>Email schedule and export to calendar file.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Team paths</h3>
+        <ul>
+          <li>Producers submit private festival drafts.</li>
+          <li>Editors review states and approve or request changes.</li>
+          <li>Admins manage user roles and account access.</li>
+          <li>Moderators approve or suppress social posts.</li>
+        </ul>
+      </article>
+    </div>
+
+    <h2>2) Roles and Access</h2>
+    <table>
+      <thead>
+        <tr><th>Role</th><th>Primary area</th><th>Account required</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Visitor</td><td>Home, festival pages, schedule builder</td><td>No</td></tr>
+        <tr><td>Producer</td><td>Producer dashboard and submission editor</td><td>Yes, verified producer role</td></tr>
+        <tr><td>Admin</td><td>Editorial queue, festival review details</td><td>Yes, admin role</td></tr>
+        <tr><td>Super admin</td><td>All admin areas plus privileged account management</td><td>Yes, super admin role</td></tr>
+      </tbody>
+    </table>
+
+    <h2>3) Visitor Workflow</h2>
+    <h3>Search and discovery</h3>
+    <ul>
+      <li>Filters are URL-backed, so search state is bookmarkable and shareable.</li>
+      <li>Date matching uses overlap logic for multi-day festivals.</li>
+      <li>If no data matches, users receive a clear reset path.</li>
+    </ul>
+
+    <h3>Festival details</h3>
+    <ul>
+      <li>Only published festivals are public.</li>
+      <li>Missing optional content shows user-friendly fallback text.</li>
+      <li>Canceled festivals show a public tombstone page with disabled action controls.</li>
+    </ul>
+
+    <h3>Schedule builder</h3>
+    <ul>
+      <li>Schedule data is stored only in the active browser and device.</li>
+      <li>Email and consent choices are not stored in browser local storage.</li>
+      <li>Overlap alerts are warnings only and do not delete selections.</li>
+    </ul>
+
+    <h3>Email schedule and export calendar</h3>
+    <ul>
+      <li>Email sends are transactional and idempotent.</li>
+      <li>Only currently published items are included at send/export time.</li>
+      <li>Calendar export creates a snapshot ICS file for Google, Apple, and Outlook.</li>
+      <li>All-day calendar entries use standards-based exclusive end dates.</li>
+    </ul>
+
+    <div class="callout ok">
+      Visitor saved schedule data remains intact even when delivery fails or unavailable items are omitted.
+    </div>
+
+    <h2>4) Producer Workflow</h2>
+    <ol>
+      <li>Producer signs in and starts a new draft.</li>
+      <li>Producer completes required fields and saves draft privately.</li>
+      <li>Producer reviews acknowledgments and submits for editorial review.</li>
+      <li>If changes are requested, producer revises and resubmits.</li>
+    </ol>
+
+    <table>
+      <thead>
+        <tr><th>State</th><th>Meaning for producer</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Draft</td><td>Editable private work in progress</td></tr>
+        <tr><td>Pending review</td><td>Read-only while editorial team reviews</td></tr>
+        <tr><td>Changes requested</td><td>Editable again with producer-safe feedback</td></tr>
+        <tr><td>Rejected</td><td>Not accepted in current review cycle</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout alert">
+      Image upload capability is intentionally disabled until malware scanning and storage controls are fully activated.
+    </div>
+
+    <h2>5) Editorial and Admin Workflow</h2>
+    <h3>Core rule</h3>
+    <p>Approval is not publication. Editors must complete a second action to publish approved content.</p>
+
+    <table>
+      <thead>
+        <tr><th>State</th><th>Public visibility</th><th>Typical next action</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Pending review</td><td>No</td><td>Request changes, reject, or approve</td></tr>
+        <tr><td>Approved</td><td>No</td><td>Publish when ready</td></tr>
+        <tr><td>Published</td><td>Yes</td><td>Unpublish or cancel if needed</td></tr>
+        <tr><td>Canceled</td><td>Tombstone only</td><td>Archive</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Moderation safeguards</h3>
+    <ul>
+      <li>External posts are pending by default and require explicit approval.</li>
+      <li>Reject and hide actions require moderator reason logging.</li>
+      <li>Public page render remains first-party and script-safe.</li>
+    </ul>
+
+    <h2>6) Operations and Activation Status</h2>
+    <table>
+      <thead>
+        <tr><th>Integration area</th><th>Current status</th><th>Before enabling</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Production email delivery</td><td>Configured to fail closed when provider keys are absent</td><td>Complete provider setup, domain verification, and controlled proof</td></tr>
+        <tr><td>Organizer subscription workflows</td><td>Queue and contracts are in place, outbound delivery disabled</td><td>Legal approval, credential setup, tests, and explicit activation</td></tr>
+        <tr><td>Social provider sync</td><td>Adapters exist, sync disabled without provider secrets</td><td>Provider contract proof, moderation readiness, and monitoring</td></tr>
+        <tr><td>Producer asset uploads</td><td>Disabled by policy gate</td><td>Malware scan service and audited storage controls</td></tr>
+      </tbody>
+    </table>
+
+    <h2>7) Troubleshooting Quick Map</h2>
+    <table>
+      <thead>
+        <tr><th>Issue</th><th>Likely reason</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Festival approved but not visible publicly</td><td>Approval step completed but publish step not taken</td><td>Move state from approved to published</td></tr>
+        <tr><td>Schedule email failed</td><td>Email provider not activated or provider unavailable</td><td>Retry after provider health check; schedule remains safe</td></tr>
+        <tr><td>Producer submit blocked in production</td><td>Deployment gate prerequisite missing</td><td>Validate edge rate limiting and site URL configuration</td></tr>
+        <tr><td>Unexpected moderation visibility</td><td>Post state recently changed</td><td>Hide immediately and document reason</td></tr>
+      </tbody>
+    </table>
+
+    <h2>8) Handover Checklist</h2>
+    <ol>
+      <li>Confirm final role owners and replace personal inboxes with organizational aliases.</li>
+      <li>Review legal draft pages and replace with approved privacy and terms copy.</li>
+      <li>Run release verification for browser matrix including WebKit coverage.</li>
+      <li>Complete activation proof checklist for each external provider.</li>
+      <li>Store this guide PDF with project runbooks and incident contacts.</li>
+    </ol>
+
+    <p class="footer">Document prepared for client handover. Source documentation lives in the docs directory of the repository and remains the authoritative operational detail.</p>
+  </main>
+</body>
+</html>

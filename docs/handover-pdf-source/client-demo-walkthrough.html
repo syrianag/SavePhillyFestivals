@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Save Philly Festivals - Core Features Client Demo Guide</title>
+  <style>
+    @page {
+  size: A4;
+  margin: 16mm;
+}
+
+:root {
+  --ink: #14243f;
+  --muted: #5a6b83;
+  --brand: #d95f02;
+  --brand-soft: #fff2e6;
+  --line: #dce3ee;
+  --panel: #ffffff;
+}
+
+html,
+body {
+  color: var(--ink);
+  background: #f8fbff;
+  font-family: "Source Sans 3", "Segoe UI", Tahoma, Arial, sans-serif;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+body {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: #1a3358;
+  line-height: 1.25;
+  page-break-after: avoid;
+}
+
+h1 {
+  font-family: "Merriweather", Georgia, serif;
+  font-size: 30px;
+  margin-top: 0;
+  margin-bottom: 0.4rem;
+  border-bottom: 3px solid var(--brand);
+  padding-bottom: 8px;
+}
+
+h2 {
+  font-family: "Merriweather", Georgia, serif;
+  font-size: 22px;
+  margin-top: 1.4rem;
+  margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+}
+
+h3 {
+  font-size: 17px;
+  margin-top: 1.1rem;
+  margin-bottom: 0.25rem;
+}
+
+p,
+li,
+td,
+th {
+  orphans: 3;
+  widows: 3;
+}
+
+img {
+  max-width: 100%;
+}
+
+img[alt*="Save Philly Festivals logo"] {
+  width: 280px;
+  max-width: 75%;
+  display: block;
+  margin: 0 0 10px 0;
+}
+
+blockquote {
+  margin: 0.8rem 0;
+  padding: 0.5rem 0.8rem;
+  background: #fffaf5;
+  border-left: 4px solid var(--brand);
+}
+
+code {
+  background: #eff4fb;
+  border: 1px solid #d8e1ee;
+  border-radius: 3px;
+  padding: 0.08rem 0.25rem;
+  font-size: 0.92em;
+}
+
+pre code {
+  display: block;
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  border-color: #cfdaea;
+  background: #f5f8fd;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  margin: 0.6rem 0 0.9rem;
+  page-break-inside: avoid;
+}
+
+thead tr {
+  background: #eaf1fb;
+}
+
+th,
+td {
+  border: 1px solid var(--line);
+  padding: 7px 8px;
+  vertical-align: top;
+}
+
+a {
+  color: #0f4a8a;
+}
+
+hr {
+  border: 0;
+  border-top: 1px dashed #cdd7e6;
+  margin: 1rem 0;
+}
+
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: radial-gradient(circle at 85% 15%, #ffe6cf 0%, #fff8f1 28%, #ffffff 65%);
+      padding: 22px;
+      margin-bottom: 24px;
+    }
+    .brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed var(--line);
+    }
+    .brand-row img {
+      width: 270px;
+      max-width: 70%;
+      height: auto;
+    }
+    .doc-chip {
+      border: 1px solid #efc9aa;
+      background: #fff7ef;
+      color: #804016;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-radius: 999px;
+      padding: 6px 10px;
+      white-space: nowrap;
+    }
+    .meta { color: var(--muted); font-size: 13px; margin: 4px 0; }
+    .tag {
+      display: inline-block;
+      margin-top: 6px;
+      margin-right: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: var(--brand-soft);
+      color: #803401;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    /* Hide the duplicated main header from markdown since it's in the hero */
+    .content h1:first-child {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap" style="padding: 24px;">
+    <section class="hero">
+      <div class="brand-row">
+        <img src="SPF%20One%20Line%20Logo.png" alt="Save Philly Festivals logo" />
+        <span class="doc-chip">Demo Guide</span>
+      </div>
+      <h1 style="font-family: 'Merriweather', Georgia, serif; font-size: 28px; color: #1a2d4a; margin: 0 0 10px;">Save Philly Festivals<br/>Core Features Client Demo Guide</h1>
+      <p class="meta">Purpose: step-by-step walkthrough script and dashboard demonstration guide</p>
+      <p class="meta">Scope: public discovery, schedule exports, and secure admin interfaces</p>
+      <span class="tag">Walkthrough Script</span>
+      <span class="tag">Platform Demo</span>
+      <span class="tag">Operations</span>
+    </section>
+
+    <div class="content">
+      <h1>Save Philly Festivals: Core Features Client Demo &amp; Walkthrough Guide</h1>
+<p>This guide highlights the key functional areas of the modernized <strong>Save Philly Festivals</strong> application. It serves as a walkthrough script for demonstrating the system to clients, stakeholders, and operators.</p>
+<hr>
+<h2>🌟 Modernized Architecture &amp; Design System</h2>
+<p>The application has been overhauled to follow a high-fidelity <strong>glassmorphic design system</strong> (inspired by Antigravity aesthetics). Key visual upgrades include:</p>
+<ul>
+<li><strong>Harmonious Color Palettes:</strong> Sophisticated slate, amber, blue, and green HSL-based palettes replace raw defaults.</li>
+<li><strong>Accessible Visual Hierarchy:</strong> Cards and layouts utilize smooth shadow systems, elevated borders, and clear semantic landmarks.</li>
+<li><strong>Next.js 13+ Compliance:</strong> Eliminates all deprecated Next.js Link behaviors, resolving hydration warnings and guaranteeing optimal SEO routing.</li>
+</ul>
+<pre><code class="language-mermaid">graph TD
+    subgraph Public Website
+        A[Festival Discovery &amp; Calendar] --&gt;|Add to list| B[Schedule Builder]
+        B --&gt;|Download/Email| C[Personalized Calendar PDF/TXT]
+    end
+    subgraph Secure Portals
+        D[Producer Submission Portal] --&gt;|Draft/Submit| E[Editorial Queue]
+        F[Social Media Aggregator] --&gt;|Hashtag/Sync| G[Social Feed Moderation]
+        E --&gt;|Approve/Publish| A
+        G --&gt;|Approve/Publish| A
+    end
+</code></pre>
+<hr>
+<h2>🚀 Core Features Walkthrough</h2>
+<h3>1. Public Festival Discovery &amp; Interactive Calendar</h3>
+<p>Allows public visitors to search, filter, and explore all current and upcoming Philadelphia festivals.</p>
+<ul>
+<li><strong>Key Highlights:</strong><ul>
+<li><strong>Universal Search:</strong> Real-time query submission reflecting URL query states for instant back/forward navigation.</li>
+<li><strong>Accessible Calendar Grid:</strong> Grid system exposing selected-day and month-control semantics for keyboard navigability.</li>
+<li><strong>Intentional No-Results Fallbacks:</strong> Clean empty states offering alternatives instead of dead ends.</li>
+</ul>
+</li>
+<li><strong>Demo Scenario:</strong><ol>
+<li>Navigate to the homepage <code>/</code>.</li>
+<li>Use the search input to filter for a keyword (e.g., &quot;Beer&quot;).</li>
+<li>Toggle filters and navigate months on the <code>/calendar</code> tab. Note how the URL updates dynamically, preserving state.</li>
+</ol>
+</li>
+</ul>
+<hr>
+<h3>2. Personalized Schedule Builder</h3>
+<p>Enables visitors to construct a custom itinerary of festivals and events without needing to register for an account.</p>
+<ul>
+<li><strong>Key Highlights:</strong><ul>
+<li><strong>Accountless Persistence:</strong> Uses local storage to retain checked events across page refreshes.</li>
+<li><strong>Schedule Export &amp; Sharing:</strong> Download selected itineraries as a clean <code>.txt</code> or <code>.ics</code> document, or email them directly.</li>
+<li><strong>Granular Marketing Consent:</strong> Separate, transparent checkmarks for organizer consent and general marketing emails.</li>
+</ul>
+</li>
+<li><strong>Demo Scenario:</strong><ol>
+<li>On the homepage, select <strong>Add to Schedule</strong> on multiple festival cards.</li>
+<li>Click the floating schedule summary to view the <strong>Schedule Builder</strong>.</li>
+<li>Enter an email address, configure marketing preferences, and trigger a test export.</li>
+</ol>
+</li>
+</ul>
+<hr>
+<h3>3. Producer Submission Portal</h3>
+<p>A self-service workspace where festival coordinators submit their events for editorial review.</p>
+<ul>
+<li><strong>Key Highlights:</strong><ul>
+<li><strong>Save Draft Progression:</strong> Save incomplete forms and resume editing later without risking data loss.</li>
+<li><strong>Secure Private Asset Uploads:</strong> Direct-to-storage upload of festival flyers, logos, and graphic assets.</li>
+<li><strong>Live Status Badges:</strong> Clearly labels state changes (e.g., <code>Draft</code>, <code>Pending review</code>, <code>Approved</code>, <code>Changes Requested</code>) on a timeline card.</li>
+</ul>
+</li>
+<li><strong>Demo Scenario:</strong><ol>
+<li>Log in as a verified producer at <code>/login</code>.</li>
+<li>Fill in the festival details (Name, Location, dates, and Description).</li>
+<li>Upload an image file under <strong>Promotional Asset</strong>.</li>
+<li>Click <strong>Review submission</strong> to see a read-only preview, then submit. The status transitions to <strong>Pending review</strong> and locks the input fields to prevent modification during review.</li>
+</ol>
+</li>
+</ul>
+<hr>
+<h3>4. Admin Editorial Workflow</h3>
+<p>The command center for administrators to moderate submissions, enforce guidelines, and publish listings.</p>
+<table>
+<thead>
+<tr>
+<th align="left">Queue State</th>
+<th align="left">Operator Action</th>
+<th align="left">System Consequence</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>Pending Review</strong></td>
+<td align="left">Click <em>Approve</em> or <em>Publish</em></td>
+<td align="left">Promotes to live calendar; sends email notice to Producer.</td>
+</tr>
+<tr>
+<td align="left"><strong>Pending Review</strong></td>
+<td align="left">Click <em>Request Changes</em></td>
+<td align="left">Sends draft back to Producer with feedback log; unlocks editing.</td>
+</tr>
+<tr>
+<td align="left"><strong>Approved</strong></td>
+<td align="left">Click <em>Cancel Festival</em></td>
+<td align="left">Generates a public <strong>Cancellation Tombstone</strong> on the discovery page.</td>
+</tr>
+</tbody></table>
+<ul>
+<li><strong>Key Highlights:</strong><ul>
+<li><strong>Structured Feedback Loop:</strong> Mandatory feedback messages when rejecting or requesting changes.</li>
+<li><strong>Private Approvals:</strong> Approve a festival to preview it securely before publishing it live.</li>
+</ul>
+</li>
+<li><strong>Demo Scenario:</strong><ol>
+<li>Navigate to <code>/admin/festivals</code>.</li>
+<li>Select the producer&#39;s submission from the <strong>Pending review</strong> tab.</li>
+<li>Reject the submission, prompting a modal. Enter a moderation reason and log it.</li>
+<li>Notice the state change timeline reflects the decision.</li>
+</ol>
+</li>
+</ul>
+<hr>
+<h3>5. Moderated Social Feed Aggregator</h3>
+<p>Aggregates live social media posts (via hashtags) to display a community gallery on the festival details page.</p>
+<ul>
+<li><strong>Key Highlights:</strong><ul>
+<li><strong>Aggregation Providers:</strong> Standard integrations for Flockler and Curator.io.</li>
+<li><strong>Granular Post Moderation:</strong> Review posts by marking them <em>Approved</em>, <em>Hidden</em>, or <em>Rejected</em>.</li>
+<li><strong>Audit-Safe Moderation Reasons:</strong> Enforces internal reason logs for hiding or rejecting social items to maintain operation logs.</li>
+</ul>
+</li>
+<li><strong>Demo Scenario:</strong><ol>
+<li>Go to the admin dashboard and select <strong>Social Feed Manager</strong>.</li>
+<li>Update the feed settings (e.g., Hashtag: <code>#PhillyBeerFest</code>).</li>
+<li>Click <strong>Save social feed</strong>. A confirmation toast will report the successful save.</li>
+<li>Under the feed list, click <strong>Hide</strong> on a post. Type &quot;Spam post containing off-topic advertisement&quot; as the moderation reason to finalize the action.</li>
+</ol>
+</li>
+</ul>
+<hr>
+<blockquote>
+<p>[!NOTE]
+All core workflows described in this guide are backed by E2E verification tests to prevent regressions in production.</p>
+</blockquote>
+
+    </div>
+  </main>
+</body>
+</html>

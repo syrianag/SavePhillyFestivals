@@ -1,3 +1,5 @@
+![Save Philly Festivals logo](../apps/save-philly-festivals/public/logos/SPF%20One%20Line%20Logo.png)
+
 **Philly Fests Design Handoff Document**
 
 **Project Completion Date:** December 2025
