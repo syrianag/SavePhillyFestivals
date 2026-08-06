@@ -25,6 +25,9 @@ export function Toast({ message, onClose, duration = 3000 }) {
 
   return (
     <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
       className={cn(
         "fixed bottom-6 left-1/2 z-[100] -translate-x-1/2 rounded-full bg-brand-dark px-6 py-3 font-ui text-sm font-medium text-white shadow-lg transition-all duration-300",
         message ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-2 opacity-0"

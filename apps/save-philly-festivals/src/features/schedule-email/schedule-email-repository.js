@@ -59,30 +59,75 @@ export const scheduleEmailRepository = {
     });
   },
 
-  markSent(id, providerMessageId) {
-    const now = new Date();
-    return prisma.scheduleEmailRequest.update({
-      where: { id },
-      data: {
-        delivery_status: "sent",
-        provider_message_id: providerMessageId,
-        attempted_at: now,
-        sent_at: now,
-      },
-      include: requestInclude,
+  async claimDelivery({ id, attemptToken, attemptedAt, staleBefore, maxAttempts }) {
+    return prisma.$transaction(async (transaction) => {
+      await transaction.scheduleEmailRequest.updateMany({
+        where: {
+          id,
+          delivery_status: "pending",
+          attempts: { gte: maxAttempts },
+          attempt_started_at: { lt: staleBefore },
+        },
+        data: {
+          delivery_status: "failed",
+          failure_code: "retry_exhausted",
+          failure_message: "Email delivery could not be completed after several attempts. Your schedule remains saved in this browser.",
+          attempt_token: null,
+          attempt_started_at: null,
+        },
+      });
+      const claimed = await transaction.scheduleEmailRequest.updateMany({
+        where: {
+          id,
+          delivery_status: { in: ["pending", "failed"] },
+          attempts: { lt: maxAttempts },
+          OR: [{ attempt_token: null }, { attempt_started_at: { lt: staleBefore } }],
+        },
+        data: {
+          delivery_status: "pending",
+          attempts: { increment: 1 },
+          attempt_token: attemptToken,
+          attempt_started_at: attemptedAt,
+          attempted_at: attemptedAt,
+          failure_code: null,
+          failure_message: null,
+        },
+      });
+      return claimed.count === 1
+        ? transaction.scheduleEmailRequest.findUnique({ where: { attempt_token: attemptToken }, include: requestInclude })
+        : null;
     });
   },
 
-  markFailed(id, failure) {
-    return prisma.scheduleEmailRequest.update({
-      where: { id },
+  findById(id) {
+    return prisma.scheduleEmailRequest.findUnique({ where: { id }, include: requestInclude });
+  },
+
+  markSent({ id, attemptToken, providerMessageId, sentAt }) {
+    return prisma.scheduleEmailRequest.updateMany({
+      where: { id, attempt_token: attemptToken, delivery_status: "pending" },
+      data: {
+        delivery_status: "sent",
+        provider_message_id: providerMessageId,
+        failure_code: null,
+        failure_message: null,
+        sent_at: sentAt,
+        attempt_token: null,
+        attempt_started_at: null,
+      },
+    });
+  },
+
+  markFailed({ id, attemptToken, failure }) {
+    return prisma.scheduleEmailRequest.updateMany({
+      where: { id, attempt_token: attemptToken, delivery_status: "pending" },
       data: {
         delivery_status: "failed",
         failure_code: failure.code,
         failure_message: failure.message,
-        attempted_at: new Date(),
+        attempt_token: null,
+        attempt_started_at: null,
       },
-      include: requestInclude,
     });
   },
 };

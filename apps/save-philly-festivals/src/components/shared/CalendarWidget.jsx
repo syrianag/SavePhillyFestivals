@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useId } from "react";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -40,6 +41,7 @@ export function CalendarWidget({
   onNextMonth,
 }) {
   const grid = getMonthGrid(year, month);
+  const headingId = useId();
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
@@ -57,25 +59,31 @@ export function CalendarWidget({
   const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
 
   return (
-    <div
+    <section
+      aria-labelledby={headingId}
       className="w-full rounded-xl bg-white p-3 md:p-5"
       style={{ boxShadow: "0px 3.48px 17.4px rgba(0,0,0,0.25)" }}
     >
       <div className="mb-5 flex items-center justify-between">
         <button
+          type="button"
           onClick={onPrevMonth}
+          aria-label={`Show previous month before ${monthLabel}`}
           className="flex h-[30px] w-[30px] items-center justify-center rounded-[6px] bg-brand-orange text-white transition-opacity hover:opacity-90"
         >
           <ChevronLeft className="size-4" />
         </button>
         <h3
+          id={headingId}
           className="font-heading text-center text-base font-medium leading-[19px] text-black"
           style={{ letterSpacing: "-0.198857px" }}
         >
           {monthLabel}
         </h3>
         <button
+          type="button"
           onClick={onNextMonth}
+          aria-label={`Show next month after ${monthLabel}`}
           className="flex h-[30px] w-[30px] items-center justify-center rounded-[6px] bg-brand-orange text-white transition-opacity hover:opacity-90"
         >
           <ChevronRight className="size-4" />
@@ -98,6 +106,7 @@ export function CalendarWidget({
               return (
                 <div
                   key={`empty-${wi}-${di}`}
+                  aria-hidden="true"
                   className="aspect-square rounded-[10.4px] border border-[#BDBDBD]"
                 />
               );
@@ -110,7 +119,11 @@ export function CalendarWidget({
             return (
               <button
                 key={day}
+                type="button"
                 onClick={() => onSelectDay?.(day)}
+                aria-label={`${monthNames[month]} ${day}, ${year}${hasFestival ? ", festival scheduled" : ""}`}
+                aria-pressed={isSelected}
+                aria-current={isToday ? "date" : undefined}
                 className={cn(
                   "flex aspect-square items-center justify-center rounded-[10.4px] font-ui text-xs font-bold leading-[15px] transition-colors",
                   isSelected
@@ -126,6 +139,6 @@ export function CalendarWidget({
           })
         )}
       </div>
-    </div>
+    </section>
   );
 }

@@ -7,6 +7,32 @@ const baseURL = `http://localhost:${port}`;
 const producerE2ESecret = process.env.PRODUCER_E2E_SECRET || randomBytes(32).toString("hex");
 process.env.PRODUCER_E2E_SECRET = producerE2ESecret;
 
+/* The release browser matrix is Chromium, Firefox, and WebKit at desktop and mobile widths.
+ * WebKit additionally needs host packages installed with `pnpm exec playwright install-deps`.
+ * E2E_BROWSERS narrows the run for environments that cannot install them; CI must run the
+ * full matrix so Safari/Firefox regressions cannot reach a release. */
+const allProjects = [
+  { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+  { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+  { name: "webkit", use: { ...devices["Desktop Safari"] } },
+  { name: "mobile-chromium", use: { ...devices["Pixel 5"] } },
+  { name: "mobile-safari", use: { ...devices["iPhone 13"] } },
+];
+
+const requestedBrowsers = (process.env.E2E_BROWSERS || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+
+const selectedProjects = requestedBrowsers.length
+  ? allProjects.filter((project) => requestedBrowsers.includes(project.name))
+  : allProjects;
+
+if (requestedBrowsers.length && selectedProjects.length !== requestedBrowsers.length) {
+  const known = allProjects.map((project) => project.name).join(", ");
+  throw new Error(`E2E_BROWSERS contains an unknown project. Supported projects: ${known}.`);
+}
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
@@ -20,16 +46,7 @@ export default defineConfig({
     baseURL,
     trace: "retain-on-failure",
   },
-  projects: [
-    {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
-    },
-    {
-      name: "mobile-chromium",
-      use: { ...devices["Pixel 5"] },
-    },
-  ],
+  projects: selectedProjects,
   webServer: {
     command: `next dev --port ${port}`,
     url: baseURL,

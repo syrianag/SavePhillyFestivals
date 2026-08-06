@@ -344,7 +344,7 @@ export function CalendarClient({ festivals }) {
           />
         </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col gap-6">
+        <section aria-label="Festival results" className="flex min-w-0 flex-1 flex-col gap-6">
           <div className="lg:hidden">
             <ScheduleBuilder
               festivals={festivals}
@@ -368,13 +368,27 @@ export function CalendarClient({ festivals }) {
                 </h3>
                 <div className={entries.length > 1 ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : ""}>
                   {entries.map((festival) => (
-                    <FestivalCard key={festival.id} variant="long" {...festival} showSave />
+                    <FestivalCard
+                      key={festival.id}
+                      variant="long"
+                      id={festival.id}
+                      image={festival.image}
+                      title={festival.title}
+                      date={festival.date}
+                      location={festival.location}
+                      category={festival.category}
+                      badge={festival.badge}
+                      bgColor={festival.bgColor}
+                      tags={festival.tags}
+                      href={festival.href}
+                      showSave
+                    />
                   ))}
                 </div>
               </section>
             ))
           )}
-        </main>
+        </section>
       </div>
 
       <Toast message={toast?.message} visible={Boolean(toast)} onClose={() => setToast(null)} />

@@ -36,9 +36,9 @@ export async function requireRole(role, redirectTo = "/login") {
   const session = await requireSession(redirectTo);
   const currentUser = session.user?.id ? await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, email: true, name: true, role: true },
+    select: { id: true, email: true, name: true, role: true, status: true },
   }) : null;
-  if (!currentUser) redirect(redirectTo);
+  if (!currentUser || currentUser.status !== "active") redirect(redirectTo);
   const userLevel = ROLE_HIERARCHY[currentUser.role] ?? 0;
   const requiredLevel = ROLE_HIERARCHY[role] ?? 0;
   if (userLevel < requiredLevel) redirect("/");

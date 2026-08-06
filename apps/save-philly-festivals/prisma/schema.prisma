@@ -133,6 +133,18 @@ enum FestivalImportIssueSeverity {
   error
 }
 
+enum UserAccountStatus {
+  active
+  deactivated
+}
+
+enum UserAccountAuditAction {
+  account_created
+  role_changed
+  status_changed
+  delete_equivalent
+}
+
 // ─── Festival ───────────────────────────────────────────────
 model Festival {
   id            String   @id @default(uuid())
@@ -647,6 +659,9 @@ model ScheduleEmailRequest {
   provider_message_id String?
   failure_code        String?
   failure_message     String?
+  attempts            Int                          @default(0)
+  attempt_token       String?                      @unique
+  attempt_started_at  DateTime?
   attempted_at        DateTime?
   sent_at             DateTime?
   created_at          DateTime                     @default(now())
@@ -656,6 +671,7 @@ model ScheduleEmailRequest {
 
   @@index([recipient_email])
   @@index([delivery_status, created_at])
+  @@index([delivery_status, attempt_started_at])
 }
 
 model ScheduleEmailItem {
@@ -872,10 +888,13 @@ model User {
   email         String   @unique
   email_verified DateTime?
   password_hash String
-  role          String   @default("public")
+  role          String            @default("public")
+  status        UserAccountStatus @default(active)
+  revision      Int               @default(0)
+  deactivated_at DateTime?
   image         String?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  created_at    DateTime          @default(now())
+  updated_at    DateTime          @updatedAt
 
   sessions      Session[]
   accounts      Account[]
@@ -891,6 +910,31 @@ model User {
   overridden_festival_import_backups FestivalImportBatch[] @relation("FestivalImportBackupOverrideActor")
   reviewed_festival_import_rows FestivalImportRow[] @relation("FestivalImportRowReviewer")
   overridden_festival_import_matches FestivalImportRow[] @relation("FestivalImportMatchOverrideActor")
+  account_transitions UserAccountTransition[] @relation("UserAccountTransitionTarget")
+  performed_account_transitions UserAccountTransition[] @relation("UserAccountTransitionActor")
+
+  @@index([status, role, created_at])
+}
+
+model UserAccountTransition {
+  id            String                 @id @default(uuid())
+  user_id       String
+  actor_user_id String
+  action        UserAccountAuditAction
+  from_role     String?
+  to_role       String?
+  from_status   UserAccountStatus?
+  to_status     UserAccountStatus?
+  revision      Int
+  reason        String?
+  created_at    DateTime               @default(now())
+
+  user          User @relation("UserAccountTransitionTarget", fields: [user_id], references: [id], onDelete: Restrict)
+  actor         User @relation("UserAccountTransitionActor", fields: [actor_user_id], references: [id], onDelete: Restrict)
+
+  @@unique([user_id, revision])
+  @@index([actor_user_id, created_at])
+  @@index([user_id, created_at])
 }
 
 model Account {

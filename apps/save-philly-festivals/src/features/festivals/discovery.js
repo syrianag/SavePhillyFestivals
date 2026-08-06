@@ -204,10 +204,23 @@ export function sortFestivalRecords(records, filters) {
   });
 }
 
-export function paginatePublicResults(records, requestedPage = 1, total = records.length) {
+/* Resolves the clamped page window before querying so callers can bound the database read
+ * instead of loading every matching festival into memory. */
+export function resolvePublicPageWindow(requestedPage = 1, total = 0) {
   const pages = Math.max(1, Math.ceil(total / DISCOVERY_PAGE_SIZE));
   const page = Math.min(Math.max(1, requestedPage), pages);
   const offset = (page - 1) * DISCOVERY_PAGE_SIZE;
+  return { page, pages, offset, take: DISCOVERY_PAGE_SIZE, pageSize: DISCOVERY_PAGE_SIZE, total };
+}
+
+/* Wraps an already database-paginated page of records. */
+export function publicPageResult(items, requestedPage, total) {
+  const { page, pages, offset } = resolvePublicPageWindow(requestedPage, total);
+  return { items, pagination: { page, pageSize: DISCOVERY_PAGE_SIZE, total, pages, offset } };
+}
+
+export function paginatePublicResults(records, requestedPage = 1, total = records.length) {
+  const { page, pages, offset } = resolvePublicPageWindow(requestedPage, total);
   return {
     items: records.slice(offset, offset + DISCOVERY_PAGE_SIZE),
     pagination: { page, pageSize: DISCOVERY_PAGE_SIZE, total, pages, offset },

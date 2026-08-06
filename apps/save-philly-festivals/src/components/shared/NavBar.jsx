@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu, X, LogOut } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 
 const publicLinks = [
@@ -33,12 +33,31 @@ const producerLinks = [
 export function NavBar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const menuButtonRef = useRef(null);
+  const firstMobileLinkRef = useRef(null);
   const { data: session } = useSession();
 
   const isStaff = session?.user?.role === "admin" || session?.user?.role === "super_admin";
   const isProducer = session?.user?.role === "producer";
   const isProducerArea = pathname.startsWith("/producer");
   const navLinks = isStaff ? staffLinks : isProducer ? producerLinks : publicLinks;
+
+
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    firstMobileLinkRef.current?.focus();
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [mobileOpen]);
 
   if (isProducerArea) return null;
 
@@ -53,19 +72,20 @@ export function NavBar() {
             src="/logos/PF-Logo-TM.png"
             alt="Save Philly Festivals"
             width={200}
-            height={72}
-            className="max-h-[72px] w-auto"
+            height={113}
+            className="h-auto w-[200px] max-w-full"
             priority
           />
         </Link>
 
-        <nav className="hidden items-center gap-[31.73px] md:flex">
+        <nav className="hidden items-center gap-[31.73px] md:flex" aria-label="Primary navigation">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
+              aria-current={pathname === link.href ? "page" : undefined}
               className={cn(
-                "font-body text-lg font-bold transition-colors",
+                "rounded-sm font-body text-lg font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black",
                 pathname === link.href
                   ? "text-foreground"
                   : "text-[#AAAAAA] hover:text-foreground"
@@ -78,7 +98,7 @@ export function NavBar() {
           {(isStaff || isProducer) && (
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
-              className="flex items-center gap-1 font-body text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1 rounded-sm font-body text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black"
             >
               <LogOut className="size-4" />
               Sign Out
@@ -94,7 +114,7 @@ export function NavBar() {
           ) : (
             <Link
               href="/login"
-              className="rounded-md bg-foreground px-3 py-1 font-body text-xs font-semibold text-background hover:bg-foreground/80 transition-colors"
+              className="rounded-md bg-foreground px-3 py-1 font-body text-xs font-semibold text-background transition-colors hover:bg-foreground/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
             >
               Login
             </Link>
@@ -102,23 +122,29 @@ export function NavBar() {
         </div>
 
         <button
-          className="flex md:hidden"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
+          ref={menuButtonRef}
+          type="button"
+          className="flex rounded-md p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black md:hidden"
+          onClick={() => setMobileOpen((open) => !open)}
+          aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-navigation"
         >
           {mobileOpen ? <X className="size-6" /> : <Menu className="size-6" />}
         </button>
       </div>
 
       {mobileOpen && (
-        <nav className="border-t border-[#E2E8F0] px-4 pb-4 pt-2 md:hidden">
-          {navLinks.map((link) => (
+        <nav id="mobile-navigation" className="border-t border-[#E2E8F0] px-4 pb-4 pt-2 md:hidden" aria-label="Mobile navigation">
+          {navLinks.map((link, index) => (
             <Link
               key={link.href}
+              ref={index === 0 ? firstMobileLinkRef : undefined}
               href={link.href}
               onClick={() => setMobileOpen(false)}
+              aria-current={pathname === link.href ? "page" : undefined}
               className={cn(
-                "block py-2 font-body text-lg font-bold transition-colors",
+                "block rounded-sm py-2 font-body text-lg font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black",
                 pathname === link.href
                   ? "text-foreground"
                   : "text-[#AAAAAA] hover:text-foreground"
@@ -137,7 +163,7 @@ export function NavBar() {
                   setMobileOpen(false);
                   signOut({ callbackUrl: "/" });
                 }}
-                className="block py-2 font-body text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="block rounded-sm py-2 font-body text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
               >
                 Sign Out
               </button>
@@ -146,7 +172,7 @@ export function NavBar() {
             <Link
               href="/login"
               onClick={() => setMobileOpen(false)}
-              className="mt-3 block rounded-md bg-foreground px-3 py-1.5 text-center font-body text-xs font-semibold text-background hover:bg-foreground/80 transition-colors"
+              className="mt-3 block rounded-md bg-foreground px-3 py-1.5 text-center font-body text-xs font-semibold text-background transition-colors hover:bg-foreground/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
             >
               Login
             </Link>

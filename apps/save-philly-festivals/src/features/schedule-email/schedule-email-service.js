@@ -1,4 +1,9 @@
+import { randomUUID } from "node:crypto";
+
 import { buildScheduleEmailContent } from "@/features/schedule-email/schedule-email-content";
+
+export const SCHEDULE_EMAIL_DELIVERY_LEASE_MS = 5 * 60 * 1000;
+export const SCHEDULE_EMAIL_MAX_ATTEMPTS = 3;
 
 const SAFE_FAILURES = Object.freeze({
   provider_unconfigured: "Email delivery is not configured. Your schedule remains saved in this browser.",
@@ -58,36 +63,75 @@ function isUniqueConflict(error) {
   return error?.code === "P2002";
 }
 
-export async function submitScheduleEmail(input, { repository, provider, siteUrl }) {
-  const existing = await repository.findByIdempotencyKey(input.idempotency_key);
-  if (existing) {
-    if (!matchesSubmission(existing, input)) throw new IdempotencyConflictError();
-    return scheduleEmailResponse(existing, { replayed: true });
+async function currentResponse(repository, fallback, replayed) {
+  let current = null;
+  try { current = await repository.findById?.(fallback.id); } catch { /* retain safe pending state */ }
+  return scheduleEmailResponse(current || fallback, { replayed });
+}
+
+export async function submitScheduleEmail(input, {
+  repository,
+  provider,
+  siteUrl,
+  now = () => new Date(),
+  createAttemptToken = randomUUID,
+  leaseMs = SCHEDULE_EMAIL_DELIVERY_LEASE_MS,
+  maxAttempts = SCHEDULE_EMAIL_MAX_ATTEMPTS,
+}) {
+  let request = await repository.findByIdempotencyKey(input.idempotency_key);
+  let replayed = Boolean(request);
+  let resolution;
+
+  if (request) {
+    if (!matchesSubmission(request, input)) throw new IdempotencyConflictError();
+    if (request.delivery_status === "sent") return scheduleEmailResponse(request, { replayed: true });
+  } else {
+    resolution = await repository.resolveApproved(input.selection.items);
+    if (resolution.resolved.length === 0) throw new NoResolvedScheduleItemsError();
+    try {
+      request = await repository.createRequest({
+        email: input.email,
+        idempotencyKey: input.idempotency_key,
+        version: input.selection.version,
+        items: input.selection.items.map((item, position) => ({
+          ...item,
+          position,
+          resolutionStatus: resolution.resolved.some(
+            (resolved) => resolved.type === item.type && resolved.id === item.id
+          ) ? "resolved" : "unavailable",
+        })),
+      });
+    } catch (error) {
+      if (!isUniqueConflict(error)) throw error;
+      request = await repository.findByIdempotencyKey(input.idempotency_key);
+      if (!request) throw error;
+      if (!matchesSubmission(request, input)) throw new IdempotencyConflictError();
+      replayed = true;
+      if (request.delivery_status === "sent") return scheduleEmailResponse(request, { replayed: true });
+    }
   }
 
-  const resolution = await repository.resolveApproved(input.selection.items);
-  if (resolution.resolved.length === 0) throw new NoResolvedScheduleItemsError();
-
-  let request;
+  const attemptedAt = now();
+  const attemptToken = createAttemptToken();
+  let claimed;
   try {
-    request = await repository.createRequest({
-      email: input.email,
-      idempotencyKey: input.idempotency_key,
-      version: input.selection.version,
-      items: input.selection.items.map((item, position) => ({
-        ...item,
-        position,
-        resolutionStatus: resolution.resolved.some(
-          (resolved) => resolved.type === item.type && resolved.id === item.id
-        ) ? "resolved" : "unavailable",
-      })),
+    claimed = await repository.claimDelivery({
+      id: request.id,
+      attemptToken,
+      attemptedAt,
+      staleBefore: new Date(attemptedAt.getTime() - leaseMs),
+      maxAttempts,
     });
-  } catch (error) {
-    if (!isUniqueConflict(error)) throw error;
-    const racedRequest = await repository.findByIdempotencyKey(input.idempotency_key);
-    if (!racedRequest) throw error;
-    if (!matchesSubmission(racedRequest, input)) throw new IdempotencyConflictError();
-    return scheduleEmailResponse(racedRequest, { replayed: true });
+  } catch {
+    return currentResponse(repository, request, replayed);
+  }
+  if (!claimed) return currentResponse(repository, request, true);
+
+  if (!resolution) resolution = await repository.resolveApproved(input.selection.items);
+  if (resolution.resolved.length === 0) {
+    const failure = redactedDeliveryFailure({ code: "provider_error" });
+    try { await repository.markFailed({ id: claimed.id, attemptToken, failure }); } catch { /* recover through fenced lease */ }
+    return currentResponse(repository, claimed, replayed);
   }
 
   const content = buildScheduleEmailContent({
@@ -98,17 +142,29 @@ export async function submitScheduleEmail(input, { repository, provider, siteUrl
 
   let delivery;
   try {
-    delivery = await provider.send({ to: input.email, ...content });
+    delivery = await provider.send(
+      { to: input.email, ...content },
+      { idempotencyKey: `schedule-email/${request.id}` },
+    );
   } catch {
     delivery = { success: false, code: "provider_error" };
   }
 
   if (delivery?.success) {
-    const sent = await repository.markSent(request.id, delivery.id || null);
-    return scheduleEmailResponse(sent);
+    try {
+      await repository.markSent({
+        id: claimed.id,
+        attemptToken,
+        providerMessageId: delivery.id || null,
+        sentAt: now(),
+      });
+    } catch {
+      // The stable provider key makes a retry safe if provider success preceded bookkeeping.
+    }
+    return currentResponse(repository, claimed, replayed);
   }
 
   const failure = redactedDeliveryFailure(delivery);
-  const failed = await repository.markFailed(request.id, failure);
-  return scheduleEmailResponse(failed);
+  try { await repository.markFailed({ id: claimed.id, attemptToken, failure }); } catch { /* recover through fenced lease */ }
+  return currentResponse(repository, claimed, replayed);
 }

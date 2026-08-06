@@ -1,35 +1,58 @@
 name: Deploy
 
-# Deploys to production when main is updated
+# Production deployment is deliberate, never automatic. It requires an approved
+# `production` GitHub environment, an explicit release SHA, and recorded backup
+# evidence. See docs/DELIVERY-WORKFLOW.md.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: "Exact commit SHA that passed all merge gates"
+        required: true
+      backup_reference:
+        description: "Verified database backup identifier taken before this release"
+        required: true
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_sha }}
+
+      - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "npm"
+          cache: "pnpm"
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma client
-        run: npx prisma generate
+      - name: Record release evidence
+        run: |
+          echo "Release SHA: ${{ inputs.release_sha }}"
+          echo "Backup reference: ${{ inputs.backup_reference }}"
+
+      - name: Apply database migrations
+        run: pnpm exec prisma migrate deploy --config apps/save-philly-festivals/prisma.config.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Build
-        run: npm run build
+        run: pnpm exec nx run save-philly-festivals:build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
           NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
 
-      # Deploy to Vercel
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
         with:

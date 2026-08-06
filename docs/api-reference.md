@@ -13,10 +13,10 @@
    - [Health](#health)
    - [Festivals](#festivals)
    - [Schedules](#schedules)
-   - [Saved Schedules](#saved-schedules)
+   - [Schedule Builder APIs](#schedule-builder-apis)
    - [Calendar](#calendar)
    - [Email](#email)
-   - [Upload](#upload)
+   - [Retired Upload](#retired-upload)
 5. [Festival Status Workflow](#festival-status-workflow)
 6. [Error Responses](#error-responses)
 7. [Pagination](#pagination)
@@ -329,71 +329,22 @@ Approve or reject a festival submission.
 
 ---
 
-### Saved Schedules
+### Schedule Builder APIs
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/api/saved-schedules` | Public | Get user's saved schedule |
-| `POST` | `/api/saved-schedules` | Public | Save a schedule item |
-| `DELETE` | `/api/saved-schedules` | Public | Remove saved item |
+The accountless schedule builder persists its versioned `{type,id}` selection only in browser storage. It does not use a server-side personal saved-schedule list.
 
-#### `GET /api/saved-schedules`
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| `POST` | `/api/schedules/email` | Active | Transactionally email the server-resolved mixed schedule |
+| `POST` | `/api/schedules/calendar` | Active | Export a server-resolved mixed schedule as ICS |
+| `POST` | `/api/organizer-consent/eligibility` | Active | Resolve optional organizer choices |
+| `POST`, `DELETE` | `/api/organizer-consent` | Active | Create or revoke explicit organizer consent |
+| `POST` | `/api/schedules/save` | Retired (`410`) | Legacy database-backed save and mail flow |
+| `GET`, `DELETE` | `/api/schedules/saved` | Retired (`410`) | Legacy database-backed list/remove flow |
 
-**Query Parameters:**
-| Param | Type | Required | Description |
-|-------|------|----------|-------------|
-| `email` | string | Yes | User's email |
+The retired routes do not parse the request or access Prisma or mail. `/api/schedules/save` identifies `/api/schedules/email` as its replacement; `/api/schedules/saved` identifies `/calendar`. Retirement responses use `Cache-Control: private, no-store`.
 
-**Response:**
-```json
-[
-  {
-    "id": "uuid",
-    "user_email": "user@example.com",
-    "schedule": {
-      "id": "uuid",
-      "title": "Main Stage",
-      "start_time": "2026-08-01T20:00:00.000Z",
-      "festival": {
-        "id": "uuid",
-        "name": "Mann Center Summer Fest"
-      }
-    },
-    "created_at": "2026-07-15T14:00:00.000Z"
-  }
-]
-```
-
-#### `POST /api/saved-schedules`
-
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "schedule_id": "uuid"
-}
-```
-
-**Response:** `201 Created` — Saved schedule object
-
-**Note:** Uses upsert (idempotent). Saving twice doesn't create duplicates.
-
-#### `DELETE /api/saved-schedules`
-
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "schedule_id": "uuid"
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "message": "Schedule removed"
-}
-```
+See `docs/SCHEDULE-CALENDAR-EMAIL.md` for current request contracts, idempotency, consent separation, and unavailable-item behavior.
 
 ---
 
@@ -401,32 +352,30 @@ Approve or reject a festival submission.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/api/calendar/[festivalId]` | Public | Download .ics file |
+| `POST` | `/api/schedules/calendar` | Public | Download an ICS snapshot of a mixed schedule |
 
-#### `GET /api/calendar/[festivalId]`
+#### `POST /api/schedules/calendar`
 
-Download an .ics calendar file for a festival with all schedule events.
+**Request Body:**
+```json
+{
+  "selection": {
+    "version": 1,
+    "items": [
+      { "type": "festival", "id": "festival-uuid" },
+      { "type": "event", "id": "event-uuid" }
+    ]
+  }
+}
+```
 
 **Response:** `200 OK`
-- Content-Type: `text/calendar`
-- Content-Disposition: `attachment; filename="festival-name.ics"`
+- `Content-Type: text/calendar; charset=utf-8`
+- `Content-Disposition: attachment; filename="philly-fests-schedule.ics"`
+- `Cache-Control: private, no-store`
+- `X-Calendar-Omitted-Count`: number of unavailable selections omitted
 
-**ICS Contents:**
-```
-BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//Save Philly Festivals//EN
-BEGIN:VEVENT
-UID:uuid@savephillyfestivals.org
-DTSTART:20260801T200000Z
-DTEND:20260801T220000Z
-SUMMARY:The Roots - Mann Center Summer Fest
-DESCRIPTION:Hip Hop performance at Stage A
-LOCATION:Stage A, Mann Center
-END:VEVENT
-...
-END:VCALENDAR
-```
+The endpoint returns `400` for an invalid contract, `413` for more than 32 KiB, `415` for non-JSON media, and `422` when no selection can be exported.
 
 ---
 
@@ -472,37 +421,22 @@ END:VCALENDAR
 
 ---
 
-### Upload
+### Retired Upload
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/api/upload` | Producer/Admin | Upload file (logo, image) |
+| Method | Path | Status | Description |
+|--------|------|--------|-------------|
+| `POST` | `/api/upload` | Retired (`410`) | Legacy public-filesystem upload |
 
-#### `POST /api/upload`
+`POST /api/upload` always returns `410 Gone` without authenticating, parsing multipart data, or accessing the filesystem:
 
-**Request:** `multipart/form-data`
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `file` | file | Yes | File to upload |
-| `directory` | string | No | Subdirectory (default: `uploads`) |
-
-**Allowed file types:** JPEG, PNG, WebP, SVG
-
-**Max file size:** 5MB
-
-**Response:** `201 Created`
 ```json
 {
-  "url": "/uploads/uuid-filename.png",
-  "fileName": "uuid-filename.png",
-  "size": 1024000,
-  "type": "image/png"
+  "error": "This legacy public upload endpoint has been retired.",
+  "replacement": "/api/producer/festivals/[id]/assets"
 }
 ```
 
-**Storage:**
-- Current: `apps/save-philly-festivals/public/uploads/` (local filesystem)
-- Future: AWS S3 or Cloudflare R2
+Authenticated producer festival assets use `POST /api/producer/festivals/[id]/assets` and private provider-backed storage. The retired endpoint is not a fallback for that flow. Responses use `Cache-Control: private, no-store`.
 
 ---
 
@@ -640,18 +574,18 @@ AUTH_SECRET="your-auth-secret"
 | `/api/festivals/[id]/approve` | Planned | Admin approval workflow |
 | `/api/schedules` | Planned | Schedule CRUD |
 | `/api/schedules/[id]` | Planned | Single schedule operations |
-| `/api/saved-schedules` | Planned | User saved schedules |
-| `/api/calendar/[festivalId]` | Planned | .ics download |
+| `/api/schedules/save`, `/api/schedules/saved` | Retired | Return `410` without database or mail access |
+| `/api/schedules/calendar` | Active | Mixed-schedule ICS snapshot |
 | `/api/email/send` | Planned | Email sending |
-| `/api/upload` | Planned | File uploads |
+| `/api/upload` | Retired | Returns `410` without filesystem access |
 
 ### Phase 4: Supporting Features (Planned)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Calendar (.ics) | Planned | Uses `uuid` package for UIDs |
+| Calendar (.ics) | Active | Server-resolved mixed-schedule snapshots |
 | Email templates | Planned | Nodemailer with SMTP |
-| File uploads | Planned | Local storage, future S3 |
+| Producer asset uploads | Active | Private provider-backed storage; legacy public upload retired |
 
 ### Phase 5: Authentication and Middleware
 
@@ -718,13 +652,13 @@ curl -X POST http://localhost:3000/api/schedules \
 # List schedules
 curl "http://localhost:3000/api/schedules?festival_id=<festival-id>"
 
-# Save schedule
-curl -X POST http://localhost:3000/api/saved-schedules \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@test.com","schedule_id":"<schedule-id>"}'
+# Confirm legacy saved-schedule retirement (expects 410)
+curl -i -X POST http://localhost:3000/api/schedules/save
 
-# Download calendar
-curl -o festival.ics http://localhost:3000/api/calendar/<festival-id>
+# Download a mixed-schedule calendar snapshot
+curl -o philly-fests-schedule.ics -X POST http://localhost:3000/api/schedules/calendar \
+  -H "Content-Type: application/json" \
+  -d '{"selection":{"version":1,"items":[{"type":"festival","id":"<festival-id>"}]}}'
 
 # Test validation (should fail)
 curl -X POST http://localhost:3000/api/festivals \

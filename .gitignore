@@ -57,3 +57,8 @@ apps/save-philly-festivals/public/uploads/
 # N8N local runtime files
 apps/n8n/local-files/*
 !apps/n8n/local-files/.gitkeep
+
+# Private festival source data. Contains organizer contact details and must live in
+# restricted storage only. See docs/FESTIVAL-DATA-IMPORT-RUNBOOK.md.
+docs/Festivals_Postgres_Export.csv
+*.festival-source.csv

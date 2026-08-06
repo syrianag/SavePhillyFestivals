@@ -143,7 +143,16 @@ export async function sendTransactionalEmail(
 }
 
 export const scheduleEmailProvider = Object.freeze({
-  send: sendTransactionalEmail,
+  send(message, { idempotencyKey } = {}) {
+    if (!resendClient) return sendTransactionalEmail(message);
+    return sendTransactionalEmail(message, {
+      client: {
+        emails: {
+          send: (payload) => resendClient.emails.send(payload, idempotencyKey ? { idempotencyKey } : undefined),
+        },
+      },
+    });
+  },
 });
 
 // Producer notifications use the same server-only transactional boundary. Tests inject

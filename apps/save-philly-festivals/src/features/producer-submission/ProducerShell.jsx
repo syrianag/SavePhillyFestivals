@@ -37,7 +37,7 @@ export default function ProducerShell({ children, user }) {
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
         <div className="mx-auto flex min-h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link href="/" className="min-w-0 shrink" aria-label="Save Philly Festivals home">
-            <Image src="/logos/PF-Logo-TM.png" alt="Save Philly Festivals" width={180} height={65} className="h-auto max-h-16 w-auto max-w-[190px]" priority />
+            <Image src="/logos/PF-Logo-TM.png" alt="Save Philly Festivals" width={180} height={101} className="h-auto w-[180px] max-w-full" priority />
           </Link>
           <nav className="hidden items-center gap-1 md:flex" aria-label="Producer management">
             <NavLinks pathname={pathname} />
@@ -58,10 +58,10 @@ export default function ProducerShell({ children, user }) {
           </nav>
         )}
       </header>
-      <main className="mx-auto min-w-0 max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto min-w-0 max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
         <p className="mb-4 truncate text-sm text-slate-500">Signed in as {user.email}</p>
         {children}
-      </main>
+      </div>
     </div>
   );
 }

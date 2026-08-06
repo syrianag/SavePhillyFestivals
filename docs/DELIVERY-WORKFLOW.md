@@ -106,4 +106,4 @@ Merging tested integration code does not authorize production activation. Google
 
 ## Final handoff
 
-`docs/Client-UserGuide.md` will be produced after F-01 through F-09 are completed and accepted. It will cover visitor, producer, editor/admin, integration-operator, troubleshooting, privacy, and recovery workflows using the final application rather than speculative screens.
+`docs/Client-UserGuide.md` is published and covers the delivered application. It will cover visitor, producer, editor/admin, integration-operator, troubleshooting, privacy, and recovery workflows using the final application rather than speculative screens.
