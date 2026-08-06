@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Bookmark, MapPin, ArrowRight, X } from "lucide-react";
+import { FestivalImagePlaceholder } from "@/components/shared/FestivalImagePlaceholder";
 import { useSchedule } from "@/features/schedule/schedule-context";
 
 function getTextColorForBg(bgColor) {
@@ -73,12 +74,7 @@ export function FestivalCard({
         {image ? (
           <div aria-hidden="true" className="h-[140px] w-full bg-cover bg-center transition-transform duration-500 group-hover:scale-103" style={{ backgroundImage: `url(${image})` }} />
         ) : (
-          <div 
-            className="h-[140px] w-full bg-gradient-to-br"
-            style={{ 
-              backgroundImage: `linear-gradient(135deg, ${bgColor || "#1E7BF6"}dd, #0f172a)`
-            }} 
-          />
+          <FestivalImagePlaceholder title={title} bgColor={bgColor} className="h-[140px] w-full" showLabel={false} />
         )}
         <div className="flex min-h-[128px] flex-1 flex-col gap-1.5 bg-white border-t border-slate-100 px-4 pb-4 pt-4 group-hover:bg-slate-50/30 transition-colors">
           <h3 className="font-heading text-base font-bold leading-[20px] text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-2">{title}</h3>
@@ -131,8 +127,13 @@ export function FestivalCard({
           )}
         </div>
       ) : (
-        <div className="relative flex h-[120px] w-full items-center justify-center bg-[#E8E6E1]">
-          <span className="font-ui text-sm text-[#848484]">Add Photo</span>
+        <div className="relative h-[120px] w-full">
+          <FestivalImagePlaceholder title={title} bgColor={bgColor} />
+          {badge && (
+            <span className="absolute left-2 top-2 rounded bg-brand-yellow px-2 py-0.5 text-xs font-semibold text-brand-dark">
+              {badge}
+            </span>
+          )}
         </div>
       )}
 
