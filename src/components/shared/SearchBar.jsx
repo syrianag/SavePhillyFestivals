@@ -36,25 +36,31 @@ export function SearchBar({ className, onSearch, onFilterChange, filters, ...pro
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search festivals..."
-            className="w-full rounded-full border border-border bg-[#EEEDED] py-2.5 pl-10 pr-4 font-body text-sm text-foreground placeholder:text-brand-text-gray focus:outline-none focus:ring-2 focus:ring-ring/50"
+            className="w-full rounded-full border border-border bg-muted py-2.5 pl-10 pr-4 font-body text-sm text-foreground placeholder:text-brand-text-gray focus:outline-none focus:ring-2 focus:ring-ring/50"
           />
         </div>
         <button
           type="button"
           onClick={handleReset}
-          className="flex size-10 items-center justify-center rounded-full border border-border bg-[#EEEDED] text-foreground transition-colors hover:bg-muted"
+          className="flex size-10 items-center justify-center rounded-full border border-border bg-muted text-foreground transition-colors hover:bg-muted"
           aria-label="Reset filters"
         >
           <SlidersHorizontal className="size-4" />
         </button>
+        <button
+          type="submit"
+          className="flex h-10 items-center justify-center rounded-full bg-primary px-6 font-ui text-sm font-semibold text-white transition-colors hover:bg-primary/90"
+        >
+          Search
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <div className="flex h-[33px] items-center gap-2 rounded-[16.5px] border border-[#AEAEAE] bg-transparent px-[13px] py-[6px]">
+        <div className="flex h-[33px] items-center gap-2 rounded-[16.5px] border border-border bg-transparent px-[13px] py-[6px]">
           <select
             value={filters?.date || ""}
             onChange={(e) => handleSelect("date", e.target.value)}
-            className="bg-transparent font-ui text-base font-medium text-[#848484] focus:outline-none"
+            className="bg-transparent font-ui text-base font-medium text-brand-text-gray focus:outline-none"
             style={{ letterSpacing: "-0.198857px", lineHeight: "19px" }}
           >
             <option value="">Date</option>
@@ -63,11 +69,11 @@ export function SearchBar({ className, onSearch, onFilterChange, filters, ...pro
             <option value="next-month">Next Month</option>
           </select>
         </div>
-        <div className="flex h-[33px] items-center gap-2 rounded-[16.5px] border border-[#AEAEAE] bg-transparent px-[13px] py-[6px]">
+        <div className="flex h-[33px] items-center gap-2 rounded-[16.5px] border border-border bg-transparent px-[13px] py-[6px]">
           <select
             value={filters?.type || ""}
             onChange={(e) => handleSelect("type", e.target.value)}
-            className="bg-transparent font-ui text-base font-medium text-[#848484] focus:outline-none"
+            className="bg-transparent font-ui text-base font-medium text-brand-text-gray focus:outline-none"
             style={{ letterSpacing: "-0.198857px", lineHeight: "19px" }}
           >
             <option value="">Type</option>
@@ -80,11 +86,11 @@ export function SearchBar({ className, onSearch, onFilterChange, filters, ...pro
             <option value="Holidays">Holidays</option>
           </select>
         </div>
-        <div className="flex h-[33px] items-center gap-2 rounded-[16.5px] border border-[#AEAEAE] bg-transparent px-[13px] py-[6px]">
+        <div className="flex h-[33px] items-center gap-2 rounded-[16.5px] border border-border bg-transparent px-[13px] py-[6px]">
           <select
             value={filters?.area || ""}
             onChange={(e) => handleSelect("area", e.target.value)}
-            className="bg-transparent font-ui text-base font-medium text-[#848484] focus:outline-none"
+            className="bg-transparent font-ui text-base font-medium text-brand-text-gray focus:outline-none"
             style={{ letterSpacing: "-0.198857px", lineHeight: "19px" }}
           >
             <option value="">Area</option>

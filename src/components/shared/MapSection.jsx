@@ -8,7 +8,7 @@ export function MapSection({ festivals }) {
     <div className="flex flex-col gap-8">
       <div className="relative h-[300px] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-gray-100 to-gray-300 md:h-[541px]">
         <div className="flex h-full w-full items-center justify-center">
-          <div className="flex flex-col items-center gap-2 text-center text-[#848484]">
+          <div className="flex flex-col items-center gap-2 text-center text-brand-text-gray">
             <MapPin className="size-8" />
             <span className="font-body text-sm">Interactive Map</span>
           </div>
@@ -30,7 +30,7 @@ export function MapSection({ festivals }) {
             />
           ))
         ) : (
-          <p className="py-8 font-body text-[#848484]">
+          <p className="py-8 font-body text-brand-text-gray">
             No festivals found matching your filters.
           </p>
         )}

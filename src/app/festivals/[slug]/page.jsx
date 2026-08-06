@@ -210,7 +210,7 @@ export default async function FestivalDetailPage({ params }) {
           </div>
         )}
 
-        {festival.schedules?.length > 0 && (
+        {festival.schedules?.length > 0 ? (
           <section>
             <h2 className="text-xl font-heading font-semibold mb-4">Schedule</h2>
             <div className="space-y-3">
@@ -247,6 +247,15 @@ export default async function FestivalDetailPage({ params }) {
                 </Card>
               ))}
             </div>
+          </section>
+        ) : (
+          <section>
+            <h2 className="text-xl font-heading font-semibold mb-4">Schedule</h2>
+            <Card>
+              <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                No schedule listed yet. Check back closer to the event date.
+              </CardContent>
+            </Card>
           </section>
         )}
       </div>

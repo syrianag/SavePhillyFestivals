@@ -7,19 +7,19 @@ export function WelcomeStep() {
 
   return (
     <div className="flex flex-col items-center gap-8 py-10 text-center">
-      <div className="flex size-[72px] items-center justify-center rounded-full bg-[#F6C847]">
-        <span className="font-heading text-3xl font-bold text-black">?</span>
+      <div className="flex size-[72px] items-center justify-center rounded-full bg-brand-yellow">
+        <span className="font-heading text-3xl font-bold text-brand-dark">?</span>
       </div>
 
       <div className="flex flex-col gap-3">
         <h2
-          className="font-heading text-[28px] font-bold leading-tight text-[#0F172B] md:text-[36px]"
+          className="font-heading text-[28px] font-bold leading-tight text-foreground md:text-[36px]"
           style={{ letterSpacing: "-0.413209px" }}
         >
           Let&apos;s Get to Know You
         </h2>
         <p
-          className="mx-auto max-w-[480px] font-body text-lg leading-[26px] text-[#45556C]"
+          className="mx-auto max-w-[480px] font-body text-lg leading-[26px] text-muted-foreground"
           style={{ letterSpacing: "-0.198857px" }}
         >
           We&apos;d love to learn more about your organization and your festival.
@@ -29,7 +29,7 @@ export function WelcomeStep() {
       </div>
 
       <p
-        className="font-body text-base text-[#848484]"
+        className="font-body text-base text-brand-text-gray"
         style={{ letterSpacing: "-0.198857px" }}
       >
         Takes about 2 minutes. You can skip anytime.
@@ -44,7 +44,7 @@ export function WelcomeStep() {
         </button>
         <button
           onClick={skip}
-          className="flex h-[47px] w-[180px] items-center justify-center rounded-[12px] border border-[#E2E8F0] bg-white font-body text-base font-bold leading-[19px] text-[#848484] transition-colors hover:bg-[#F9F8FD]"
+          className="flex h-[47px] w-[180px] items-center justify-center rounded-[12px] border border-border bg-white font-body text-base font-bold leading-[19px] text-brand-text-gray transition-colors hover:bg-muted"
         >
           Skip for now
         </button>

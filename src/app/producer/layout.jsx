@@ -22,7 +22,7 @@ export default function ProducerLayout({ children }) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-50 border-b border-[#E2E8F0] bg-background">
+      <header className="sticky top-0 z-50 border-b border-border bg-background">
         <div className="mx-auto flex h-[77px] items-center justify-between px-4 md:px-[81px]">
           <div className="flex flex-col">
             <Link
@@ -80,7 +80,7 @@ export default function ProducerLayout({ children }) {
         </div>
 
         {mobileOpen && (
-          <nav className="border-t border-[#E2E8F0] px-4 pb-4 pt-2 md:hidden">
+          <nav className="border-t border-border px-4 pb-4 pt-2 md:hidden">
             {producerLinks.map((link) => (
               <Link
                 key={link.href}

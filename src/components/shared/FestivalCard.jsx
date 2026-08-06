@@ -30,6 +30,7 @@ export function FestivalCard({
   slug,
   onRemove,
   showSave = false,
+  fill = false,
   ...props
 }) {
   const { isInSchedule, toggleFestival } = useSchedule();
@@ -44,7 +45,7 @@ export function FestivalCard({
           "flex w-full items-center justify-between rounded-2xl px-3.5 py-2.5",
           className
         )}
-        style={{ backgroundColor: bgColor || "#1E7BF6" }}
+        style={{ backgroundColor: bgColor || "var(--brand-teal, #0066FF)" }}
         {...props}
       >
         <span
@@ -71,29 +72,49 @@ export function FestivalCard({
       <div
         data-slot="festival-card"
         className={cn(
-          "flex w-[193px] flex-col overflow-hidden rounded-xl",
+          "flex flex-col overflow-hidden rounded-xl",
+          fill ? "h-full w-full" : "w-[193px]",
           className
         )}
         {...props}
       >
-        <div className="h-[120px] w-full bg-gradient-to-br from-brand-light-teal to-brand-teal" />
-        <div className="flex h-[102px] flex-col gap-0.5 bg-[#EBEBEB] px-[11px] pb-[7px] pt-[13px]">
-          <h3 className="font-body text-base font-normal leading-[19px] text-black">
+        <div
+          className={cn(
+            "w-full bg-gradient-to-br from-brand-light-teal to-brand-teal",
+            fill ? "h-[160px] md:h-[220px]" : "h-[120px]"
+          )}
+        />
+        <div
+          className={cn(
+            "flex flex-col gap-0.5 bg-brand-card-bg",
+            fill
+              ? "flex-1 gap-2 px-5 py-4 md:px-6 md:py-5"
+              : "h-[102px] px-[11px] pb-[7px] pt-[13px]"
+          )}
+        >
+          <h3
+            className={cn(
+              "font-body text-foreground",
+              fill
+                ? "font-heading text-xl font-bold leading-snug md:text-2xl"
+                : "text-base font-normal leading-[19px]"
+            )}
+          >
             {title}
           </h3>
           {location && (
-            <span className="flex items-center gap-[6px] font-body text-sm font-semibold leading-[17px] text-[#848484]">
-              <MapPin className="size-[10px] text-[#848484]" />
+            <span className="flex items-center gap-[6px] font-body text-sm font-semibold leading-[17px] text-muted-foreground">
+              <MapPin className="size-[10px] text-muted-foreground" />
               {location}
             </span>
           )}
           {date && (
-            <span className="font-body text-xs font-normal leading-[14px] text-[#848484]">
+            <span className="font-body text-xs font-normal leading-[14px] text-muted-foreground">
               {date}
             </span>
           )}
           {category && (
-            <span className="mt-auto font-body text-sm font-semibold leading-[17px] text-[#848484]">
+            <span className="mt-auto font-body text-sm font-semibold leading-[17px] text-muted-foreground">
               {category}
             </span>
           )}
@@ -106,7 +127,7 @@ export function FestivalCard({
     <div
       data-slot="festival-card"
       className={cn(
-        "group flex flex-col overflow-hidden rounded-xl",
+        "group flex flex-col overflow-hidden rounded-xl border-t-4 border-primary bg-white shadow-sm transition-shadow hover:shadow-lg",
         className
       )}
       {...props}
@@ -119,87 +140,68 @@ export function FestivalCard({
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
           {badge && (
-            <span className="absolute left-2 top-2 rounded bg-brand-yellow px-2 py-0.5 text-xs font-semibold text-brand-dark">
+            <span className="absolute left-2 top-2 rounded-full bg-brand-yellow px-2.5 py-0.5 text-xs font-semibold text-brand-dark">
               {badge}
             </span>
           )}
         </div>
       ) : (
-        <div className="relative flex h-[120px] w-full items-center justify-center bg-[#E8E6E1]">
-          <span className="font-ui text-sm text-[#848484]">Add Photo</span>
+        <div className="relative flex aspect-[4/3] w-full items-center justify-center bg-brand-card-bg">
+          <span className="font-ui text-sm text-muted-foreground">Add Photo</span>
         </div>
       )}
 
-      <div
-        className="flex flex-1 flex-col gap-2.5 px-[26px] py-2.5"
-        style={{ backgroundColor: bgColor || "#1E7BF6" }}
-      >
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-[18px]">
-            <h3
-              className="font-body text-lg font-bold leading-[22px]"
-              style={{ color: getTextColorForBg(bgColor) }}
-            >
-              {title}
-            </h3>
+      <div className="flex flex-1 flex-col gap-2 p-4">
+        {category && (
+          <span className="w-fit rounded-full bg-brand-yellow px-2.5 py-0.5 font-ui text-xs font-semibold text-brand-dark">
+            {category}
+          </span>
+        )}
 
-            <div className="flex flex-col gap-2">
-              {location && (
-                <span
-                  className="flex items-center gap-1.5 font-body text-sm font-bold leading-[17px]"
-                  style={{ color: getTextColorForBg(bgColor) }}
-                >
-                  <MapPin className="size-2.5" style={{ color: getTextColorForBg(bgColor) }} />
-                  {location}
-                </span>
+        <h3 className="font-heading text-lg font-bold leading-snug text-foreground">
+          {title}
+        </h3>
+
+        {location && (
+          <span className="flex items-center gap-1.5 font-body text-sm text-muted-foreground">
+            <MapPin className="size-3.5 shrink-0 text-muted-foreground" />
+            {location}
+          </span>
+        )}
+        {date && (
+          <span className="flex items-center gap-1.5 font-body text-sm text-muted-foreground">
+            <Calendar className="size-3.5 shrink-0 text-muted-foreground" />
+            {date}
+          </span>
+        )}
+
+        {tags && tags.length > 0 && (
+          <span className="font-body text-sm font-semibold text-muted-foreground">
+            {tags.map((t) => `\u{1F3B5} ${t}`).join(" \u2022 ")}
+          </span>
+        )}
+
+        <div className="mt-auto flex items-center gap-2.5 pt-3">
+          {showSave && id && (
+            <button
+              onClick={() => toggleFestival(id)}
+              className={cn(
+                "flex h-9 items-center gap-2 rounded-full border border-primary px-4 font-body text-base font-bold text-primary transition-colors hover:bg-primary/10",
+                saved && "bg-primary/10"
               )}
-              {date && (
-                <span
-                  className="font-body text-sm font-light leading-[17px]"
-                  style={{ color: getTextColorForBg(bgColor) }}
-                >
-                  {date}
-                </span>
-              )}
-            </div>
-
-            {tags && tags.length > 0 && (
-              <span
-                className="font-body text-sm font-semibold leading-[17px]"
-                style={{ color: getTextColorForBg(bgColor) }}
-              >
-                {tags.map((t) => `\u{1F3B5} ${t}`).join(" \u2022 ")}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            {showSave && id && (
-              <button
-                onClick={() => toggleFestival(id)}
-                className={cn(
-                  "flex h-9 items-center gap-2 rounded-full px-4 font-body text-base font-bold transition-colors",
-                  saved
-                    ? "border border-white bg-transparent text-white"
-                    : "bg-black text-white"
-                )}
-              >
-                <Bookmark
-                  className="size-3.5 fill-current"
-                  style={{ color: saved ? "#FFFFFF" : "#FFFFFF" }}
-                />
-                {saved ? "Saved" : "Save"}
-              </button>
-            )}
-
-            <Link
-              href={slug ? `/festivals/${slug}` : "#"}
-              className="flex h-9 items-center gap-2 rounded-full bg-[#FF7261] px-4 font-body text-base font-bold text-white transition-opacity hover:opacity-90"
             >
-              <ArrowRight className="size-3.5 text-white" />
-              Learn more
-            </Link>
-          </div>
+              <Bookmark className={cn("size-3.5", saved && "fill-current")} />
+              {saved ? "Saved" : "Save"}
+            </button>
+          )}
+
+          <Link
+            href={slug ? `/festivals/${slug}` : "#"}
+            className="flex h-9 items-center gap-2 rounded-full bg-primary px-4 font-body text-base font-bold text-white transition-opacity hover:opacity-90"
+          >
+            <ArrowRight className="size-3.5 text-white" />
+            Learn more
+          </Link>
         </div>
       </div>
     </div>

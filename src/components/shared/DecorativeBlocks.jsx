@@ -1,4 +1,4 @@
-export function CrossBlock({ bgColor = "#FF93F0", patternColor = "#FB439B", size = 232 }) {
+export function CrossBlock({ bgColor = "#FFB6E0", patternColor = "#FF1493", size = 232 }) {
   return (
     <div className="relative shrink-0" style={{ width: size, height: size, backgroundColor: bgColor }}>
       <div className="absolute" style={{ left: "43.25%", right: "43.25%", top: "0%", bottom: "49.52%", backgroundColor: patternColor }} />
@@ -13,7 +13,7 @@ export function CrossBlock({ bgColor = "#FF93F0", patternColor = "#FB439B", size
   );
 }
 
-export function QuadrantBlock({ bgColor = "#FF6602", patternColor = "#F6C847", size = 232 }) {
+export function QuadrantBlock({ bgColor = "#FF8C00", patternColor = "#FFD700", size = 232 }) {
   return (
     <div className="relative shrink-0" style={{ width: size, height: size, backgroundColor: bgColor }}>
       <div className="absolute" style={{ left: "50%", right: "0%", top: "50%", bottom: "-0.1%", backgroundColor: patternColor }} />

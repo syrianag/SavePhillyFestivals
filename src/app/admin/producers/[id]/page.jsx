@@ -201,7 +201,11 @@ export default async function ProducerDetailPage({ params }) {
                         </td>
                         <td className="px-6 py-3">
                           <FestivalReviewDialog festival={f}>
-                            <Button variant="ghost" size="icon-sm">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`Review ${f.name}`}
+                            >
                               <ExternalLink className="size-3.5" />
                             </Button>
                           </FestivalReviewDialog>

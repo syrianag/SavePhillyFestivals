@@ -28,13 +28,13 @@ export function FestivalInfoStep() {
     <div className="flex flex-col gap-[31.73px]">
       <div>
         <h3
-          className="font-heading text-[22px] font-semibold leading-[32px] text-[#0F172B]"
+          className="font-heading text-[22px] font-semibold leading-[32px] text-foreground"
           style={{ letterSpacing: "-0.413209px" }}
         >
           Festival Information
         </h3>
         <p
-          className="mt-1 font-body text-base leading-[22px] text-[#45556C]"
+          className="mt-1 font-body text-base leading-[22px] text-muted-foreground"
           style={{ letterSpacing: "-0.198857px" }}
         >
           Help us understand the scope and nature of your event.
@@ -43,10 +43,10 @@ export function FestivalInfoStep() {
 
       <div className="flex flex-col gap-[10px]">
         <label
-          className="font-body text-lg font-semibold leading-[19px] text-[#0A0A0A]"
+          className="font-body text-lg font-semibold leading-[19px] text-foreground"
           style={{ letterSpacing: "-0.198857px" }}
         >
-          How long has your festival been active? <span className="text-[#FF7261]">*</span>
+          How long has your festival been active? <span className="text-brand-coral">*</span>
         </label>
         <div
           role="radiogroup"
@@ -63,8 +63,8 @@ export function FestivalInfoStep() {
               className={cn(
                 "rounded-full border px-5 py-2.5 font-body text-base font-semibold transition-colors",
                 answers.festivalDuration === opt
-                  ? "border-transparent bg-black text-white"
-                  : "border-[#CAD5E2] bg-white text-[#0A0A0A] hover:border-[#848484]"
+                  ? "border-transparent bg-brand-dark text-white"
+                  : "border-border bg-white text-foreground hover:border-brand-text-gray"
               )}
               style={{ letterSpacing: "-0.198857px" }}
             >
@@ -76,10 +76,10 @@ export function FestivalInfoStep() {
 
       <div className="flex flex-col gap-[10px]">
         <label
-          className="font-body text-lg font-semibold leading-[19px] text-[#0A0A0A]"
+          className="font-body text-lg font-semibold leading-[19px] text-foreground"
           style={{ letterSpacing: "-0.198857px" }}
         >
-          What type of festival do you organize? <span className="text-[#FF7261]">*</span>
+          What type of festival do you organize? <span className="text-brand-coral">*</span>
         </label>
         <div
           role="group"
@@ -95,8 +95,8 @@ export function FestivalInfoStep() {
               className={cn(
                 "rounded-full border px-5 py-2.5 font-body text-base font-semibold transition-colors",
                 answers.festivalType.includes(opt)
-                  ? "border-transparent bg-[#1E7BF6] text-white"
-                  : "border-[#CAD5E2] bg-white text-[#0A0A0A] hover:border-[#848484]"
+                  ? "border-transparent bg-primary text-white"
+                  : "border-border bg-white text-foreground hover:border-brand-text-gray"
               )}
               style={{ letterSpacing: "-0.198857px" }}
             >

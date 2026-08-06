@@ -313,16 +313,17 @@ export default function AdminSettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b text-left text-sm font-medium text-muted-foreground">
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Created</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
-            </thead>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b text-left text-sm font-medium text-muted-foreground">
+                  <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3">Role</th>
+                  <th className="px-4 py-3">Created</th>
+                  <th className="px-4 py-3">Actions</th>
+                </tr>
+              </thead>
             <tbody>
               {users.length === 0 ? (
                 <tr>
@@ -366,7 +367,11 @@ export default function AdminSettingsPage() {
                         >
                           <DialogTrigger
                             render={
-                              <Button variant="ghost" size="icon-xs" />
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                aria-label={`Edit role for ${user.name || user.email}`}
+                              />
                             }
                           >
                             <Pencil className="size-3" />
@@ -433,6 +438,7 @@ export default function AdminSettingsPage() {
                                 variant="ghost"
                                 size="icon-xs"
                                 className="text-destructive hover:text-destructive"
+                                aria-label={`Delete ${user.name || user.email}`}
                               />
                             }
                           >
@@ -470,7 +476,8 @@ export default function AdminSettingsPage() {
                 ))
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </CardContent>
       </Card>
     </div>

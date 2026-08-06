@@ -64,7 +64,7 @@ export function CalendarWidget({
       <div className="mb-5 flex items-center justify-between">
         <button
           onClick={onPrevMonth}
-          className="flex h-[30px] w-[30px] items-center justify-center rounded-[6px] bg-brand-orange text-white transition-opacity hover:opacity-90"
+          className="flex h-[30px] w-[30px] items-center justify-center rounded-[6px] bg-brand-orange text-brand-dark transition-opacity hover:opacity-90"
         >
           <ChevronLeft className="size-4" />
         </button>
@@ -76,7 +76,7 @@ export function CalendarWidget({
         </h3>
         <button
           onClick={onNextMonth}
-          className="flex h-[30px] w-[30px] items-center justify-center rounded-[6px] bg-brand-orange text-white transition-opacity hover:opacity-90"
+          className="flex h-[30px] w-[30px] items-center justify-center rounded-[6px] bg-brand-orange text-brand-dark transition-opacity hover:opacity-90"
         >
           <ChevronRight className="size-4" />
         </button>
@@ -86,7 +86,7 @@ export function CalendarWidget({
         {DAY_NAMES.map((name) => (
           <div
             key={name}
-            className="pb-2 text-center font-ui text-xs font-bold leading-[15px] text-[#424242]"
+            className="pb-2 text-center font-ui text-xs font-bold leading-[15px] text-foreground"
           >
             {name}
           </div>
@@ -98,7 +98,7 @@ export function CalendarWidget({
               return (
                 <div
                   key={`empty-${wi}-${di}`}
-                  className="aspect-square rounded-[10.4px] border border-[#BDBDBD]"
+                  className="aspect-square rounded-[10.4px] border border-border"
                 />
               );
             }
@@ -114,10 +114,10 @@ export function CalendarWidget({
                 className={cn(
                   "flex aspect-square items-center justify-center rounded-[10.4px] font-ui text-xs font-bold leading-[15px] transition-colors",
                   isSelected
-                    ? "bg-brand-orange text-white"
+                    ? "bg-brand-orange text-brand-dark"
                     : hasFestival
-                      ? "bg-[#E3E1DD] text-black"
-                      : "bg-white text-black hover:bg-gray-100"
+                      ? "bg-muted text-foreground"
+                      : "bg-white text-foreground hover:bg-gray-100"
                 )}
               >
                 {day}

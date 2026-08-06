@@ -13,21 +13,29 @@ import {
   MapPin,
   Plus,
   ArrowRight,
+  AlertCircle,
 } from "lucide-react";
 import { STATUS_COLORS, STATUS_LABELS } from "@/lib/constants";
 
 export default function ProducerFestivalsPage() {
   const [festivals, setFestivals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     fetch("/api/producer/stats")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load festivals");
+        return res.json();
+      })
       .then((data) => {
         setFestivals(data.festivals || []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setError(true);
+        setLoading(false);
+      });
   }, []);
 
   if (loading) {
@@ -36,6 +44,23 @@ export default function ProducerFestivalsPage() {
         <h1 className="text-3xl font-heading font-bold">My Festivals</h1>
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">Loading...</CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-heading font-bold">My Festivals</h1>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="mx-auto mb-3 size-8 text-destructive" />
+            <p className="text-muted-foreground mb-4">
+              Couldn&apos;t load your festivals. Please try again.
+            </p>
+            <Button onClick={() => window.location.reload()}>Retry</Button>
+          </CardContent>
         </Card>
       </div>
     );

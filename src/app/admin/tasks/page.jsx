@@ -90,6 +90,7 @@ function formatDueDate(iso) {
 export default function AdminTasksPage() {
   const [tasks, setTasks] = useState([]);
   const [producers, setProducers] = useState([]);
+  const [producerError, setProducerError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -135,7 +136,9 @@ export default function AdminTasksPage() {
       .then((data) => {
         if (!ignore) setProducers(data.users || []);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!ignore) setProducerError(true);
+      });
 
     return () => {
       ignore = true;
@@ -245,7 +248,7 @@ export default function AdminTasksPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-3">
           {COLUMNS.map((col) => {
             const colTasks = groupByStatus(col.key);
             return (
@@ -395,7 +398,7 @@ export default function AdminTasksPage() {
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none resize-none"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Priority</Label>
                 <Select
@@ -445,6 +448,11 @@ export default function AdminTasksPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {producerError && (
+                <p className="text-xs text-destructive">
+                  Couldn&apos;t load producers — you can still save the task unassigned.
+                </p>
+              )}
             </div>
             <DialogFooter>
               <Button

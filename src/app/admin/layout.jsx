@@ -13,7 +13,7 @@ export default async function AdminLayout({ children }) {
     <div className="flex min-h-screen bg-background">
       <AdminSidebar user={session.user} />
       <main className="flex-1 overflow-x-auto">
-        <div className="container mx-auto px-4 py-8 md:px-8">{children}</div>
+        <div className="container mx-auto px-4 pb-8 pt-16 md:px-8 md:py-8">{children}</div>
       </main>
     </div>
   );

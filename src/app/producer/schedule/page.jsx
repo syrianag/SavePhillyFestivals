@@ -2,21 +2,29 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Users } from "lucide-react";
+import { Clock, Users, AlertCircle } from "lucide-react";
 
 export default function ProducerSchedulePage() {
   const [festivals, setFestivals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     fetch("/api/producer/stats")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load schedules");
+        return res.json();
+      })
       .then((data) => {
         setFestivals(data.festivals || []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setError(true);
+        setLoading(false);
+      });
   }, []);
 
   if (loading) {
@@ -25,6 +33,23 @@ export default function ProducerSchedulePage() {
         <h1 className="text-3xl font-heading font-bold">Schedule</h1>
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">Loading...</CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-heading font-bold">Schedule</h1>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="mx-auto mb-3 size-8 text-destructive" />
+            <p className="text-muted-foreground mb-4">
+              Couldn&apos;t load your schedule. Please try again.
+            </p>
+            <Button onClick={() => window.location.reload()}>Retry</Button>
+          </CardContent>
         </Card>
       </div>
     );

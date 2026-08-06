@@ -10,13 +10,13 @@ export function GetToKnowStep() {
     <div className="flex flex-col gap-[31.73px]">
       <div>
         <h3
-          className="font-heading text-[22px] font-semibold leading-[32px] text-[#0F172B]"
+          className="font-heading text-[22px] font-semibold leading-[32px] text-foreground"
           style={{ letterSpacing: "-0.413209px" }}
         >
           Get to Know You
         </h3>
         <p
-          className="mt-1 font-body text-base leading-[22px] text-[#45556C]"
+          className="mt-1 font-body text-base leading-[22px] text-muted-foreground"
           style={{ letterSpacing: "-0.198857px" }}
         >
           We&apos;d love to hear your story. Share as much or as little as you&apos;d like.

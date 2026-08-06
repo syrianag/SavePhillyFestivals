@@ -228,7 +228,7 @@ export default function AdminOrganizationsPage() {
                   placeholder="Brief description"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="org-email">Email</Label>
                   <Input
@@ -382,7 +382,11 @@ export default function AdminOrganizationsPage() {
                       <td className="px-6 py-3">
                         <div className="flex gap-1">
                           <Link href={`/organizations/${org.slug}`}>
-                            <Button variant="ghost" size="icon-sm">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`View ${org.name}`}
+                            >
                               <ExternalLink className="size-3.5" />
                             </Button>
                           </Link>
@@ -407,7 +411,11 @@ export default function AdminOrganizationsPage() {
                           >
                             <DialogTrigger
                               render={
-                                <Button variant="ghost" size="icon-xs" />
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  aria-label={`Edit ${org.name}`}
+                                />
                               }
                             >
                               <Pencil className="size-3" />
@@ -441,7 +449,7 @@ export default function AdminOrganizationsPage() {
                                     }
                                   />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                   <div className="space-y-2">
                                     <Label>Email</Label>
                                     <Input
@@ -510,6 +518,7 @@ export default function AdminOrganizationsPage() {
                                   variant="ghost"
                                   size="icon-xs"
                                   className="text-destructive hover:text-destructive"
+                                  aria-label={`Delete ${org.name}`}
                                 />
                               }
                             >

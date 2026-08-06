@@ -189,7 +189,11 @@ export default async function AdminProducersPage() {
                           <Link
                             href={`/admin/producers/${producer.id}`}
                           >
-                            <Button variant="ghost" size="icon-sm">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={`View ${producer.name || producer.email}`}
+                            >
                               <ExternalLink className="size-3.5" />
                             </Button>
                           </Link>

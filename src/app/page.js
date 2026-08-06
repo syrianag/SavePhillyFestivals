@@ -1,257 +1,46 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { FeaturedFestivalCard } from "@/components/shared/FeaturedFestivalCard";
-import { FestivalCard } from "@/components/shared/FestivalCard";
-import { SearchBar } from "@/components/shared/SearchBar";
-import { MapSection } from "@/components/shared/MapSection";
-import { CalendarSection } from "@/components/shared/CalendarSection";
-import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { useCallback, useMemo, useState } from "react";
 import { festivals, articles } from "@/lib/festivals";
-
-function filterByDate(list, dateFilter) {
-  if (!dateFilter) return list;
-  const now = new Date();
-  return list.filter((f) => {
-    const d = new Date(f.rawDate);
-    if (dateFilter === "this-week") {
-      const weekEnd = new Date(now);
-      weekEnd.setDate(weekEnd.getDate() + 7);
-      return d >= now && d <= weekEnd;
-    }
-    if (dateFilter === "this-month") {
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }
-    if (dateFilter === "next-month") {
-      const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      return d.getMonth() === next.getMonth() && d.getFullYear() === next.getFullYear();
-    }
-    return true;
-  });
-}
+import { getFeatured, getUpcoming } from "@/lib/festival-filters";
+import { neighborhoods } from "@/lib/neighborhoods";
+import { Hero } from "@/components/home/Hero";
+import { FeaturedFestivals } from "@/components/home/FeaturedFestivals";
+import { DiscoverFestivals } from "@/components/home/DiscoverFestivals";
+import { WhyPhilly } from "@/components/home/WhyPhilly";
+import { UpcomingThisMonth } from "@/components/home/UpcomingThisMonth";
+import { ExploreNeighborhoods } from "@/components/home/ExploreNeighborhoods";
+import { CommunityStories } from "@/components/home/CommunityStories";
+import { FinalCTA } from "@/components/home/FinalCTA";
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState("featured");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [query, setQuery] = useState("");
   const [filters, setFilters] = useState({ date: "", type: "", area: "" });
 
-  const featured = useMemo(() => festivals.filter((f) => f.badge === "Featured"), []);
+  const featured = useMemo(() => getFeatured(festivals, 4), []);
+  const upcoming = useMemo(() => getUpcoming(festivals, 8), []);
 
-  const filteredFestivals = useMemo(() => {
-    let result = festivals;
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (f) =>
-          f.title.toLowerCase().includes(q) ||
-          f.location.toLowerCase().includes(q) ||
-          f.category.toLowerCase().includes(q)
-      );
-    }
-
-    if (filters.type) {
-      result = result.filter((f) => f.category === filters.type);
-    }
-
-    if (filters.area) {
-      result = result.filter((f) => f.location.toLowerCase().includes(filters.area.toLowerCase()));
-    }
-
-    result = filterByDate(result, filters.date);
-
-    return result;
-  }, [searchQuery, filters]);
+  const handleSelectArea = useCallback((area) => {
+    setFilters((prev) => ({ ...prev, area }));
+    document.getElementById("discover")?.scrollIntoView({ behavior: "smooth" });
+  }, []);
 
   return (
     <>
-      <section className="mx-auto max-w-[1440px] px-4 pb-8 pt-12 md:px-[81px] md:pb-12 md:pt-20">
-        <div className="mx-auto max-w-4xl text-center">
-          <h1 className="font-heading text-3xl font-bold leading-tight text-black md:text-[40px] md:leading-[47px]">
-            Discover Philly Fests
-          </h1>
-          <p className="mt-4 font-serif text-xl leading-snug text-[#45556C] md:mt-6 md:text-[28px] md:leading-[34px]">
-            From South Street block parties to Fairmount Park concerts — find the
-            festivals that make Philadelphia shine.
-          </p>
-          <div className="mx-auto mt-8 max-w-[513px]">
-            <SearchBar
-              onSearch={setSearchQuery}
-              filters={filters}
-              onFilterChange={setFilters}
-            />
-          </div>
-        </div>
-
-        <div className="mt-10 flex items-center gap-3 border-b border-[#848484] pb-6 md:mt-[83px] md:pb-[59px]">
-          <button
-            onClick={() => setActiveTab("featured")}
-            className={cn(
-              "flex items-center gap-3 pb-2 font-ui text-sm font-medium text-black md:text-base",
-              activeTab === "featured" && "border-b-4 border-black"
-            )}
-          >
-            Featured
-          </button>
-          <button
-            onClick={() => setActiveTab("map")}
-            className={cn(
-              "flex items-center gap-3 pb-2 font-ui text-sm font-medium text-black md:text-base",
-              activeTab === "map" && "border-b-4 border-black"
-            )}
-          >
-            Map
-          </button>
-          <button
-            onClick={() => setActiveTab("calendar")}
-            className={cn(
-              "flex items-center gap-3 pb-2 font-ui text-sm font-medium text-black md:text-base",
-              activeTab === "calendar" && "border-b-4 border-black"
-            )}
-          >
-            Calendar
-          </button>
-        </div>
-      </section>
-
-      {activeTab === "featured" && (
-        <>
-          <section className="overflow-hidden pb-12">
-            <div className="flex gap-4 overflow-x-auto pb-4 px-4 md:gap-[38px] md:pl-[81px] md:pr-[81px]">
-              {featured.map((f) => (
-            <FeaturedFestivalCard
-              key={f.id}
-              title={f.title}
-              date={f.date}
-              location={f.location}
-              description={f.description}
-              slug={f.slug}
-              bgColor={f.bgColor}
-              badge={f.badge}
-              isLight={f.bgColor === "#F6C847"}
-            />
-          ))}
-        </div>
-
-        <div className="mt-4 hidden items-center justify-end gap-[6px] px-4 md:flex md:px-[81px]">
-          <span className="size-[9px] rounded-full bg-[#3D3D3D]" />
-          <span className="size-[9px] rounded-full bg-[#D9D9D9]" />
-          <span className="size-[9px] rounded-full bg-[#D9D9D9]" />
-          <span className="size-[9px] rounded-full bg-[#D9D9D9]" />
-          <span className="size-[9px] rounded-full bg-[#D9D9D9]" />
-        </div>
-            </section>
-
-            <section className="mx-auto max-w-[1440px] px-4 py-12 md:px-[81px] md:py-16">
-        <div className="mx-auto max-w-[892px] text-center">
-          <h2 className="font-heading text-3xl font-bold leading-tight text-black md:text-[40px] md:leading-[47px]">
-            About Philly Fests
-          </h2>
-          <p className="mt-4 font-serif text-xl leading-snug text-[#45556C] md:mt-6 md:text-[28px] md:leading-[34px]">
-            We&apos;re grateful for the support of our incredible community
-            partners who make these festivals possible. Every neighborhood in
-            Philadelphia has its own rhythm — summer block parties, cultural
-            festivals, art walks, food fairs. Philly Festivals brings these
-            celebrations together in one place.
-          </p>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-[1440px] px-4 pb-8 md:px-[81px]">
-        <h3 className="font-body text-base font-normal text-black md:text-lg">
-          {filters.type ? `${filters.type} Festivals` : "Coming up this month"}
-        </h3>
-
-        <div className="mt-6 flex gap-4 overflow-x-auto pb-4 md:mt-10 md:gap-10">
-          {filteredFestivals.length > 0 ? (
-            filteredFestivals.map((festival) => (
-              <FestivalCard
-                key={festival.id}
-                variant="compact"
-                slug={festival.slug}
-                title={festival.title}
-                date={festival.date}
-                location={festival.location}
-                category={festival.category}
-                badge={festival.badge}
-              />
-            ))
-          ) : (
-            <p className="py-8 font-body text-[#848484]">
-              No festivals found matching your filters.
-            </p>
-          )}
-        </div>
-
-        <div className="mt-10 flex justify-center">
-          <Link
-            href="/calendar"
-            className="flex h-[36px] items-center justify-center rounded-[18px] bg-[#424242] px-[17px] font-ui text-base font-medium text-white"
-            style={{ letterSpacing: "-0.198857px" }}
-          >
-            Learn more
-          </Link>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-[1440px] px-4 pb-12 md:px-[81px] md:pb-16">
-        <div
-          className="flex flex-col overflow-hidden rounded-2xl md:flex-row md:items-center"
-          style={{ backgroundColor: "#1E7BF6" }}
-        >
-          <div className="w-full shrink-0 bg-[#1E7BF6] px-4 py-6 md:w-[439px] md:px-[21px] md:py-9">
-            <p className="font-serif text-xl leading-snug text-[#F6C847] md:text-[28px] md:leading-[34px]">
-              Explore hidden gems and local favorites with our trusted guided
-              tours!
-            </p>
-          </div>
-          <div className="h-[120px] flex-1 bg-gradient-to-br from-gray-200 to-gray-300 md:h-[195px]" />
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-[1440px] px-4 pb-12 md:px-[81px] md:pb-16">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-10">
-          {articles.map((article) => (
-            <div
-              key={article.id}
-              className="flex items-center gap-[10px] overflow-hidden rounded-[20px] px-[17px] py-[18px]"
-              style={{ backgroundColor: article.bgColor }}
-            >
-              <div className="h-[79px] w-[76px] shrink-0 rounded-[20px] bg-white" />
-              <div>
-                <h4
-                  className="font-body text-sm font-semibold leading-[17px]"
-                  style={{ color: article.textColor }}
-                >
-                  {article.title}
-                </h4>
-                <p
-                  className="mt-2 font-body text-xs leading-[14px]"
-                  style={{ color: article.textColor }}
-                >
-                  {article.description}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-        </>
-      )}
-
-      {activeTab === "map" && (
-        <section className="mx-auto max-w-[1440px] px-4 pb-12 md:px-[81px]">
-          <MapSection festivals={filteredFestivals} />
-        </section>
-      )}
-
-      {activeTab === "calendar" && (
-        <section className="mx-auto max-w-[1440px] px-4 pb-12 md:px-[81px]">
-          <CalendarSection festivals={filteredFestivals} />
-        </section>
-      )}
+      <Hero />
+      <FeaturedFestivals festivals={featured} />
+      <DiscoverFestivals
+        festivals={festivals}
+        query={query}
+        onQueryChange={setQuery}
+        filters={filters}
+        onFiltersChange={setFilters}
+      />
+      <WhyPhilly />
+      <UpcomingThisMonth festivals={upcoming} />
+      <ExploreNeighborhoods neighborhoods={neighborhoods} onSelectArea={handleSelectArea} />
+      <CommunityStories articles={articles} />
+      <FinalCTA />
     </>
   );
 }

@@ -199,11 +199,11 @@ export default function FestivalSubmissionForm() {
         </p>
       </div>
 
-      <div className="flex justify-center gap-2">
+      <div className="flex flex-wrap justify-center gap-2">
         {steps.map((step) => (
           <div
             key={step.id}
-            className={`px-4 py-2 rounded-full text-sm font-medium ${
+            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
               currentStep === step.id
                 ? "bg-primary text-primary-foreground"
                 : currentStep > step.id

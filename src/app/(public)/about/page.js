@@ -73,7 +73,7 @@ export default function AboutPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="mx-auto mt-[34px] flex w-[596px] items-center rounded-[14px] px-[2px] py-[2px]" style={{ backgroundColor: "#ECECF0", height: "36px" }}>
+      <div className="mx-auto mt-[34px] flex w-full max-w-[596px] items-center rounded-[14px] px-[2px] py-[2px]" style={{ backgroundColor: "#ECECF0", height: "36px" }}>
         <button
           onClick={() => setActiveTab("mission")}
           className="flex h-[29px] flex-1 items-center justify-center rounded-[14px] font-body text-sm font-semibold leading-[17px] transition-colors"

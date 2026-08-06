@@ -24,11 +24,11 @@ export function QuestionnaireField({
     <div className={cn("flex w-full flex-col gap-[10px]", className)}>
       <label
         htmlFor={name}
-        className="font-body text-lg font-semibold leading-[19px] text-[#0A0A0A]"
+        className="font-body text-lg font-semibold leading-[19px] text-foreground"
         style={{ letterSpacing: "-0.198857px" }}
       >
         {label}
-        {required && <span className="ml-1 text-[#FF7261]">*</span>}
+        {required && <span className="ml-1 text-brand-coral">*</span>}
       </label>
 
       {type === "textarea" ? (
@@ -43,7 +43,7 @@ export function QuestionnaireField({
           aria-required={required}
           aria-invalid={showError}
           aria-describedby={showError ? `${name}-error` : undefined}
-          className="w-full resize-none rounded-[13.22px] bg-[#F9F8FD] px-4 py-3 font-body text-lg leading-[22px] text-[#212121] placeholder:text-[#717182] focus:outline-none"
+          className="w-full resize-none rounded-[13.22px] bg-muted px-4 py-3 font-body text-lg leading-[22px] text-foreground placeholder:text-muted-foreground focus:outline-none"
           style={{ letterSpacing: "-0.198857px" }}
           {...props}
         />
@@ -59,7 +59,7 @@ export function QuestionnaireField({
           aria-required={required}
           aria-invalid={showError}
           aria-describedby={showError ? `${name}-error` : undefined}
-          className="w-full rounded-[13.22px] bg-[#F9F8FD] px-4 py-3 font-body text-lg leading-[22px] text-[#212121] placeholder:text-[#717182] focus:outline-none"
+          className="w-full rounded-[13.22px] bg-muted px-4 py-3 font-body text-lg leading-[22px] text-foreground placeholder:text-muted-foreground focus:outline-none"
           style={{ letterSpacing: "-0.198857px" }}
           {...props}
         />
@@ -72,7 +72,7 @@ export function QuestionnaireField({
           id={`${name}-error`}
           role="alert"
           aria-live="polite"
-          className="font-body text-sm text-[#FF7261]"
+          className="font-body text-sm text-brand-coral"
         >
           {error}
         </span>

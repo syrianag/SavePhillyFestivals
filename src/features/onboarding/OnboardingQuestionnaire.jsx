@@ -55,7 +55,7 @@ export function OnboardingQuestionnaire() {
   return (
     <div
       className="w-full bg-white md:w-[822.8px]"
-      style={{ border: "1px solid #E2E8F0", borderRadius: "22px" }}
+      style={{ border: "1px solid var(--border)", borderRadius: "22px" }}
       onKeyDown={handleKeyDown}
     >
       <div className="px-10 pb-[18px] pt-[50px]">
@@ -73,18 +73,18 @@ export function OnboardingQuestionnaire() {
               {currentStep === 5 && <SpfStep />}
             </div>
 
-            <div className="mt-[31.73px] flex items-center justify-between border-t pt-6" style={{ borderTopColor: "#E2E8F0" }}>
+            <div className="mt-[31.73px] flex items-center justify-between border-t pt-6" style={{ borderTopColor: "var(--border)" }}>
               {currentStep > 1 ? (
                 <button
                   onClick={prevStep}
-                  className="flex h-[47px] w-[120px] items-center justify-center rounded-[12px] border border-[#E2E8F0] bg-white font-body text-base font-bold leading-[19px] text-[#848484] transition-colors hover:bg-[#F9F8FD]"
+                  className="flex h-[47px] w-[120px] items-center justify-center rounded-[12px] border border-border bg-white font-body text-base font-bold leading-[19px] text-brand-text-gray transition-colors hover:bg-muted"
                 >
                   Back
                 </button>
               ) : (
                 <button
                   onClick={skip}
-                  className="font-body text-base font-semibold text-[#848484] underline-offset-4 hover:underline"
+                  className="font-body text-base font-semibold text-brand-text-gray underline-offset-4 hover:underline"
                   style={{ letterSpacing: "-0.198857px" }}
                 >
                   Skip for now
@@ -105,7 +105,7 @@ export function OnboardingQuestionnaire() {
               <p
                 role="alert"
                 aria-live="polite"
-                className="mt-4 text-center font-body text-sm text-[#FF7261]"
+                className="mt-4 text-center font-body text-sm text-brand-coral"
                 style={{ letterSpacing: "-0.198857px" }}
               >
                 Please fill in all required fields to continue.

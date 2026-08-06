@@ -28,7 +28,7 @@ export function ProgressBar({ currentStep }) {
                 style={{
                   left: `${circleLeft + 52.88}px`,
                   width: "111px",
-                  backgroundColor: i < activeIndex ? "#000000" : "#E2E8F0",
+                  backgroundColor: i < activeIndex ? "#1A1A1A" : "#E5E7EB",
                 }}
               />
             )}
@@ -39,7 +39,7 @@ export function ProgressBar({ currentStep }) {
                 top: "0px",
                 width: "42.31px",
                 height: "42.31px",
-                backgroundColor: isActive ? "#000000" : "#E2E8F0",
+                backgroundColor: isActive ? "#1A1A1A" : "#E5E7EB",
                 borderRadius: "50%",
                 transition: "background-color 0.2s ease",
               }}
@@ -47,7 +47,7 @@ export function ProgressBar({ currentStep }) {
               <span
                 className="font-body text-lg leading-[26px]"
                 style={{
-                  color: isActive ? "#FFFFFF" : "#62748E",
+                  color: isActive ? "#FFFFFF" : "#555555",
                   letterSpacing: "-0.198857px",
                 }}
               >
@@ -59,7 +59,7 @@ export function ProgressBar({ currentStep }) {
               style={{
                 left: `${labelLeft}px`,
                 top: "59px",
-                color: isCurrent ? "#0F172B" : "#62748E",
+                color: isCurrent ? "#1A1A1A" : "#555555",
                 fontWeight: isCurrent ? 500 : 400,
                 letterSpacing: "-0.198857px",
               }}

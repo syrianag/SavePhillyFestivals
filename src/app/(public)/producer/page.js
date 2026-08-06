@@ -59,8 +59,7 @@ function ProducerPageContent() {
             style={{ left: "40px", top: "267px" }}
           >
             <h1
-              className="font-heading text-[28px] font-bold leading-tight md:text-[40px] md:leading-[47px]"
-              style={{ color: "#F6C847" }}
+              className="font-heading text-[28px] font-bold leading-tight text-white md:text-[40px] md:leading-[47px]"
             >
               Showcase your event on Philly Festivals
             </h1>
