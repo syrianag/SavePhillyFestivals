@@ -8,6 +8,11 @@ node_modules/
 .nx/
 out/
 
+# Local git worktrees. Nx scans any non-ignored directory, so leaving these
+# visible registers duplicate save-philly-festivals/n8n projects and fails the
+# whole project graph.
+.worktrees/
+
 # Production and test artifacts
 build/
 dist/
