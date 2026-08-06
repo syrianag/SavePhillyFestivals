@@ -8,6 +8,11 @@ node_modules/
 .nx/
 out/
 
+# Local git worktrees. Nx scans any non-ignored directory, so leaving these
+# visible registers duplicate save-philly-festivals/n8n projects and fails the
+# whole project graph.
+.worktrees/
+
 # Production and test artifacts
 build/
 dist/
@@ -33,7 +38,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # Editor
-.vscode/settings.json
+# .vscode/settings.json is shared on purpose: it carries the Tailwind v4 CSS-validator
+# workaround, so every developer sees the same Problems panel.
 .vscode/launch.json
 .idea/
 *.swp
@@ -62,3 +68,5 @@ apps/n8n/local-files/*
 # restricted storage only. See docs/FESTIVAL-DATA-IMPORT-RUNBOOK.md.
 docs/Festivals_Postgres_Export.csv
 *.festival-source.csv
+.vercel
+.env*

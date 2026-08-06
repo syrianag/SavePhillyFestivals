@@ -1,9 +1,13 @@
 # Philly Fests — Client User Guide
 
+![Save Philly Festivals logo](../apps/save-philly-festivals/public/logos/SPF%20One%20Line%20Logo.png)
+
 **Audience:** Simran Kaur (`skaur@pratt.edu`), Mengqi Cao (`mcao13@pratt.edu`), Uraiba Zafar (`uzafar@pratt.edu`), Iris Sun (`wsun16@pratt.edu`)
 **Scope:** Features F-01 through F-09 in `docs/Features.md`, plus the audited festival CSV importer
 **Authoritative time zone:** `America/New_York`
 **Status:** Application features implemented and accepted. Several external provider integrations are configured but intentionally switched off and will stay off until the owners named below complete the activation steps in section 7.
+
+**Companion handover guides:** `docs/Technical-Developer-Guide.md` (developer and operator implementation guide) and `docs/N8N-Owner-Guide.md` (non-technical ownership and approval guide for N8N operations).
 
 This guide describes what the software actually does today. It does not describe a live production website. Nothing in this document should be read as a statement that the site, its email sending, its social feeds, or its data import are running in production.
 
@@ -491,6 +495,8 @@ All operational documentation is in the `docs/` folder of the repository.
 | `docs/FESTIVAL-DATA-IMPORT-RUNBOOK.md` | Step-by-step CSV import: dry-run, prepare, signed review, apply, resume, report, recovery |
 | `docs/FESTIVAL-DATA-MIGRATION.md` | Import safety principles, source profile, transformation rules, acceptance criteria, forward recovery |
 | `apps/n8n/README.md` | N8N safety model, organizer subscription contract, and activation prerequisites |
+| `docs/Technical-Developer-Guide.md` | Developer implementation and operations guide for the repository, web app, and N8N boundary |
+| `docs/N8N-Owner-Guide.md` | Non-technical owner guide for N8N approvals, monitoring, and incident escalation |
 | `docs/Client-Hand-Off.md` | The original design handoff this project was built from |
 
 **Before asking for help, note:** which page or URL you were on, which role you were signed in as, the festival name and its current workflow state and revision number, and the exact on-screen message. That is usually enough to resolve an issue without exposing any private data. Never paste credentials, API keys, private contact details, or the raw import CSV into a ticket, chat, or email.

@@ -1,0 +1,13 @@
+# Never ship local git worktrees to a build. They duplicate every Nx project and
+# break the project graph on the build box.
+.worktrees
+
+# Local-only and generated artifacts the remote build recreates itself.
+.nx
+node_modules
+coverage
+playwright-report
+test-results
+apps/save-philly-festivals/.next
+apps/save-philly-festivals/src/generated
+docs/handover-pdf-source

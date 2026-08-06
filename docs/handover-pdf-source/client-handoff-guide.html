@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Save Philly Festivals - Handover Guide</title>
+  <style>
+    :root {
+      --ink: #11223a;
+      --muted: #4f6078;
+      --accent: #d95f02;
+      --accent-soft: #fff3e8;
+      --line: #d9e0ea;
+      --paper: #f8fbff;
+      --panel: #ffffff;
+      --warn: #8a6500;
+      --critical: #992020;
+    }
+    @page {
+      size: A4;
+      margin: 16mm;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 8%, #ffe8d4 0%, #fff4ea 22%, transparent 52%),
+        radial-gradient(circle at 92% 12%, #e7f1ff 0%, #f2f7ff 24%, transparent 56%),
+        var(--paper);
+      font: 14px/1.55 "Source Sans 3", "Segoe UI", Tahoma, Arial, sans-serif;
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: radial-gradient(circle at 85% 15%, #ffe6cf 0%, #fff8f1 28%, #ffffff 65%);
+      padding: 22px;
+      margin-bottom: 16px;
+    }
+    .brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed var(--line);
+    }
+    .brand-row img {
+      width: 270px;
+      max-width: 70%;
+      height: auto;
+    }
+    .doc-chip {
+      border: 1px solid #efc9aa;
+      background: #fff7ef;
+      color: #804016;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-radius: 999px;
+      padding: 6px 10px;
+      white-space: nowrap;
+    }
+    h1, h2, h3 { margin: 0 0 10px; line-height: 1.2; }
+    h1 { font: 700 28px/1.15 "Merriweather", Georgia, serif; color: #1a2d4a; }
+    h2 {
+      margin-top: 24px;
+      font: 700 20px/1.2 "Merriweather", Georgia, serif;
+      color: #1f3559;
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 6px;
+    }
+    h3 { margin-top: 16px; font-size: 16px; color: #274571; }
+    p { margin: 0 0 10px; }
+    .meta { color: var(--muted); font-size: 13px; }
+    .tag {
+      display: inline-block;
+      margin-top: 6px;
+      margin-right: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: #803401;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .stack {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .box {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: var(--panel);
+    }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: #fffaf5;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin: 10px 0;
+    }
+    .warn { border-left-color: var(--warn); background: #fff9ea; }
+    .critical { border-left-color: var(--critical); background: #fff5f5; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      background: #fff;
+      margin: 10px 0 14px;
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    th { background: #edf2f9; color: #22395d; font-weight: 700; }
+    tr:last-child td { border-bottom: 0; }
+    ul, ol { margin: 6px 0 10px 20px; }
+    li { margin: 4px 0; }
+    .footer {
+      margin-top: 22px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    @media print {
+      .hero, .box, table { break-inside: avoid; }
+      h2, h3 { break-after: avoid; }
+      p, li { orphans: 3; widows: 3; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="brand-row">
+        <img src="../../apps/save-philly-festivals/public/logos/SPF%20One%20Line%20Logo.png" alt="Save Philly Festivals logo" />
+        <span class="doc-chip">Handover</span>
+      </div>
+      <h1>Save Philly Festivals<br/>Client Handover Guide</h1>
+      <p class="meta">Purpose: operational handover and launch-readiness reference</p>
+      <p class="meta">Delivery scope: application, workflows, controls, and production gates</p>
+      <span class="tag">Platform Handover</span>
+      <span class="tag">Operational Safety</span>
+      <span class="tag">Activation Controls</span>
+      <span class="tag">Runbooks</span>
+    </section>
+
+    <h2>1) System Snapshot</h2>
+    <div class="stack">
+      <article class="box">
+        <h3>Application</h3>
+        <p>Next.js web platform for public festival discovery, producer submissions, and editorial administration with role-based controls.</p>
+      </article>
+      <article class="box">
+        <h3>Automation</h3>
+        <p>Dedicated N8N runtime and contract-tested workflows, intentionally isolated and controlled from core web release paths.</p>
+      </article>
+    </div>
+    <div class="callout">
+      Release of application code does not automatically activate outbound providers. External integrations require explicit authorization and checklist completion.
+    </div>
+
+    <h2>2) Delivery Boundaries</h2>
+    <table>
+      <thead>
+        <tr><th>Area</th><th>Delivered now</th><th>Not active by default</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Public festival experience</td><td>Search, detail pages, schedule builder, email/export flows</td><td>None in core discovery path</td></tr>
+        <tr><td>Producer workflow</td><td>Drafting, submission, revision loop, private contact handling</td><td>Image uploads pending safety controls</td></tr>
+        <tr><td>Editorial controls</td><td>State-driven workflow, approval and publication separation, audit trail</td><td>None in workflow control path</td></tr>
+        <tr><td>Social moderation</td><td>Moderation queue and state controls</td><td>Provider sync until credentials and approvals are complete</td></tr>
+      </tbody>
+    </table>
+
+    <h2>3) Workflow Governance</h2>
+    <h3>Editorial state model</h3>
+    <ul>
+      <li>Private states remain non-public until explicit publication.</li>
+      <li>Approval records editorial acceptance only.</li>
+      <li>Cancellation preserves public reference page with protective behavior.</li>
+      <li>Archive acts as terminal, non-destructive historical state.</li>
+    </ul>
+
+    <h3>Data safety characteristics</h3>
+    <ul>
+      <li>Visitor schedule persistence is browser-local and non-account based.</li>
+      <li>Producer contact details remain private and excluded from public payloads.</li>
+      <li>Transition and moderation actions maintain immutable audit lineage.</li>
+    </ul>
+
+    <h2>4) Activation Matrix</h2>
+    <table>
+      <thead>
+        <tr><th>Integration</th><th>Current posture</th><th>Activation prerequisites</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Email provider</td><td>Fail-closed when unconfigured</td><td>Provider keys, sender/domain verification, controlled proof</td></tr>
+        <tr><td>Organizer subscription workflow</td><td>Consent/outbox framework in place, outbound disabled</td><td>Legal approval, shared secret provisioning, operator assignment, proof tests</td></tr>
+        <tr><td>Social sync providers</td><td>No sync without provider credentials</td><td>Provider contracts, moderation SLA readiness, monitoring and fallback verification</td></tr>
+        <tr><td>Producer asset uploads</td><td>Disabled by design gate</td><td>Malware scanning service and audited storage permissions</td></tr>
+        <tr><td>Production CSV import</td><td>Private draft-only import model</td><td>Dry-run evidence, signed review, backup/restore proof, post-import verification</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout critical">
+      Critical release rule: no integration may be switched on by merge alone. Activation needs a dedicated approval event and recorded evidence.
+    </div>
+
+    <h2>5) Operational Playbook</h2>
+    <h3>Before production launch</h3>
+    <ol>
+      <li>Finalize legal copy for privacy and terms pages.</li>
+      <li>Verify quality gates including browser coverage on Chromium, Firefox, and WebKit.</li>
+      <li>Confirm role ownership with organizational aliases and escalation paths.</li>
+      <li>Complete each provider-specific activation checklist and controlled test.</li>
+      <li>Record activation decision and rollback owner for each integration.</li>
+    </ol>
+
+    <h3>Incident response baseline</h3>
+    <ul>
+      <li>Treat moderation safety, personal data concerns, and credential exposure as dual-track escalations.</li>
+      <li>Preserve evidence and avoid destructive cleanup during active incidents.</li>
+      <li>Use retry workflows for transient outbound delivery failures.</li>
+    </ul>
+
+    <h2>6) Handover Artifact Index</h2>
+    <table>
+      <thead>
+        <tr><th>Document</th><th>Use case</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Client User Guide</td><td>Daily operation for visitors, producers, editors, and admins</td></tr>
+        <tr><td>Feature baseline and product decisions</td><td>Acceptance boundaries and workflow constraints</td></tr>
+        <tr><td>Schedule and email operations</td><td>Outbound behavior and activation planning</td></tr>
+        <tr><td>Producer submission operations</td><td>Submission handling, upload controls, and safety gates</td></tr>
+        <tr><td>Social feed operations</td><td>Provider choices, moderation standards, and activation checklist</td></tr>
+        <tr><td>Import runbook and migration guide</td><td>Safe, auditable CSV data onboarding</td></tr>
+      </tbody>
+    </table>
+
+    <h2>7) Acceptance Signoff Template</h2>
+    <div class="box">
+      <p><strong>Client acceptance confirms:</strong></p>
+      <ul>
+        <li>Application behavior reviewed and accepted against current scope.</li>
+        <li>Known non-active integrations acknowledged.</li>
+        <li>Activation ownership and escalation roles assigned.</li>
+        <li>Runbook locations and operational responsibilities understood.</li>
+      </ul>
+      <p>Signoff date: ____________________</p>
+      <p>Primary approver: ____________________</p>
+      <p>Secondary approver: ____________________</p>
+    </div>
+
+    <p class="footer">This handover guide is a polished operational summary. Detailed source runbooks in the docs directory remain authoritative for execution steps and control procedures.</p>
+  </main>
+</body>
+</html>

@@ -32,7 +32,14 @@
     "lint": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "eslint src/ --ext .js,.jsx",
+        "command": "eslint .",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit --project jsconfig.json",
         "cwd": "{projectRoot}"
       }
     },
