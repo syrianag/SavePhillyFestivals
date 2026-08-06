@@ -38,7 +38,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # Editor
-.vscode/settings.json
+# .vscode/settings.json is shared on purpose: it carries the Tailwind v4 CSS-validator
+# workaround, so every developer sees the same Problems panel.
 .vscode/launch.json
 .idea/
 *.swp

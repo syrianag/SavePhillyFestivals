@@ -1,0 +1,13 @@
+{
+  "//": "Shared editor settings. The built-in CSS validator predates Tailwind v4 and reports its at-rules (@theme, @custom-variant, @apply, @layer) as unknown, so src/app/globals.css shows errors in the Problems panel that no CLI gate reproduces and that the build does not care about. Disable that one rule rather than rewriting valid CSS.",
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+  "less.lint.unknownAtRules": "ignore",
+  "eslint.workingDirectories": [{ "directory": "apps/save-philly-festivals", "changeProcessCWD": true }],
+  "javascript.preferences.importModuleSpecifier": "non-relative",
+  "search.exclude": {
+    "**/.worktrees": true,
+    "**/src/generated": true,
+    "**/coverage": true
+  }
+}

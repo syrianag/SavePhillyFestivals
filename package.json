@@ -10,6 +10,8 @@
   },
   "//": "No `nx` key here on purpose. liftOff-ops needs `nx.includedScripts: []` because its workspace root is itself an Nx project (root project.json); this workspace has no root project, so adding an `nx` key would register the root as a project named save-philly-festivals and collide with apps/save-philly-festivals. Root scripts here are plain pnpm entry points and are never inferred as Nx targets.",
   "scripts": {
+    "check": "nx run-many -t lint typecheck --all",
+    "predev": "pnpm run check",
     "dev": "nx run save-philly-festivals:dev",
     "dev:web": "nx run save-philly-festivals:dev",
     "build": "nx run-many -t build --all",
@@ -18,6 +20,8 @@
     "preview": "nx run save-philly-festivals:start",
     "lint": "nx run-many -t lint --all",
     "lint:web": "nx run save-philly-festivals:lint",
+    "typecheck": "nx run-many -t typecheck --all",
+    "typecheck:web": "nx run save-philly-festivals:typecheck",
     "test": "nx run-many -t test --all",
     "test:web": "nx run save-philly-festivals:test",
     "test:n8n": "nx run n8n:test",
