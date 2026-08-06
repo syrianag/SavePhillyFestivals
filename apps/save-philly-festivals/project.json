@@ -15,6 +15,8 @@
     },
     "build": {
       "executor": "nx:run-commands",
+      "//": "src/generated/prisma is gitignored, so the build must generate it rather than assume it exists. Relying on the root postinstall broke Vercel builds that restored an install cache: pnpm install was skipped, postinstall never ran, and next build failed with `Can't resolve '@/generated/prisma/client'`.",
+      "dependsOn": ["prisma-generate"],
       "outputs": ["{projectRoot}/.next"],
       "options": {
         "command": "next build",
