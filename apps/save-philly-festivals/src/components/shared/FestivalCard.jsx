@@ -71,24 +71,33 @@ export function FestivalCard({
     const card = (
       <>
         {image ? (
-          <div aria-hidden="true" className="h-[120px] w-full bg-cover bg-center" style={{ backgroundImage: `url(${image})` }} />
+          <div aria-hidden="true" className="h-[140px] w-full bg-cover bg-center transition-transform duration-500 group-hover:scale-103" style={{ backgroundImage: `url(${image})` }} />
         ) : (
-          <div className="h-[120px] w-full bg-gradient-to-br from-brand-light-teal to-brand-teal" />
+          <div 
+            className="h-[140px] w-full bg-gradient-to-br"
+            style={{ 
+              backgroundImage: `linear-gradient(135deg, ${bgColor || "#1E7BF6"}dd, #0f172a)`
+            }} 
+          />
         )}
-        <div className="flex min-h-[118px] flex-1 flex-col gap-0.5 bg-[#EBEBEB] px-[11px] pb-[7px] pt-[13px]">
-          <h3 className="font-body text-base font-normal leading-[19px] text-black">{title}</h3>
+        <div className="flex min-h-[128px] flex-1 flex-col gap-1.5 bg-white border-t border-slate-100 px-4 pb-4 pt-4 group-hover:bg-slate-50/30 transition-colors">
+          <h3 className="font-heading text-base font-bold leading-[20px] text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-2">{title}</h3>
           {location && (
-            <span className="flex items-center gap-[6px] font-body text-sm font-semibold leading-[17px] text-[#606060]">
-              <MapPin aria-hidden="true" className="size-[10px] text-[#606060]" />
+            <span className="flex items-center gap-[6px] font-body text-xs font-semibold leading-[16px] text-slate-500">
+              <MapPin aria-hidden="true" className="size-[12px] text-slate-400" />
               {location}
             </span>
           )}
-          {date && <span className="font-body text-xs font-normal leading-[14px] text-[#606060]">{date}</span>}
-          {category && <span className="mt-auto font-body text-sm font-semibold leading-[17px] text-[#606060]">{category}</span>}
+          {date && <span className="font-body text-xs font-normal leading-[14px] text-slate-400">{date}</span>}
+          {category && (
+            <span className="mt-auto inline-flex w-fit items-center rounded-full bg-slate-100 px-2.5 py-0.5 font-body text-xs font-bold text-slate-600">
+              {category}
+            </span>
+          )}
         </div>
       </>
     );
-    const cardClass = cn("flex w-full min-w-0 flex-col overflow-hidden rounded-xl transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black", className);
+    const cardClass = cn("group flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-150 shadow-2xs hover:shadow-xs transition-all duration-300 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 bg-white", className);
     return slug ? (
       <Link href={`/festivals/${slug}`} aria-label={`View ${title}`} data-slot="festival-card" className={cardClass} {...props}>{card}</Link>
     ) : (

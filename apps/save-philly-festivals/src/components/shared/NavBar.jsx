@@ -62,35 +62,35 @@ export function NavBar() {
   if (isProducerArea) return null;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[#E2E8F0] bg-background">
+    <header className="sticky top-0 z-50 border-b border-slate-200/60 bg-white/90 backdrop-blur-md">
       <div className="mx-auto flex h-[77px] items-center justify-between px-4 md:px-[81px]">
         <Link
           href="/"
-          className="flex items-center shrink-0"
+          className="flex items-center shrink-0 transition-transform duration-300 hover:scale-101"
         >
           <Image
             src="/logos/PF-Logo-TM.png"
             alt="Save Philly Festivals"
             width={200}
             height={113}
-            className="h-auto w-[200px] max-w-full"
+            className="h-auto w-[180px] sm:w-[200px] max-w-full"
             priority
           />
         </Link>
 
-        <nav className="hidden items-center gap-[31.73px] md:flex" aria-label="Primary navigation">
+        <nav className="hidden items-center gap-[30px] md:flex" aria-label="Primary navigation">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               aria-current={pathname === link.href ? "page" : undefined}
               className={cn(
-                "rounded-sm font-body text-lg font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black",
+                "rounded-md px-1.5 py-1 font-body text-base font-bold transition-all focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-500",
                 pathname === link.href
-                  ? "text-foreground"
-                  : "text-[#AAAAAA] hover:text-foreground"
+                  ? "text-indigo-650"
+                  : "text-slate-500 hover:text-slate-900"
               )}
-              style={{ letterSpacing: "-0.198857px", lineHeight: "26px" }}
+              style={{ letterSpacing: "-0.15px" }}
             >
               {link.label}
             </Link>
@@ -98,9 +98,9 @@ export function NavBar() {
           {(isStaff || isProducer) && (
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
-              className="flex items-center gap-1 rounded-sm font-body text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-black"
+              className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 font-ui text-sm font-semibold text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-500"
             >
-              <LogOut className="size-4" />
+              <LogOut className="size-3.5" />
               Sign Out
             </button>
           )}
@@ -108,13 +108,13 @@ export function NavBar() {
 
         <div className="hidden items-center gap-4 md:flex">
           {(isStaff || isProducer) ? (
-            <span className="font-body text-xs font-medium text-muted-foreground">
+            <span className="font-ui text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200/50">
               {session.user.email}
             </span>
           ) : (
             <Link
               href="/login"
-              className="rounded-md bg-foreground px-3 py-1 font-body text-xs font-semibold text-background transition-colors hover:bg-foreground/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+              className="rounded-full bg-slate-900 px-5 py-2 font-ui text-sm font-bold text-white transition-all hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 shadow-2xs hover:shadow-xs"
             >
               Login
             </Link>
@@ -124,7 +124,7 @@ export function NavBar() {
         <button
           ref={menuButtonRef}
           type="button"
-          className="flex rounded-md p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black md:hidden"
+          className="flex rounded-lg p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 text-slate-700 hover:bg-slate-100 md:hidden transition-colors"
           onClick={() => setMobileOpen((open) => !open)}
           aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={mobileOpen}
@@ -135,7 +135,7 @@ export function NavBar() {
       </div>
 
       {mobileOpen && (
-        <nav id="mobile-navigation" className="border-t border-[#E2E8F0] px-4 pb-4 pt-2 md:hidden" aria-label="Mobile navigation">
+        <nav id="mobile-navigation" className="border-t border-slate-150 bg-white px-4 pb-4 pt-2 md:hidden" aria-label="Mobile navigation">
           {navLinks.map((link, index) => (
             <Link
               key={link.href}
@@ -144,18 +144,18 @@ export function NavBar() {
               onClick={() => setMobileOpen(false)}
               aria-current={pathname === link.href ? "page" : undefined}
               className={cn(
-                "block rounded-sm py-2 font-body text-lg font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black",
+                "block rounded-md px-3 py-2 font-body text-base font-bold transition-all",
                 pathname === link.href
-                  ? "text-foreground"
-                  : "text-[#AAAAAA] hover:text-foreground"
+                  ? "text-indigo-650 bg-indigo-50/50"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50/50"
               )}
             >
               {link.label}
             </Link>
           ))}
           {(isStaff || isProducer) ? (
-            <>
-              <span className="block py-2 font-body text-xs font-medium text-muted-foreground">
+            <div className="mt-2 border-t border-slate-100 pt-2 px-3">
+              <span className="block py-1.5 font-ui text-xs font-bold text-slate-500">
                 {session.user.email}
               </span>
               <button
@@ -163,16 +163,16 @@ export function NavBar() {
                   setMobileOpen(false);
                   signOut({ callbackUrl: "/" });
                 }}
-                className="block rounded-sm py-2 font-body text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+                className="mt-1 flex w-full items-center justify-center gap-2 rounded-full border border-slate-200 py-2 font-ui text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
               >
                 Sign Out
               </button>
-            </>
+            </div>
           ) : (
             <Link
               href="/login"
               onClick={() => setMobileOpen(false)}
-              className="mt-3 block rounded-md bg-foreground px-3 py-1.5 text-center font-body text-xs font-semibold text-background transition-colors hover:bg-foreground/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+              className="mt-4 block rounded-full bg-slate-900 py-2.5 text-center font-ui text-sm font-bold text-white transition-colors hover:bg-slate-800 shadow-2xs"
             >
               Login
             </Link>
