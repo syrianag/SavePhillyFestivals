@@ -69,12 +69,12 @@ function filterByDate(list, dateFilter) {
 
 function ScheduleRow({ title, detail, onRemove, stale = false }) {
   return (
-    <div className="flex items-start justify-between gap-3 rounded-xl border border-[#333333] bg-[#1A1A1A] px-3 py-3 text-white">
+    <div className="flex items-start justify-between gap-3 rounded-xl border border-slate-200/60 bg-white px-3.5 py-3 text-slate-800 shadow-2xs hover:shadow-xs transition-shadow">
       <div className="min-w-0">
-        <p className="font-body text-sm font-semibold">{title}</p>
-        <p className="mt-1 font-ui text-xs text-[#A9A9A9]">{detail}</p>
+        <p className="font-body text-sm font-semibold text-slate-900">{title}</p>
+        <p className="mt-1 font-ui text-xs text-slate-500">{detail}</p>
         {stale && (
-          <p className="mt-1 font-ui text-xs text-brand-yellow">
+          <p className="mt-1 font-ui text-xs text-amber-600 font-medium">
             This selection is no longer available in the approved festival listing.
           </p>
         )}
@@ -83,7 +83,7 @@ function ScheduleRow({ title, detail, onRemove, stale = false }) {
         type="button"
         onClick={onRemove}
         aria-label={`Remove ${title} from schedule`}
-        className="shrink-0 rounded-full p-1 text-[#A9A9A9] transition-colors hover:bg-[#333333] hover:text-white"
+        className="shrink-0 rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
       >
         <X className="size-4" aria-hidden="true" />
       </button>
@@ -178,44 +178,44 @@ function ScheduleBuilder({ festivals, onToast, headingId }) {
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 id={headingId} className="font-body text-lg font-bold text-white">
+        <h2 id={headingId} className="font-heading text-lg font-bold text-slate-900">
           Schedule Builder
         </h2>
         {items.length > 0 && (
           <button
             type="button"
             onClick={handleClear}
-            className="inline-flex items-center gap-1 font-ui text-xs font-semibold text-[#A9A9A9] hover:text-white"
+            className="inline-flex items-center gap-1 font-ui text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors"
           >
             <Trash2 className="size-3.5" aria-hidden="true" /> Clear all
           </button>
         )}
       </div>
 
-      <p className="font-ui text-xs leading-relaxed text-[#A9A9A9]">
+      <p className="font-ui text-xs leading-relaxed text-slate-500">
         Your schedule is saved only in this browser on this device and may be removed when browser data is cleared.
       </p>
-      <p className="font-ui text-xs leading-relaxed text-[#A9A9A9]">
+      <p className="font-ui text-xs leading-relaxed text-slate-500">
         Calendar exports are snapshots and do not update automatically if festival details change.
       </p>
 
       {!hydrated ? (
-        <p className="rounded-xl border border-[#333333] bg-[#1A1A1A] px-4 py-5 text-center text-sm text-[#A9A9A9]">
+        <p className="rounded-xl border border-slate-200/60 bg-white px-4 py-5 text-center text-sm text-slate-400">
           Loading your schedule…
         </p>
       ) : items.length === 0 ? (
-        <p className="rounded-xl border border-[#333333] bg-[#1A1A1A] px-4 py-5 text-center font-body text-sm text-[#A9A9A9]">
+        <p className="rounded-xl border border-slate-200/60 bg-white px-4 py-5 text-center font-body text-sm text-slate-400">
           No festivals or program events saved yet.
         </p>
       ) : (
         <div className="flex flex-col gap-3" data-testid="saved-schedule">
           {overlaps.length > 0 && (
-            <div role="status" className="rounded-xl border border-brand-yellow bg-[#292510] px-3 py-3 text-sm text-white">
+            <div role="status" className="rounded-xl border border-amber-250 bg-amber-50/60 px-3.5 py-3 text-sm text-amber-900">
               <p className="flex items-center gap-2 font-semibold">
-                <AlertTriangle className="size-4 text-brand-yellow" aria-hidden="true" /> Time overlap warning
+                <AlertTriangle className="size-4 text-amber-600" aria-hidden="true" /> Time overlap warning
               </p>
               {overlaps.map(([left, right]) => (
-                <p key={`${left.id}:${right.id}`} className="mt-1 text-xs text-[#E8E6E1]">
+                <p key={`${left.id}:${right.id}`} className="mt-1 text-xs text-amber-850">
                   {left.title} overlaps with {right.title}. Both remain saved.
                 </p>
               ))}
@@ -226,7 +226,7 @@ function ScheduleBuilder({ festivals, onToast, headingId }) {
             <div key={festival.id} className="flex flex-col gap-2">
               <Link
                 href={`/festivals/${festival.slug}`}
-                className="font-body text-sm font-bold text-white underline-offset-2 hover:underline"
+                className="font-body text-sm font-bold text-indigo-700 underline-offset-2 hover:underline hover:text-indigo-900 transition-colors"
               >
                 {festival.name}
               </Link>
@@ -267,18 +267,18 @@ function ScheduleBuilder({ festivals, onToast, headingId }) {
         type="button"
         onClick={handleExport}
         disabled={!hydrated || items.length === 0 || exportPending}
-        className="flex h-9 items-center justify-center gap-2 rounded-full border border-[#848484] bg-transparent px-4 font-body text-sm font-medium text-[#A9A9A9] transition-colors hover:border-white hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-10 items-center justify-center gap-2 rounded-full bg-slate-900 px-5 font-body text-sm font-bold text-white transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 shadow-2xs hover:shadow-xs"
       >
         <Download className="size-4" aria-hidden="true" />
         {exportPending ? "Preparing calendar…" : "Export to Calendar"}
       </button>
       {exportMessage && (
-        <p role="status" aria-live="polite" className="font-ui text-xs text-emerald-300">
+        <p role="status" aria-live="polite" className="font-ui text-xs text-emerald-700 font-semibold">
           {exportMessage}
         </p>
       )}
       {exportError && (
-        <p role="alert" className="font-ui text-xs text-red-300">
+        <p role="alert" className="font-ui text-xs text-red-750 font-semibold">
           {exportError} Your saved schedule is unchanged.
         </p>
       )}
@@ -315,80 +315,108 @@ export function CalendarClient({ festivals }) {
   }, [cards, filters, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-[#111111] pb-8">
-      <div className="mx-auto flex w-full max-w-[1440px] gap-8 px-4 py-8 md:px-8">
-        <aside className="sticky top-24 hidden w-[300px] shrink-0 flex-col gap-6 lg:flex xl:w-[380px]">
-          <CalendarWidget
-            year={year}
-            month={month}
-            festivalDates={cards.map((festival) => festival.rawDate)}
-            selectedDay={selectedDay}
-            onSelectDay={setSelectedDay}
-            onPrevMonth={() => {
-              if (month === 0) {
-                setMonth(11);
-                setYear(year - 1);
-              } else setMonth(month - 1);
-            }}
-            onNextMonth={() => {
-              if (month === 11) {
-                setMonth(0);
-                setYear(year + 1);
-              } else setMonth(month + 1);
-            }}
-          />
-          <ScheduleBuilder
-            festivals={festivals}
-            headingId="saved-schedule-heading-desktop"
-            onToast={(message) => setToast({ message })}
-          />
-        </aside>
-
-        <section aria-label="Festival results" className="flex min-w-0 flex-1 flex-col gap-6">
-          <div className="lg:hidden">
-            <ScheduleBuilder
-              festivals={festivals}
-              headingId="saved-schedule-heading-mobile"
-              onToast={(message) => setToast({ message })}
-            />
+    <div className="min-h-screen bg-slate-50/50 pb-12">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 py-8 md:px-8">
+        
+        {/* Beautiful Glassmorphic Hero Title Section */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-50/60 via-slate-50/50 to-rose-50/50 border border-slate-200/50 p-6 sm:p-8 md:p-10 shadow-2xs">
+          <div className="absolute -left-20 -top-20 size-80 rounded-full bg-indigo-300/10 blur-3xl pointer-events-none" />
+          <div className="absolute right-10 bottom-0 size-96 rounded-full bg-rose-200/10 blur-3xl pointer-events-none" />
+          <div className="relative z-10 max-w-4xl">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-0.5 text-xs font-bold text-indigo-700 border border-indigo-500/20 mb-3 shadow-3xs">
+              📅 Schedule & Planning
+            </span>
+            <h1 className="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 mb-3">
+              Your Festival Calendar
+            </h1>
+            <p className="text-sm sm:text-base text-slate-600 max-w-2xl font-sans leading-relaxed">
+              Plan your journey across Philadelphia&apos;s cultural events. Save festivals, build your personalized schedule, and export to your device calendar.
+            </p>
           </div>
-          <SearchBar onSearch={setSearchQuery} filters={filters} onFilterChange={setFilters} />
+        </div>
 
-          {grouped.length === 0 ? (
-            <div className="rounded-xl border border-[#333333] bg-[#1A1A1A] py-16 text-center text-[#A9A9A9]">
-              No approved festivals found.
+        <div className="flex w-full flex-col lg:flex-row gap-8">
+          <aside className="sticky top-24 hidden w-[300px] shrink-0 flex-col gap-6 lg:flex xl:w-[380px]">
+            <CalendarWidget
+              year={year}
+              month={month}
+              festivalDates={cards.map((festival) => festival.rawDate)}
+              selectedDay={selectedDay}
+              onSelectDay={setSelectedDay}
+              onPrevMonth={() => {
+                if (month === 0) {
+                  setMonth(11);
+                  setYear(year - 1);
+                } else setMonth(month - 1);
+              }}
+              onNextMonth={() => {
+                if (month === 11) {
+                  setMonth(0);
+                  setYear(year + 1);
+                } else setMonth(month + 1);
+              }}
+            />
+            {/* Wrap ScheduleBuilder in a beautiful card wrapper */}
+            <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-2xs">
+              <ScheduleBuilder
+                festivals={festivals}
+                headingId="saved-schedule-heading-desktop"
+                onToast={(message) => setToast({ message })}
+              />
             </div>
-          ) : (
-            grouped.map(([dateKey, entries]) => (
-              <section key={dateKey} className="flex flex-col gap-4">
-                <h3 className="border-b border-[#333333] pb-2 font-body text-xl font-bold text-white">
-                  {dateKey === "tbd"
-                    ? "Date to be announced"
-                    : new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(new Date(`${dateKey}T12:00:00`))}
-                </h3>
-                <div className={entries.length > 1 ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : ""}>
-                  {entries.map((festival) => (
-                    <FestivalCard
-                      key={festival.id}
-                      variant="long"
-                      id={festival.id}
-                      image={festival.image}
-                      title={festival.title}
-                      date={festival.date}
-                      location={festival.location}
-                      category={festival.category}
-                      badge={festival.badge}
-                      bgColor={festival.bgColor}
-                      tags={festival.tags}
-                      href={festival.href}
-                      showSave
-                    />
-                  ))}
-                </div>
-              </section>
-            ))
-          )}
-        </section>
+          </aside>
+
+          <section aria-label="Festival results" className="flex min-w-0 flex-1 flex-col gap-6">
+            <div className="lg:hidden">
+              <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-2xs mb-2">
+                <ScheduleBuilder
+                  festivals={festivals}
+                  headingId="saved-schedule-heading-mobile"
+                  onToast={(message) => setToast({ message })}
+                />
+              </div>
+            </div>
+            
+            <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-2xs">
+              <SearchBar onSearch={setSearchQuery} filters={filters} onFilterChange={setFilters} />
+            </div>
+
+            {grouped.length === 0 ? (
+              <div className="rounded-2xl border border-slate-200/60 bg-white py-16 text-center text-slate-500 shadow-2xs">
+                No approved festivals found matching your search.
+              </div>
+            ) : (
+              grouped.map(([dateKey, entries]) => (
+                <section key={dateKey} className="flex flex-col gap-4">
+                  <h3 className="border-b border-slate-200 pb-2 font-heading text-lg font-bold text-slate-900">
+                    {dateKey === "tbd"
+                      ? "Date to be announced"
+                      : new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(new Date(`${dateKey}T12:00:00`))}
+                  </h3>
+                  <div className={entries.length > 1 ? "grid grid-cols-1 gap-4 sm:grid-cols-2" : ""}>
+                    {entries.map((festival) => (
+                      <FestivalCard
+                        key={festival.id}
+                        variant="long"
+                        id={festival.id}
+                        image={festival.image}
+                        title={festival.title}
+                        date={festival.date}
+                        location={festival.location}
+                        category={festival.category}
+                        badge={festival.badge}
+                        bgColor={festival.bgColor}
+                        tags={festival.tags}
+                        href={festival.href}
+                        showSave
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))
+            )}
+          </section>
+        </div>
       </div>
 
       <Toast message={toast?.message} visible={Boolean(toast)} onClose={() => setToast(null)} />

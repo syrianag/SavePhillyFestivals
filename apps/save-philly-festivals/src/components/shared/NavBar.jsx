@@ -39,8 +39,28 @@ export function NavBar() {
 
   const isStaff = session?.user?.role === "admin" || session?.user?.role === "super_admin";
   const isProducer = session?.user?.role === "producer";
-  const isProducerArea = pathname.startsWith("/producer");
-  const navLinks = isStaff ? staffLinks : isProducer ? producerLinks : publicLinks;
+  const isProducerArea = pathname.startsWith("/producer/");
+
+  let navLinks = publicLinks;
+  if (pathname.startsWith("/admin")) {
+    navLinks = staffLinks;
+  } else if (pathname.startsWith("/producer/")) {
+    navLinks = producerLinks;
+  } else {
+    // We are on public pages.
+    // If the user is logged in, append the respective portal link.
+    if (isStaff) {
+      navLinks = [
+        ...publicLinks.filter((link) => link.href !== "/producer"),
+        { href: "/admin/festivals", label: "Admin Portal" }
+      ];
+    } else if (isProducer) {
+      navLinks = [
+        ...publicLinks.filter((link) => link.href !== "/producer"),
+        { href: "/producer/dashboard", label: "Producer Portal" }
+      ];
+    }
+  }
 
 
 
