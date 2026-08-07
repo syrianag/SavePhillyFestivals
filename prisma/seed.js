@@ -15,13 +15,13 @@ function generateSlug(name) {
 
 const users = [
   {
-    email: "admin@savephillyfestivals.org",
+    email: "admin@example.com",
     password: "admin123",
     name: "Admin User",
     role: "admin",
   },
   {
-    email: "producer@savephillyfestivals.org",
+    email: "producer@example.com",
     password: "producer123",
     name: "Producer User",
     role: "producer",
@@ -138,7 +138,7 @@ const festivals = [
     zip_code: "19131",
     website_url: "https://www.mannmusiccenter.org",
     status: "approved",
-    submitted_by: "producer@savephillyfestivals.org",
+    submitted_by: "producer@example.com",
     contact_name: "Sarah Mitchell",
     contact_email: "sarah@manncenter.org",
     contact_phone: "(215) 546-7901",
@@ -164,7 +164,7 @@ const festivals = [
     zip_code: "19147",
     website_url: "https://www.southphillycaribbeanfest.org",
     status: "approved",
-    submitted_by: "producer@savephillyfestivals.org",
+    submitted_by: "producer@example.com",
     contact_name: "Marcus Thompson",
     contact_email: "marcus@spcfest.org",
     contact_phone: "(215) 555-0142",
@@ -215,7 +215,7 @@ const festivals = [
     zip_code: "19125",
     website_url: "https://www.fishtownfest.org",
     status: "approved",
-    submitted_by: "producer@savephillyfestivals.org",
+    submitted_by: "producer@example.com",
     contact_name: "Jake O'Brien",
     contact_email: "jake@fishtownbid.org",
     contact_phone: "(215) 555-0167",
@@ -268,7 +268,7 @@ const festivals = [
     zip_code: "19103",
     website_url: "https://www.logansquareartsfest.org",
     status: "pending",
-    submitted_by: "producer@savephillyfestivals.org",
+    submitted_by: "producer@example.com",
     contact_name: "Priya Sharma",
     contact_email: "priya@logansquare.org",
     contact_phone: "(215) 555-0183",
@@ -320,7 +320,7 @@ const festivals = [
     zip_code: "19119",
     website_url: "https://www.germantownavemusic.org",
     status: "draft",
-    submitted_by: "producer@savephillyfestivals.org",
+    submitted_by: "producer@example.com",
     contact_name: "Andre Williams",
     contact_email: "andre@germantownmusic.org",
     contact_phone: "(215) 555-0194",
@@ -372,7 +372,7 @@ const festivals = [
     zip_code: "19148",
     website_url: "https://www.phillytacochallenge.com",
     status: "rejected",
-    submitted_by: "producer@savephillyfestivals.org",
+    submitted_by: "producer@example.com",
     contact_name: "Mike Russo",
     contact_email: "mike@tacochallenge.com",
     contact_phone: "(215) 555-0177",
@@ -787,6 +787,12 @@ async function seedFestivals() {
 
 async function seedSchedules() {
   let count = 0;
+
+  const festivalSlugs = [...new Set(schedules.map((s) => s.festivalSlug))];
+
+  await prisma.schedule.deleteMany({
+    where: { festival: { slug: { in: festivalSlugs } } },
+  });
 
   for (const s of schedules) {
     const festival = await prisma.festival.findUnique({
