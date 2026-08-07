@@ -9,7 +9,7 @@ Current reviewed inputs:
 | Input | SHA-256 |
 |---|---|
 | `docs/Festivals_Postgres_Export.csv` | `9e1935a118c87b38fd40e5fd0cc1db3118500e1d12911340f416d152ede62757` |
-| `tools/data/festival-category-map.json` | `f7f9c5923c9f1abf5c65a4587e610e0b203d9c7fdeb9bc3516a9e9a16199242f` |
+| `tools/data/festival-category-map.json` | `4b0e8ac4eec2ab76d12c83b54fb29ab12a4d2ece8f75bb4bcee2bd140bb9fa9b` |
 
 Compute independently before every run:
 
@@ -18,6 +18,19 @@ sha256sum docs/Festivals_Postgres_Export.csv tools/data/festival-category-map.js
 ```
 
 Every file-bearing mode requires both expected checksums. The byte-exact category-map checksum is embedded in the prepared batch `import_profile`; apply rejects a different file or map. A completed ordinary source checksum is a no-op and cannot create another batch because the database also enforces source-checksum uniqueness.
+
+**The map checksum changes whenever the map file changes.** Recompute it with the command above rather than copying the value from an older run.
+
+### Category rows must exist before apply (required)
+
+The map is a promise about the database: apply looks up each prepared `category_slug` and aborts the whole transaction with `category_not_found` if a row is missing. `prisma/seed.js` seeds only the six original categories, so a map that declares more — the reviewed map declares ten, including `uncategorized` — needs this map-driven step against the target database:
+
+```sh
+pnpm run db:ensure-import-categories -- --dry-run   # report only
+pnpm run db:ensure-import-categories                # create any missing rows
+```
+
+It is insert-only and idempotent: it never renames, updates, or deletes an existing category, so it is safe to re-run and safe against a shared database. Run it after editing the category map and before `prepare`.
 
 ## Source file handling (required)
 
@@ -57,7 +70,9 @@ All examples are run from the repository root.
 
 ### Dry run (zero writes)
 
-Dry run parses, normalizes, detects conservative existing targets, and classifies duplicates/conflicts. Its output contains checksums and counts only. For the confirmed source with no existing-target matches, the exact result is `434 total / 102 ready / 0 duplicate / 332 quarantined`; target database matches may move additional rows from `ready` to `quarantined`.
+Dry run parses, normalizes, detects conservative existing targets, and classifies duplicates/conflicts. Its output contains checksums and counts only. For the confirmed source with no existing-target matches, the exact result is `434 total / 405 ready / 1 duplicate / 28 quarantined`; target database matches may move additional rows from `ready` to `quarantined`.
+
+The 28 quarantined rows are 26 with an unusable start date (8 blank, 18 non-standard or recurring) plus both members of the one conflicting same-name/date pair. These counts are pinned by `tests/unit/festival-import-profile.test.js`, which fails if the reviewed map or the source file drifts.
 
 ```sh
 pnpm exec nx run save-philly-festivals:festival-import -- \
@@ -66,7 +81,7 @@ pnpm exec nx run save-philly-festivals:festival-import -- \
   --file docs/Festivals_Postgres_Export.csv \
   --expected-checksum 9e1935a118c87b38fd40e5fd0cc1db3118500e1d12911340f416d152ede62757 \
   --category-map tools/data/festival-category-map.json \
-  --expected-category-map-checksum f7f9c5923c9f1abf5c65a4587e610e0b203d9c7fdeb9bc3516a9e9a16199242f
+  --expected-category-map-checksum 4b0e8ac4eec2ab76d12c83b54fb29ab12a4d2ece8f75bb4bcee2bd140bb9fa9b
 ```
 
 ### Prepare (durable staging)
@@ -81,14 +96,15 @@ pnpm exec nx run save-philly-festivals:festival-import -- \
   --file docs/Festivals_Postgres_Export.csv \
   --expected-checksum 9e1935a118c87b38fd40e5fd0cc1db3118500e1d12911340f416d152ede62757 \
   --category-map tools/data/festival-category-map.json \
-  --expected-category-map-checksum f7f9c5923c9f1abf5c65a4587e610e0b203d9c7fdeb9bc3516a9e9a16199242f \
+  --expected-category-map-checksum 4b0e8ac4eec2ab76d12c83b54fb29ab12a4d2ece8f75bb4bcee2bd140bb9fa9b \
   --output festival-import-reports/prepare.festival-import-report.json
 ```
 
 Classification rules:
 
 - parser/normalizer errors are quarantined before duplicate classification;
-- a blank/unmapped category is quarantined because every imported festival requires one approved link;
+- an *unmapped* category (a Type value with no alias in the reviewed map) is still quarantined, because every imported festival requires one approved link;
+- a *blank* category is absorbed by the map's `defaultCategorySlug` when it declares one. The reviewed map sets it to `uncategorized`, so the 168 blank-Type rows import into that catch-all and keep a `blank_category` warning instead of being quarantined. That warning list is the editorial worklist of festivals still needing a real category. Remove `defaultCategorySlug` from the map to restore the old quarantine-on-blank behaviour;
 - only otherwise importable later exact normalized-hash duplicates are `duplicate` and link to an importable first row;
 - if any same-normalized-name/date candidate differs materially, every member of that candidate group is quarantined;
 - conservative existing-target candidates (same deterministic slug, or same case-insensitive name and primary date) are quarantined; existing festivals are never updated or merged.
@@ -102,7 +118,7 @@ pnpm exec nx run save-philly-festivals:festival-import -- \
   review --environment production --allow-controlled-target \
   --batch-id <PREPARED_BATCH_UUID> \
   --file docs/Festivals_Postgres_Export.csv --expected-checksum 9e1935a118c87b38fd40e5fd0cc1db3118500e1d12911340f416d152ede62757 \
-  --category-map tools/data/festival-category-map.json --expected-category-map-checksum f7f9c5923c9f1abf5c65a4587e610e0b203d9c7fdeb9bc3516a9e9a16199242f \
+  --category-map tools/data/festival-category-map.json --expected-category-map-checksum 4b0e8ac4eec2ab76d12c83b54fb29ab12a4d2ece8f75bb4bcee2bd140bb9fa9b \
   --approval-file restricted/reviewer-approval.json \
   --review-public-key-file restricted/reviewer-ed25519-public.pem
 ```
@@ -122,7 +138,7 @@ pnpm exec nx run save-philly-festivals:festival-import -- \
   --file docs/Festivals_Postgres_Export.csv \
   --expected-checksum 9e1935a118c87b38fd40e5fd0cc1db3118500e1d12911340f416d152ede62757 \
   --category-map tools/data/festival-category-map.json \
-  --expected-category-map-checksum f7f9c5923c9f1abf5c65a4587e610e0b203d9c7fdeb9bc3516a9e9a16199242f \
+  --expected-category-map-checksum 4b0e8ac4eec2ab76d12c83b54fb29ab12a4d2ece8f75bb4bcee2bd140bb9fa9b \
   --output festival-import-reports/apply.festival-import-report.json
 ```
 

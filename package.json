@@ -34,6 +34,7 @@
     "db:migrate:deploy": "prisma migrate deploy --config apps/save-philly-festivals/prisma.config.ts",
     "db:seed": "nx run save-philly-festivals:seed",
     "db:verify-admin": "nx run save-philly-festivals:verify-seeded-admin",
+    "db:ensure-import-categories": "nx run save-philly-festivals:ensure-import-categories",
     "migrate:test": "nx run save-philly-festivals:migrate-test",
     "deploy": "pnpm run deploy:web",
     "deploy:preflight": "pnpm run verify",

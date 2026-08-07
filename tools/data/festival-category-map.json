@@ -1,11 +1,16 @@
 {
   "version": 1,
+  "defaultCategorySlug": "uncategorized",
   "categories": [
-    { "slug": "music", "aliases": ["Music"] },
-    { "slug": "food", "aliases": ["Food & Drink"] },
-    { "slug": "art", "aliases": ["Arts & Crafts"] },
+    { "slug": "uncategorized", "aliases": ["Uncategorized"] },
+    { "slug": "music", "aliases": ["Music", "Multi-Genre"] },
+    { "slug": "food", "aliases": ["Food & Drink", "market"] },
+    { "slug": "art", "aliases": ["Arts & Crafts", "Film", "Dance & Theater", "Literary"] },
     { "slug": "cultural", "aliases": ["Cultural Heritage"] },
-    { "slug": "community", "aliases": ["community"] },
-    { "slug": "caribbean", "aliases": ["Caribbean"] }
+    { "slug": "community", "aliases": ["community", "Marathon"] },
+    { "slug": "caribbean", "aliases": ["Caribbean"] },
+    { "slug": "street-fair", "aliases": ["Street Fairs", "Block Parties"] },
+    { "slug": "seasonal", "aliases": ["Seasonal", "holiday"] },
+    { "slug": "family", "aliases": ["Family & Kids"] }
   ]
 }

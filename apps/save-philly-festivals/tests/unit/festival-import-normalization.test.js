@@ -102,15 +102,40 @@ describe("festival import normalization", () => {
     expect(overlong.errors).toEqual(expect.arrayContaining([expect.objectContaining({ code: "text_too_long", field: "name" })]));
   });
 
-  it("maps only reviewed aliases to the six seeded category slugs", () => {
-    expect(categoryMap.categories.map(({ slug }) => slug)).toEqual(["music", "food", "art", "cultural", "community", "caribbean"]);
+  it("maps only reviewed aliases to the seeded category slugs", () => {
+    // Pins the reviewed taxonomy. Every slug here must also exist as a Category row, or
+    // the importer aborts an apply with category_not_found.
+    expect(categoryMap.categories.map(({ slug }) => slug)).toEqual([
+      "uncategorized", "music", "food", "art", "cultural", "community", "caribbean",
+      "street-fair", "seasonal", "family",
+    ]);
     expect(mapFestivalCategory("  FOOD & DRINK ", categoryMap)).toBe("food");
     expect(mapFestivalCategory("Caribbean", categoryMap)).toBe("caribbean");
+    expect(mapFestivalCategory("Street Fairs", categoryMap)).toBe("street-fair");
     expect(mapFestivalCategory("food", categoryMap)).toBeNull();
-    const unknown = normalizeFestivalImportRecord(record({ Type: "Multi-Genre" }), { categoryMap });
+    const unknown = normalizeFestivalImportRecord(record({ Type: "Rodeo" }), { categoryMap });
     expect(unknown.applyPayload.category_slug).toBeNull();
     expect(unknown.disposition).toBe("quarantined");
     expect(unknown.errors).toContainEqual(expect.objectContaining({ code: "unmapped_category" }));
+  });
+
+  it("absorbs a blank source type into the declared default category, still warning", () => {
+    const blank = normalizeFestivalImportRecord(record({ Type: "" }), { categoryMap });
+    expect(blank.applyPayload.category_slug).toBe("uncategorized");
+    expect(blank.warnings).toContainEqual(expect.objectContaining({ code: "blank_category" }));
+    expect(blank.disposition).toBe("ready");
+  });
+
+  it("leaves a blank type uncategorized when no default is declared", () => {
+    const withoutDefault = { version: 1, categories: categoryMap.categories };
+    const blank = normalizeFestivalImportRecord(record({ Type: "" }), { categoryMap: withoutDefault });
+    expect(blank.applyPayload.category_slug).toBeNull();
+    expect(blank.warnings).toContainEqual(expect.objectContaining({ code: "blank_category" }));
+  });
+
+  it("rejects a default category slug that is not a declared category", () => {
+    const invalid = { version: 1, defaultCategorySlug: "not-a-category", categories: categoryMap.categories };
+    expect(() => normalizeFestivalImportRecord(record(), { categoryMap: invalid })).toThrowError(TypeError);
   });
 
   it("creates deterministic identity hashes and collision-safe slugs", () => {

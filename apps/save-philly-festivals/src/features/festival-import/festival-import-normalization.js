@@ -85,7 +85,24 @@ export function validateFestivalCategoryMap(categoryMap) {
       aliases.set(normalized, category.slug);
     }
   }
+  if (categoryMap.defaultCategorySlug !== undefined && !slugs.has(categoryMap.defaultCategorySlug)) {
+    throw new TypeError(`Default category slug is not a declared category: ${categoryMap.defaultCategorySlug}`);
+  }
   return aliases;
+}
+
+/**
+ * Category applied when the source row's Type column is blank.
+ *
+ * Opt-in and data-driven: a map that does not declare `defaultCategorySlug` keeps the
+ * original behaviour, where a blank Type yields no category and the importer quarantines
+ * the row ("An approved category is required for import"). Declaring one lets a source
+ * file with sparse Type data import into a visible catch-all category instead, which
+ * doubles as the worklist of festivals still needing a real type.
+ */
+export function festivalDefaultCategorySlug(categoryMap) {
+  validateFestivalCategoryMap(categoryMap);
+  return categoryMap.defaultCategorySlug ?? null;
 }
 
 export function mapFestivalCategory(sourceType, categoryMap) {
@@ -171,8 +188,12 @@ export function normalizeFestivalImportRecord(record, { categoryMap } = {}) {
   const contactEmail = normalizeFestivalEmail(contactEmailSource);
   if (contactEmailSource && !contactEmail) addIssue(warnings, "invalid_or_multiple_email", "contactEmail", "Contact email was omitted because it is not one unambiguous mailbox");
 
-  const categorySlug = sourceType ? aliases.get(identityText(sourceType)) ?? null : null;
+  const categorySlug = sourceType
+    ? aliases.get(identityText(sourceType)) ?? null
+    : categoryMap.defaultCategorySlug ?? null;
   if (sourceType && !categorySlug) addIssue(errors, "unmapped_category", "sourceType", "Source type is not an approved category alias");
+  // Still warn on a blank Type even when a default absorbs it: the row imports, but the
+  // festival genuinely has no editorial category yet and someone has to assign one.
   if (!sourceType) addIssue(warnings, "blank_category", "sourceType", "Source type is blank");
   if (futureDates) addIssue(warnings, "future_dates_require_review", "futureDates", "Future or recurring dates were retained for editorial review");
 

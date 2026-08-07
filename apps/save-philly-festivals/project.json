@@ -102,6 +102,14 @@
         "cwd": "{projectRoot}"
       }
     },
+    "ensure-import-categories": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsx scripts/ensure-import-categories.mjs",
+        "cwd": "{projectRoot}"
+      }
+    },
     "verify-seeded-admin": {
       "executor": "nx:run-commands",
       "cache": false,
