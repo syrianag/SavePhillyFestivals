@@ -3,9 +3,11 @@ import { Search, SlidersHorizontal, Calendar as CalendarIcon, MapPin, Tag, ListF
 
 const controlClass = "h-[38px] rounded-full border border-slate-200 bg-white px-4 font-ui text-sm font-semibold text-slate-700 shadow-2xs transition-all hover:border-slate-300 hover:bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500";
 
-export function DiscoveryControls({ filters, categories, locations }) {
+/* `action` defaults to the homepage so existing usage is unchanged; /map passes its own so
+ * the same controls filter the map without a parallel implementation. */
+export function DiscoveryControls({ filters, categories, locations, action = "/", clearHref = action }) {
   return (
-    <form action="/" method="get" role="search" aria-label="Festival discovery" className="flex flex-col gap-4">
+    <form action={action} method="get" role="search" aria-label="Festival discovery" className="flex flex-col gap-4">
       {/* Search Input and Submit */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 group">
@@ -91,7 +93,7 @@ export function DiscoveryControls({ filters, categories, locations }) {
             Apply
           </button>
           <Link 
-            href="/" 
+            href={clearHref} 
             className="h-[38px] flex items-center justify-center px-4 font-ui text-sm font-semibold text-slate-500 hover:text-slate-950 transition-colors"
           >
             Clear

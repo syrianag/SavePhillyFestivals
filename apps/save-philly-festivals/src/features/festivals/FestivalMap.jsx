@@ -51,11 +51,12 @@ function clusterSizeClass(count) {
  * together — as a single `[pins]` effect did — tears down and recreates the map on every prop
  * change, which flashes the tiles and resets the user's pan and zoom.
  */
-export function FestivalMap({ pins = [] }) {
+export function FestivalMap({ pins = [], focusedId = null }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const leafletRef = useRef(null);
   const markerLayerRef = useRef(null);
+  const markersByIdRef = useRef(new Map());
   /* Held in a ref so the marker-sync callback does not take the router as a dependency and
    * rebuild every marker whenever the router identity changes. Assigned in an effect, not
    * during render — a ref write during render is not a safe read for anything else. */
@@ -74,6 +75,7 @@ export function FestivalMap({ pins = [] }) {
     if (!leaflet || !map || !layer) return;
 
     layer.clearLayers();
+    markersByIdRef.current = new Map();
 
     const icon = leaflet.divIcon({
       html: MARKER_SVG,
@@ -102,6 +104,7 @@ export function FestivalMap({ pins = [] }) {
       marker.bindTooltip(pin.location ? `${pin.name} — ${pin.location}` : pin.name, { direction: "top", offset: [0, -36] });
       marker.on("click", () => routerRef.current.push(href));
       marker.on("mouseover", () => routerRef.current.prefetch(href));
+      markersByIdRef.current.set(pin.id, marker);
       markers.push({ marker, pin });
     }
 
@@ -195,6 +198,22 @@ export function FestivalMap({ pins = [] }) {
     if (!mapReady) return;
     syncMarkers();
   }, [mapReady, syncMarkers]);
+
+  /* "Show on map" from the list. `zoomToShowLayer` expands whichever cluster contains the
+   * marker before revealing it — without it, focusing a clustered pin would pan to a cluster
+   * bubble and appear to do nothing. */
+  useEffect(() => {
+    if (!mapReady || !focusedId) return;
+    const marker = markersByIdRef.current.get(focusedId);
+    const layer = markerLayerRef.current;
+    if (!marker || !layer) return;
+    if (typeof layer.zoomToShowLayer === "function") {
+      layer.zoomToShowLayer(marker, () => marker.openTooltip());
+    } else {
+      mapRef.current?.setView(marker.getLatLng(), 16);
+      marker.openTooltip();
+    }
+  }, [focusedId, mapReady]);
 
   if (pins.length === 0) {
     return (

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { INTERNAL_REASON_REQUIRED } from "@/features/editorial-workflow/editorial-transition-policy";
 import AdminFestivalEditor from "@/features/editorial-workflow/AdminFestivalEditor";
+import { FestivalGeocodeNotice } from "@/features/editorial-workflow/FestivalGeocodeNotice";
 import { 
   Calendar, 
   User, 
@@ -484,6 +485,8 @@ export default function AdminFestivalDetail({ initialFestival }) {
                 <CardDescription className="text-slate-500">Apply state transitions to this festival submission</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-3">
+                {/* Sits above the transitions so it is seen before publishing, not after. */}
+                <FestivalGeocodeNotice festival={festival} />
                 <div className="flex flex-col gap-2">
                   {festival.valid_actions.map((act) => {
                     const labelStr = ACTION_LABELS[act] || label(act);

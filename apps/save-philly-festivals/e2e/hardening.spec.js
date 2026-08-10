@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const publicRoutes = ["/", "/calendar", "/about", "/privacy", "/terms"];
+const publicRoutes = ["/", "/calendar", "/map", "/about", "/privacy", "/terms"];
 
 for (const route of publicRoutes) {
   test(`${route} has one main landmark and no horizontal page overflow`, async ({ page }) => {

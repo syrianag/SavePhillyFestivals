@@ -34,6 +34,14 @@ export async function updateEditorialFestival(festivalId, input, dependencies) {
    * would resync the occurrence on every edit — including a pure name change. */
   const datesChanged = ["calendar_date_type", "start_date", "end_date", "all_day_start", "all_day_end"]
     .some((key) => Object.hasOwn(data, key));
+
+  /* A changed location invalidates the coordinates derived from the old one. Clearing them
+   * drops the festival off the map until the next sweep re-resolves it, which is the right
+   * trade: a pin confidently pointing at the previous address is worse than no pin. These
+   * columns sit outside FESTIVAL_REVISION_SNAPSHOT_FIELDS, so the audit trigger is unaffected. */
+  if (Object.hasOwn(data, "location") && data.location !== current.location) {
+    Object.assign(data, { latitude: null, longitude: null, geocode_status: null, geocoded_location: null });
+  }
   for (const key of ["start_date", "end_date"]) {
     if (Object.hasOwn(data, key) && data[key] !== null) data[key] = new Date(data[key]);
   }

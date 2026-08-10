@@ -21,9 +21,14 @@ const adminFestivalSelect = {
   owner_user_id: true,
   /* Curation flags, deliberately outside FESTIVAL_REVISION_SNAPSHOT_FIELDS: the audit trigger
    * compares the snapshot against that fixed list, and promotion is editorial metadata rather
-   * than festival content. */
+   * than festival content. Map coordinates are here for the same reason — derived data, not
+   * content — and the detail page needs them to warn before publishing an unmappable festival. */
   featured: true,
   featured_rank: true,
+  latitude: true,
+  longitude: true,
+  geocode_status: true,
+  geocode_failure_reason: true,
   created_at: true,
   updated_at: true,
 };

@@ -127,25 +127,64 @@ export async function getPublicFestivalCatalog(filters = {}) {
  * excluded by the query, so an ungeocoded festival is simply absent from the map rather
  * than rendering at (0, 0) in the Atlantic.
  */
-export async function getPublicFestivalMapPins() {
+/* Deliberately narrower than PUBLIC_DISCOVERY_SELECT: that carries `description`, which is
+ * capped at 10,000 characters and would be megabytes across a few hundred pins for a card that
+ * never renders it. */
+const MAP_PIN_SELECT = Object.freeze({
+  id: true,
+  slug: true,
+  name: true,
+  location: true,
+  city: true,
+  latitude: true,
+  longitude: true,
+  image_url: true,
+  start_date: true,
+  end_date: true,
+  calendar_date_type: true,
+  all_day_start: true,
+  all_day_end: true,
+  time_zone: true,
+  categories: { select: { category: { select: { name: true, slug: true } } } },
+});
+
+/* A safety cap rather than pagination: the map is a single view, and past this many pins the
+ * browser is the bottleneck regardless of what the database returns. */
+const MAP_PIN_LIMIT = 500;
+
+export async function getPublicFestivalMapPins(filters = {}) {
   const fixture = getDiscoveryE2eFestivalCatalog();
   if (fixture !== undefined) {
+    const { matchesDiscoveryFilters } = await import("@/features/festivals/public-discovery");
     return [...fixture, ...editorialE2EPublicCatalog()]
       .filter((festival) => festival.latitude != null && festival.longitude != null)
+      .filter((festival) => matchesDiscoveryFilters(festival, filters))
       .map((festival) => ({
         id: festival.id,
         slug: festival.slug,
         name: festival.name,
         location: festival.location || null,
+        city: festival.city || null,
         latitude: festival.latitude,
         longitude: festival.longitude,
+        image_url: festival.image_url ?? null,
+        start_date: festival.start_date ?? null,
+        end_date: festival.end_date ?? null,
+        categories: festival.categories ?? [],
       }));
   }
 
+  const { buildApprovedDiscoveryWhere } = await import("@/features/festivals/public-discovery");
   return prisma.festival.findMany({
-    where: { ...publishedDiscoveryWhere, latitude: { not: null }, longitude: { not: null } },
-    select: { id: true, slug: true, name: true, location: true, latitude: true, longitude: true },
+    where: {
+      AND: [
+        buildApprovedDiscoveryWhere(filters),
+        { latitude: { not: null }, longitude: { not: null } },
+      ],
+    },
+    select: MAP_PIN_SELECT,
     orderBy: { name: "asc" },
+    take: MAP_PIN_LIMIT,
   });
 }
 

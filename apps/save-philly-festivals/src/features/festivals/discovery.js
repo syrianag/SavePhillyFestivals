@@ -122,6 +122,25 @@ function rangeFor(startParts, endParts) {
 
 export const EMPTY_DISCOVERY_RANGE = Object.freeze({ start: null, end: null, startDay: null, endDay: null });
 
+/**
+ * The query string that reproduces a filtered view, with optional overrides.
+ *
+ * Shared by discovery pagination and the map's tab links so switching between Featured, Map,
+ * and Calendar preserves what the visitor was looking at. Defaults are omitted rather than
+ * spelled out, which keeps a plain URL clean.
+ */
+export function discoveryQueryString(filters, overrides = {}) {
+  const merged = { ...filters, ...overrides };
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(merged)) {
+    if (!value) continue;
+    if (key === "page" && Number(value) <= 1) continue;
+    if (key === "sort" && value === (merged.q ? "relevance" : "soonest")) continue;
+    params.set(key, String(value));
+  }
+  return params.toString();
+}
+
 export function getDiscoveryDateRange(filters, now = new Date()) {
   if (filters.date === "custom" || filters.start || filters.end) {
     return rangeFor(

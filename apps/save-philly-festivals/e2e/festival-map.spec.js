@@ -72,3 +72,30 @@ test("map page reports no console or network errors", async ({ page }) => {
 
   expect(problems).toEqual([]);
 });
+
+test("map filters narrow both the pins and the companion list", async ({ page }) => {
+  await page.goto("/map");
+  await expect(page.locator(".leaflet-container")).toBeVisible();
+  const listRows = page.getByRole("button", { name: "Show on map" });
+  const unfiltered = await listRows.count();
+  expect(unfiltered).toBeGreaterThan(1);
+
+  // Filtering must narrow the map and the list together — they read from one query, and this
+  // is what catches them drifting apart.
+  await page.goto("/map?category=Food");
+  await expect(page.locator(".leaflet-container")).toBeVisible();
+  await expect(listRows).toHaveCount(1);
+
+  // Filters survive a switch to another discovery view.
+  await page.getByLabel("Discovery views").getByRole("link", { name: "Calendar" }).click();
+  await expect(page).toHaveURL(/category=Food/);
+});
+
+test("show on map focuses the selected festival", async ({ page }) => {
+  await page.goto("/map");
+  await expect(page.locator(".leaflet-container")).toBeVisible();
+
+  await page.getByRole("button", { name: "Show on map" }).first().click();
+  // Focusing expands any enclosing cluster and reveals the individual marker.
+  await expect(page.locator(".leaflet-marker-icon.festival-map-pin").first()).toBeVisible();
+});

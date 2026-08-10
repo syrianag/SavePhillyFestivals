@@ -11,6 +11,7 @@ describe("UI components contract", () => {
       "src/features/editorial-workflow/AdminFestivalList.jsx",
       "src/features/editorial-workflow/AdminFestivalDetail.jsx",
       "src/features/editorial-workflow/AdminFestivalEditor.jsx",
+      "src/features/editorial-workflow/FestivalGeocodeNotice.jsx",
       "src/features/social-feed/AdminSocialFeedManager.jsx",
       "src/features/producer-submission/ProducerSubmissionEditor.jsx",
       "src/features/festival-import/AdminImportBatchList.jsx",

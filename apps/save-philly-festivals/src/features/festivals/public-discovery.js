@@ -87,26 +87,40 @@ function databaseOrder(sort) {
   return [{ start_date: { sort: "asc", nulls: "last" } }, { name: "asc" }, { id: "asc" }];
 }
 
-function fixtureDiscovery(filters, now) {
+/**
+ * Whether one fixture festival satisfies the active filters.
+ *
+ * Exported so the map's fixture branch and the discovery list's fixture branch apply exactly
+ * the same rules. Two hand-written copies drifting apart is the class of bug the fixture exists
+ * to catch, so it must not be the bug the fixture introduces.
+ */
+export function matchesDiscoveryFilters(festival, filters, now = new Date()) {
   const range = getDiscoveryDateRange(filters, now);
-  const q = filters.q.toLocaleLowerCase("en-US");
-  const category = filters.category.toLocaleLowerCase("en-US");
-  const location = filters.location.toLocaleLowerCase("en-US");
-  const records = DISCOVERY_E2E_FESTIVALS.filter((festival) => {
-    const searchable = [
-      festival.name,
-      festival.description,
-      festival.location,
-      festival.city,
-      ...festival.categories.map(({ category: item }) => item.name),
-    ].join(" ").toLocaleLowerCase("en-US");
-    const categoryNames = festival.categories.map(({ category: item }) => [item.name, item.slug]).flat().map((item) => item.toLocaleLowerCase("en-US"));
-    const place = `${festival.location} ${festival.city}`.toLocaleLowerCase("en-US");
-    return (!q || searchable.includes(q))
-      && (!category || categoryNames.includes(category))
-      && (!location || place.includes(location))
-      && ((!range.start && !range.end) || festivalOverlapsRange(festival, range));
-  });
+  const q = (filters.q || "").toLocaleLowerCase("en-US");
+  const category = (filters.category || "").toLocaleLowerCase("en-US");
+  const location = (filters.location || "").toLocaleLowerCase("en-US");
+
+  const searchable = [
+    festival.name,
+    festival.description,
+    festival.location,
+    festival.city,
+    ...festival.categories.map(({ category: item }) => item.name),
+  ].join(" ").toLocaleLowerCase("en-US");
+  const categoryNames = festival.categories
+    .map(({ category: item }) => [item.name, item.slug])
+    .flat()
+    .map((item) => item.toLocaleLowerCase("en-US"));
+  const place = `${festival.location} ${festival.city}`.toLocaleLowerCase("en-US");
+
+  return (!q || searchable.includes(q))
+    && (!category || categoryNames.includes(category))
+    && (!location || place.includes(location))
+    && ((!range.start && !range.end) || festivalOverlapsRange(festival, range));
+}
+
+function fixtureDiscovery(filters, now) {
+  const records = DISCOVERY_E2E_FESTIVALS.filter((festival) => matchesDiscoveryFilters(festival, filters, now));
   const sorted = sortFestivalRecords(records, filters);
   return {
     ...paginatePublicResults(sorted, filters.page, sorted.length),

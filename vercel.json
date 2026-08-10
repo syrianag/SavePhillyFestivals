@@ -2,5 +2,11 @@
   "framework": "nextjs",
   "buildCommand": "pnpm exec nx run save-philly-festivals:build",
   "outputDirectory": "apps/save-philly-festivals/.next",
-  "installCommand": "pnpm install --frozen-lockfile"
+  "installCommand": "pnpm install --frozen-lockfile",
+  "crons": [
+    {
+      "path": "/api/internal/geocode/sweep",
+      "schedule": "*/10 * * * *"
+    }
+  ]
 }
