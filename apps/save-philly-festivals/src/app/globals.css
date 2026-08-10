@@ -146,3 +146,46 @@
     @apply font-heading;
     }
 }
+/* ─── Leaflet map chrome ────────────────────────────────────────────────────
+ * Plain CSS rather than Tailwind utilities, for three reasons specific to Leaflet:
+ * its DOM is created outside React so utilities cannot be applied at render time;
+ * `leaflet.css` is imported at runtime inside an effect, so cascade order against a
+ * Tailwind layer is not guaranteed; and Tailwind v4 emits nothing for a constructed
+ * class name, which a size-bucketed cluster would otherwise need.
+ */
+.festival-map-pin {
+  background: none;
+  border: none;
+}
+
+.festival-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-weight: 700;
+  color: #fff;
+  /* A ring rather than a border keeps the circle from shifting size between buckets. */
+  box-shadow: 0 0 0 4px rgb(255 255 255 / 0.75), 0 2px 6px rgb(0 0 0 / 0.3);
+  transition: transform 120ms ease;
+}
+
+.festival-cluster:hover {
+  transform: scale(1.08);
+}
+
+.festival-cluster--small {
+  background: #1e7bf6;
+  font-size: 0.8125rem;
+}
+
+.festival-cluster--medium {
+  background: #206c4e;
+  font-size: 0.875rem;
+}
+
+.festival-cluster--large {
+  background: #fe7d0c;
+  font-size: 0.9375rem;
+}

@@ -38,13 +38,16 @@ importers:
         version: 17.4.2
       gh:
         specifier: ^2.8.9
-        version: 2.8.9
+        version: 2.8.9(supports-color@7.2.0)
       ics:
         specifier: ^3.12.0
         version: 3.12.0
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4
+      leaflet.markercluster:
+        specifier: ^1.5.3
+        version: 1.5.3(leaflet@1.9.4)
       lucide-react:
         specifier: ^1.23.0
         version: 1.28.0(react@19.2.8)
@@ -3537,6 +3540,11 @@ packages:
   latest-version@5.1.0:
     resolution: {integrity: sha512-weT+r0kTkRQdCdYCNtkMwWXQTMEswKrFBkm4ckQOMVhhqhIMI1UT2hMj+1iigIhgSZm5gTmrRXBNoGUgaTY1xA==}
     engines: {node: '>=8'}
+
+  leaflet.markercluster@1.5.3:
+    resolution: {integrity: sha512-vPTw/Bndq7eQHjLBVlWpnGeLa3t+3zGiuM7fJwCkiMFq+nmRuG3RI3f7f4N4TDX7T4NpbAXpR2+NTRSEGfCSeA==}
+    peerDependencies:
+      leaflet: ^1.3.1
 
   leaflet@1.9.4:
     resolution: {integrity: sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA==}
@@ -8311,7 +8319,7 @@ snapshots:
     dependencies:
       assert-plus: 1.0.0
 
-  gh@2.8.9:
+  gh@2.8.9(supports-color@7.2.0):
     dependencies:
       '@octokit/plugin-throttling': 2.7.1
       '@octokit/rest': 16.25.6
@@ -8326,7 +8334,7 @@ snapshots:
       marked: 0.7.0
       marked-terminal: 3.2.0(marked@0.7.0)
       moment: 2.23.0
-      nock: 12.0.3
+      nock: 12.0.3(supports-color@7.2.0)
       nopt: 4.0.3
       opn: 5.4.0
       ora: 4.0.5
@@ -8857,6 +8865,10 @@ snapshots:
     dependencies:
       package-json: 6.5.0
 
+  leaflet.markercluster@1.5.3(leaflet@1.9.4):
+    dependencies:
+      leaflet: 1.9.4
+
   leaflet@1.9.4: {}
 
   levn@0.4.1:
@@ -9174,7 +9186,7 @@ snapshots:
 
   nice-try@1.0.5: {}
 
-  nock@12.0.3:
+  nock@12.0.3(supports-color@7.2.0):
     dependencies:
       debug: 4.4.3(supports-color@7.2.0)
       json-stringify-safe: 5.0.1

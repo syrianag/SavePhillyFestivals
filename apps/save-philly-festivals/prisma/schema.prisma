@@ -161,6 +161,14 @@ model Festival {
   longitude     Float?
   geocoded_at   DateTime?
   geocode_source String?
+  // Geocoding diagnostics. `geocoded_location` records the exact location text that produced
+  // the coordinates: comparing it against the current `location` is how a stale pin is detected
+  // after an edit, without any write path having to know geocoding exists.
+  geocoded_location      String?
+  geocode_status         String?
+  geocode_failure_reason String?
+  geocode_attempted_at   DateTime?
+  geocode_attempts       Int       @default(0)
   website_url   String?
   logo_url      String?
   image_url     String?
@@ -237,6 +245,7 @@ model Festival {
   @@index([workflow_state, start_date, id])
   @@index([start_date])
   @@index([featured, featured_rank])
+  @@index([geocode_status, geocode_attempted_at])
   @@index([slug])
   @@index([calendar_status, calendar_published_at])
 }

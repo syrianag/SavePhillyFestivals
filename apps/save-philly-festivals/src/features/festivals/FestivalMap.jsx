@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+import { isPlottableCoordinate, isWithinRegion } from "@/features/festivals/geocoding";
 
 /* Philadelphia City Hall — a stable center when pins are sparse or absent. */
 const PHILADELPHIA_CENTER = Object.freeze([39.9526, -75.1652]);
 const DEFAULT_ZOOM = 12;
+/* Framing bounds. `maxZoom` stops a single pin filling the screen at street level; `minZoom`
+ * stops the map ever showing the whole eastern seaboard. */
+const FIT_MAX_ZOOM = 15;
+const MIN_ZOOM = 8;
 
 /* Leaflet's default marker resolves marker-icon.png / marker-shadow.png as relative URLs
  * from its stylesheet. Under a bundler those paths do not exist, so every pin renders as a
@@ -15,6 +22,14 @@ const MARKER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="4
   <path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 26 14 26s14-15.5 14-26c0-7.7-6.3-14-14-14z" fill="#1E7BF6"/>
   <circle cx="14" cy="14" r="5.5" fill="#fff"/>
 </svg>`;
+
+/* Three buckets rather than a continuous scale: the point is "a few / some / a lot" at a
+ * glance, and more gradations just look like noise at map scale. */
+function clusterSizeClass(count) {
+  if (count < 10) return "festival-cluster--small";
+  if (count < 50) return "festival-cluster--medium";
+  return "festival-cluster--large";
+}
 
 /**
  * Leaflet map of published festivals.
@@ -30,11 +45,83 @@ const MARKER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="4
  * Leaflet mutates a real DOM node and is initialised in an effect rather than through
  * react-leaflet's component tree, which keeps the integration to one file and avoids
  * double-initialisation under React 19 strict mode.
+ *
+ * The map instance and the markers are managed by two separate effects. Creating the map is
+ * expensive and must happen once; markers change whenever the pin set does. Rebuilding both
+ * together — as a single `[pins]` effect did — tears down and recreates the map on every prop
+ * change, which flashes the tiles and resets the user's pan and zoom.
  */
 export function FestivalMap({ pins = [] }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
+  const leafletRef = useRef(null);
+  const markerLayerRef = useRef(null);
+  /* Held in a ref so the marker-sync callback does not take the router as a dependency and
+   * rebuild every marker whenever the router identity changes. Assigned in an effect, not
+   * during render — a ref write during render is not a safe read for anything else. */
+  const router = useRouter();
+  const routerRef = useRef(router);
+  useEffect(() => { routerRef.current = router; }, [router]);
 
+  /* The map is created asynchronously, so the marker effect cannot simply run on mount — it
+   * would find null refs and no-op, then never retry. This flips once the map exists. */
+  const [mapReady, setMapReady] = useState(false);
+
+  const syncMarkers = useCallback(() => {
+    const leaflet = leafletRef.current;
+    const map = mapRef.current;
+    const layer = markerLayerRef.current;
+    if (!leaflet || !map || !layer) return;
+
+    layer.clearLayers();
+
+    const icon = leaflet.divIcon({
+      html: MARKER_SVG,
+      className: "festival-map-pin",
+      iconSize: [28, 40],
+      iconAnchor: [14, 40],
+      popupAnchor: [0, -36],
+    });
+
+    /* A pin with a corrupt coordinate is dropped rather than plotted. Leaflet will happily
+     * render NaN or (0, 0) and then produce bounds that make the whole map useless. */
+    const plottable = pins.filter((pin) => isPlottableCoordinate(pin.latitude, pin.longitude));
+
+    const markers = [];
+    for (const pin of plottable) {
+      const marker = leaflet
+        .marker([pin.latitude, pin.longitude], { title: pin.name, alt: pin.name, icon })
+        .addTo(layer);
+
+      /* A click navigates straight to the festival, client-side. The popup this replaces
+       * existed only to hold a link, and that link was raw HTML injected into Leaflet — a
+       * plain <a>, so it forced a full page reload. Leaflet's default `keyboard: true` gives
+       * each marker tabIndex and fires `click` on Enter, so keyboard users get the same
+       * single-step transition. */
+      const href = `/festivals/${encodeURIComponent(pin.slug)}`;
+      marker.bindTooltip(pin.location ? `${pin.name} — ${pin.location}` : pin.name, { direction: "top", offset: [0, -36] });
+      marker.on("click", () => routerRef.current.push(href));
+      marker.on("mouseover", () => routerRef.current.prefetch(href));
+      markers.push({ marker, pin });
+    }
+
+    /* Frame on in-region pins only. One festival mis-geocoded to another state would otherwise
+     * stretch the bounds across the country and collapse every Philadelphia pin into a dot —
+     * the out-of-region pin is still drawn, it just does not get a vote on the initial view. */
+    const framing = markers.filter(({ pin }) => isWithinRegion(pin.latitude, pin.longitude));
+    const framingMarkers = (framing.length ? framing : markers).map(({ marker }) => marker);
+
+    if (framingMarkers.length > 1) {
+      map.fitBounds(leaflet.featureGroup(framingMarkers).getBounds().pad(0.15), {
+        maxZoom: FIT_MAX_ZOOM,
+        padding: [24, 24],
+      });
+    } else if (framingMarkers.length === 1) {
+      map.setView(framingMarkers[0].getLatLng(), DEFAULT_ZOOM);
+    }
+  }, [pins]);
+
+  // Mount-only: create the map, tile layer, and resize observer exactly once.
   useEffect(() => {
     let cancelled = false;
     let resizeObserver;
@@ -42,13 +129,20 @@ export function FestivalMap({ pins = [] }) {
     async function initialise() {
       const leaflet = (await import("leaflet")).default;
       await import("leaflet/dist/leaflet.css");
+      /* Clustering is loaded here rather than at module scope so it lands in the same async
+       * chunk as Leaflet itself and adds nothing to the route's initial JS. */
+      await import("leaflet.markercluster");
+      await import("leaflet.markercluster/dist/MarkerCluster.css");
       if (cancelled || !containerRef.current || mapRef.current) return;
 
       const map = leaflet.map(containerRef.current, {
         center: PHILADELPHIA_CENTER,
         zoom: DEFAULT_ZOOM,
+        minZoom: MIN_ZOOM,
+        /* Deliberately off: wheel-zoom over a full-width map hijacks page scrolling. */
         scrollWheelZoom: false,
       });
+      leafletRef.current = leaflet;
       mapRef.current = map;
 
       leaflet
@@ -58,37 +152,29 @@ export function FestivalMap({ pins = [] }) {
         })
         .addTo(map);
 
-      const icon = leaflet.divIcon({
-        html: MARKER_SVG,
-        className: "festival-map-pin",
-        iconSize: [28, 40],
-        iconAnchor: [14, 40],
-        popupAnchor: [0, -36],
-      });
-
-      const markers = [];
-      for (const pin of pins) {
-        const marker = leaflet
-          .marker([pin.latitude, pin.longitude], { title: pin.name, icon })
-          .addTo(map);
-        const name = escapeHtml(pin.name);
-        const location = pin.location ? `<p style="margin:4px 0 8px">${escapeHtml(pin.location)}</p>` : "";
-        marker.bindPopup(
-          `<strong>${name}</strong>${location}<a href="/festivals/${encodeURIComponent(pin.slug)}">View festival</a>`
-        );
-        markers.push(marker);
-      }
-
-      /* Frame the actual pins so the map is useful even when festivals cluster outside
-       * center city, but never zoom past the default on a single pin. */
-      if (markers.length > 1) {
-        map.fitBounds(leaflet.featureGroup(markers).getBounds().pad(0.15));
-      } else if (markers.length === 1) {
-        map.setView([pins[0].latitude, pins[0].longitude], DEFAULT_ZOOM);
-      }
+      /* Philadelphia festivals concentrate in Center City. Without clustering, the pins at a
+       * fit-all zoom overlap into a mass where the ones underneath cannot be clicked at all.
+       * `spiderfyOnMaxZoom` is the part that matters most here: several festivals geocode to
+       * the exact same venue centroid, and only spiderfy separates identical coordinates. */
+      markerLayerRef.current = leaflet.markerClusterGroup({
+        maxClusterRadius: 60,
+        showCoverageOnHover: false,
+        spiderfyOnMaxZoom: true,
+        disableClusteringAtZoom: 17,
+        chunkedLoading: true,
+        iconCreateFunction: (cluster) => {
+          const count = cluster.getChildCount();
+          return leaflet.divIcon({
+            html: `<span>${count}</span>`,
+            className: `festival-cluster ${clusterSizeClass(count)}`,
+            iconSize: [40, 40],
+          });
+        },
+      }).addTo(map);
 
       resizeObserver = new ResizeObserver(() => map.invalidateSize());
       resizeObserver.observe(containerRef.current);
+      setMapReady(true);
     }
 
     initialise();
@@ -98,8 +184,17 @@ export function FestivalMap({ pins = [] }) {
       resizeObserver?.disconnect();
       mapRef.current?.remove();
       mapRef.current = null;
+      markerLayerRef.current = null;
+      leafletRef.current = null;
+      setMapReady(false);
     };
-  }, [pins]);
+  }, []);
+
+  // Marker sync: once the map exists, and again whenever the pin set changes.
+  useEffect(() => {
+    if (!mapReady) return;
+    syncMarkers();
+  }, [mapReady, syncMarkers]);
 
   if (pins.length === 0) {
     return (
@@ -125,10 +220,4 @@ export function FestivalMap({ pins = [] }) {
       className="min-h-[520px] w-full overflow-hidden rounded-2xl border border-slate-200/60 shadow-2xs"
     />
   );
-}
-
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[character]);
 }

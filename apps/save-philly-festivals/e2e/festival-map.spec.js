@@ -35,15 +35,29 @@ test("map renders leaflet tiles and one pin per geocoded festival", async ({ pag
   await expect(page.getByText("OpenStreetMap")).toBeVisible();
 });
 
-test("selecting a pin opens that festival", async ({ page }) => {
+test("selecting a pin opens that festival without a full page reload", async ({ page }) => {
   await page.goto("/map");
+  await expect(page.locator(".leaflet-container")).toBeVisible();
 
-  await page.locator(".leaflet-marker-icon").first().click();
-  const popupLink = page.locator(".leaflet-popup a", { hasText: "View festival" });
-  await expect(popupLink).toBeVisible();
+  // Survives a client-side transition; wiped by a full document load. This is the actual
+  // behaviour being asserted — the previous popup link was raw HTML injected into Leaflet,
+  // so it was a plain <a> that reloaded the document.
+  await page.evaluate(() => { window.__clientNav = true; });
 
-  await popupLink.click();
+  // Pins may cluster at the fitted zoom, so drill in until an individual marker is reachable.
+  // Both carry `.leaflet-marker-icon`; the divIcon classNames are what separate them.
+  const festivalMarker = page.locator(".leaflet-marker-icon.festival-map-pin");
+  const cluster = page.locator(".leaflet-marker-icon.festival-cluster");
+  for (let attempt = 0; attempt < 6 && (await festivalMarker.count()) === 0; attempt += 1) {
+    await cluster.first().click();
+    await page.waitForTimeout(400);
+  }
+
+  await expect(festivalMarker.first()).toBeVisible();
+  await festivalMarker.first().click();
+
   await expect(page).toHaveURL(/\/festivals\//);
+  expect(await page.evaluate(() => window.__clientNav)).toBe(true);
 });
 
 test("map page reports no console or network errors", async ({ page }) => {
