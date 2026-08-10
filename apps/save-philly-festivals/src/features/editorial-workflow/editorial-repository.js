@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { prisma } from "@/lib/db";
+import { buildDateOverlapFilter, getDiscoveryDateRange } from "@/features/festivals/discovery";
 import { buildFestivalRevisionSnapshot, FESTIVAL_REVISION_SNAPSHOT_SELECT } from "./festival-revision-snapshot";
 
 export class EditorialNotFoundError extends Error {
@@ -18,6 +19,11 @@ export function isAssetReviewPermitted(festival, expectedRevision) {
 const adminFestivalSelect = {
   ...FESTIVAL_REVISION_SNAPSHOT_SELECT,
   owner_user_id: true,
+  /* Curation flags, deliberately outside FESTIVAL_REVISION_SNAPSHOT_FIELDS: the audit trigger
+   * compares the snapshot against that fixed list, and promotion is editorial metadata rather
+   * than festival content. */
+  featured: true,
+  featured_rank: true,
   created_at: true,
   updated_at: true,
 };
@@ -66,13 +72,122 @@ export const editorialRepository = {
     return prisma.user.findUnique({ where: { id }, select: { id: true, email: true, role: true } });
   },
 
-  async list({ state, page, limit }) {
-    const where = state ? { workflow_state: state } : {};
+  async list({ state, q, start, end, featured, page, limit }) {
+    const and = [];
+    if (state) and.push({ workflow_state: state });
+    if (q) {
+      and.push({
+        OR: [
+          { name: { contains: q, mode: "insensitive" } },
+          { location: { contains: q, mode: "insensitive" } },
+          { city: { contains: q, mode: "insensitive" } },
+        ],
+      });
+    }
+    if (featured) and.push({ featured: featured === "1" });
+    /* Reuses the public date-overlap builder so the admin list and the public site agree on
+     * what "happening in this range" means, including all-day festivals. */
+    if (start || end) {
+      const dateFilter = buildDateOverlapFilter(getDiscoveryDateRange({ date: "custom", start: start || "", end: end || "" }));
+      if (dateFilter) and.push(dateFilter);
+    }
+    const where = and.length ? { AND: and } : {};
+
     const [festivals, total] = await Promise.all([
       prisma.festival.findMany({ where, select: adminFestivalSelect, orderBy: [{ updated_at: "desc" }, { id: "asc" }], skip: (page - 1) * limit, take: limit }),
       prisma.festival.count({ where }),
     ]);
     return { festivals, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
+  },
+
+  /**
+   * Editor content edit. Unlike the producer path this is not restricted by owner or workflow
+   * state — correcting a published, ownerless imported festival is the primary use case.
+   * Writes the same transition + revision audit pair a producer edit does, so the history stays
+   * continuous regardless of who made the change.
+   */
+  updateEditable({ festivalId, expectedRevision, data, reason, datesChanged = false, actorUserId, createId = randomUUID }) {
+    return prisma.$transaction(async (transaction) => {
+      const current = await transaction.festival.findUnique({
+        where: { id: festivalId },
+        select: { workflow_state: true, revision: true, owner_user_id: true, calendar_date_type: true, time_zone: true, start_date: true, end_date: true, all_day_start: true, all_day_end: true },
+      });
+      if (!current) throw new EditorialNotFoundError();
+      if (current.revision !== expectedRevision) throw new EditorialConflictError();
+
+      const updated = await transaction.festival.updateMany({
+        where: { id: festivalId, revision: expectedRevision },
+        data: { ...data, revision: { increment: 1 } },
+      });
+      if (updated.count !== 1) throw new EditorialConflictError();
+
+      const festival = await transaction.festival.findUnique({ where: { id: festivalId }, select: adminFestivalSelect });
+      /* The reason is not decoration: `validate_festival_audit_at_commit` permits a same-state
+       * editor edit only when this field is non-blank, which is what keeps an edit attributable
+       * rather than silent. */
+      const transition = await transaction.festivalTransition.create({
+        data: {
+          id: createId(),
+          festival_id: festivalId,
+          actor_user_id: actorUserId,
+          from_state: current.workflow_state,
+          to_state: current.workflow_state,
+          revision: festival.revision,
+          reason,
+        },
+      });
+      await transaction.festivalRevision.create({
+        data: {
+          id: createId(),
+          festival_id: festivalId,
+          workflow_revision: festival.revision,
+          transition_id: transition.id,
+          actor_user_id: actorUserId,
+          snapshot: buildFestivalRevisionSnapshot(festival),
+        },
+      });
+      /* Producer-owned festivals require exactly one workflow notification per revision, so an
+       * edit to someone else's listing is recorded for them the same way a transition is.
+       * Delivery is separately gated; this is the outbox row, not a send. */
+      if (current.owner_user_id) {
+        await transaction.festivalWorkflowNotification.create({
+          data: { id: createId(), festival_id: festivalId, workflow_revision: festival.revision, recipient_email: festival.contact_email },
+        });
+      }
+
+      /* Keep the primary occurrence in step with the festival's dates. Skipping this desyncs
+       * ICS export, which reads occurrences rather than the festival row.
+       *
+       * The existing primary is looked up by festival rather than by a fixed source key —
+       * imported festivals carry `festival-import:<batch>:<row>` keys, not "legacy-primary",
+       * and upserting on the assumed key creates a second primary and trips the
+       * one-primary-per-festival constraint. */
+      if (datesChanged) {
+        const occurrenceData = festival.calendar_date_type === "timed"
+          ? { calendar_date_type: "timed", time_zone: festival.time_zone, start_at: festival.start_date, end_at: festival.end_date, all_day_start: null, all_day_end: null }
+          : { calendar_date_type: "all_day", time_zone: festival.time_zone, start_at: null, end_at: null, all_day_start: festival.all_day_start, all_day_end: festival.all_day_end };
+        const existingPrimary = await transaction.festivalOccurrence.findFirst({
+          where: { festival_id: festivalId, is_primary: true },
+          select: { id: true },
+        });
+        if (existingPrimary) {
+          await transaction.festivalOccurrence.update({
+            where: { id: existingPrimary.id },
+            data: {
+              ...occurrenceData,
+              /* Subscribed calendars only pick up a change when the sequence advances. */
+              ...(festival.workflow_state === "published" ? { calendar_sequence: { increment: 1 } } : {}),
+            },
+          });
+        } else {
+          await transaction.festivalOccurrence.create({
+            data: { id: createId(), festival_id: festivalId, source_key: `editorial-edit:${festivalId}`, is_primary: true, ...occurrenceData },
+          });
+        }
+      }
+
+      return festival;
+    });
   },
 
   findDetail(id) {

@@ -37,6 +37,7 @@ export function NavBar() {
   const firstMobileLinkRef = useRef(null);
   const { data: session } = useSession();
 
+  const isSignedIn = Boolean(session?.user);
   const isStaff = session?.user?.role === "admin" || session?.user?.role === "super_admin";
   const isProducer = session?.user?.role === "producer";
   const isProducerArea = pathname.startsWith("/producer/");
@@ -83,7 +84,7 @@ export function NavBar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/60 bg-white/90 backdrop-blur-md">
-      <div className="mx-auto flex h-[77px] items-center justify-between px-4 md:px-[81px]">
+      <div className="mx-auto flex h-[77px] max-w-[1440px] items-center justify-between px-4 md:px-[81px]">
         <Link
           href="/"
           className="flex items-center shrink-0 transition-transform duration-300 hover:scale-101"
@@ -107,7 +108,7 @@ export function NavBar() {
               className={cn(
                 "rounded-md px-1.5 py-1 font-body text-base font-bold transition-all focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-500",
                 pathname === link.href
-                  ? "text-indigo-650"
+                  ? "text-indigo-600"
                   : "text-slate-500 hover:text-slate-900"
               )}
               style={{ letterSpacing: "-0.15px" }}
@@ -115,7 +116,22 @@ export function NavBar() {
               {link.label}
             </Link>
           ))}
-          {(isStaff || isProducer) && (
+          {isSignedIn && (
+            <Link
+              href="/account"
+              aria-current={pathname === "/account" ? "page" : undefined}
+              className={cn(
+                "rounded-md px-1.5 py-1 font-body text-base font-bold transition-all focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-500",
+                pathname === "/account"
+                  ? "text-indigo-600"
+                  : "text-slate-500 hover:text-slate-900"
+              )}
+              style={{ letterSpacing: "-0.15px" }}
+            >
+              My account
+            </Link>
+          )}
+          {isSignedIn && (
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
               className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 font-ui text-sm font-semibold text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-500"
@@ -127,7 +143,7 @@ export function NavBar() {
         </nav>
 
         <div className="hidden items-center gap-4 md:flex">
-          {(isStaff || isProducer) ? (
+          {isSignedIn ? (
             <span className="font-ui text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200/50">
               {session.user.email}
             </span>
@@ -155,7 +171,7 @@ export function NavBar() {
       </div>
 
       {mobileOpen && (
-        <nav id="mobile-navigation" className="border-t border-slate-150 bg-white px-4 pb-4 pt-2 md:hidden" aria-label="Mobile navigation">
+        <nav id="mobile-navigation" className="border-t border-slate-200 bg-white px-4 pb-4 pt-2 md:hidden" aria-label="Mobile navigation">
           {navLinks.map((link, index) => (
             <Link
               key={link.href}
@@ -166,28 +182,43 @@ export function NavBar() {
               className={cn(
                 "block rounded-md px-3 py-2 font-body text-base font-bold transition-all",
                 pathname === link.href
-                  ? "text-indigo-650 bg-indigo-50/50"
+                  ? "text-indigo-600 bg-indigo-50/50"
                   : "text-slate-500 hover:text-slate-900 hover:bg-slate-50/50"
               )}
             >
               {link.label}
             </Link>
           ))}
-          {(isStaff || isProducer) ? (
-            <div className="mt-2 border-t border-slate-100 pt-2 px-3">
-              <span className="block py-1.5 font-ui text-xs font-bold text-slate-500">
-                {session.user.email}
-              </span>
-              <button
-                onClick={() => {
-                  setMobileOpen(false);
-                  signOut({ callbackUrl: "/" });
-                }}
-                className="mt-1 flex w-full items-center justify-center gap-2 rounded-full border border-slate-200 py-2 font-ui text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+          {isSignedIn ? (
+            <>
+              <Link
+                href="/account"
+                onClick={() => setMobileOpen(false)}
+                aria-current={pathname === "/account" ? "page" : undefined}
+                className={cn(
+                  "block rounded-md px-3 py-2 font-body text-base font-bold transition-all",
+                  pathname === "/account"
+                    ? "text-indigo-600 bg-indigo-50/50"
+                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50/50"
+                )}
               >
-                Sign Out
-              </button>
-            </div>
+                My account
+              </Link>
+              <div className="mt-2 border-t border-slate-100 pt-2 px-3">
+                <span className="block py-1.5 font-ui text-xs font-bold text-slate-500">
+                  {session.user.email}
+                </span>
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    signOut({ callbackUrl: "/" });
+                  }}
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-full border border-slate-200 py-2 font-ui text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </>
           ) : (
             <Link
               href="/login"

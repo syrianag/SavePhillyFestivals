@@ -1,13 +1,16 @@
+import { cache } from "react";
+
 import {
   buildDateOverlapFilter,
   festivalOverlapsRange,
   getDiscoveryDateRange,
   paginatePublicResults,
+  parseDiscoveryParams,
   publicPageResult,
   resolvePublicPageWindow,
   sortFestivalRecords,
 } from "@/features/festivals/discovery";
-import { FESTIVAL_STATUS } from "@/lib/constants";
+import { publishedDiscoveryWhere } from "@/features/editorial-workflow/publication-policy";
 import { DISCOVERY_E2E_FESTIVALS } from "@/features/festivals/discovery-e2e-fixture";
 
 /* Upper bound on rows scored for application-side relevance ranking. Keeps a text search
@@ -23,6 +26,13 @@ export const PUBLIC_DISCOVERY_SELECT = {
   city: true,
   start_date: true,
   end_date: true,
+  /* All-day festivals (every CSV import) carry their dates here. Selected so date rendering and
+   * day-key derivation can tell an all-day calendar date from a timed instant — without these,
+   * imported festivals render as "Dates TBD". */
+  calendar_date_type: true,
+  all_day_start: true,
+  all_day_end: true,
+  time_zone: true,
   created_at: true,
   image_url: true,
   categories: { select: { category: { select: { name: true, slug: true } } } },
@@ -68,7 +78,7 @@ export function buildApprovedDiscoveryWhere(filters, now = new Date()) {
   const dateFilter = buildDateOverlapFilter(getDiscoveryDateRange(filters, now));
   if (dateFilter) and.push(dateFilter);
 
-  return { status: FESTIVAL_STATUS.APPROVED, ...(and.length ? { AND: and } : {}) };
+  return { ...publishedDiscoveryWhere, ...(and.length ? { AND: and } : {}) };
 }
 
 function databaseOrder(sort) {
@@ -105,6 +115,68 @@ function fixtureDiscovery(filters, now) {
   };
 }
 
+/**
+ * Editor-curated homepage promotions.
+ *
+ * Returns an empty array when nothing is flagged so the caller can fall back to the leading
+ * discovery results — that keeps the homepage populated while promotions are still being set up
+ * rather than emptying the featured row the moment this ships.
+ */
+export async function getFeaturedFestivals(limit = 2, { now = new Date() } = {}) {
+  const defaults = parseDiscoveryParams({});
+  if (process.env.DISCOVERY_E2E_FIXTURE === "1") {
+    return fixtureDiscovery(defaults, now).items.slice(0, limit);
+  }
+
+  const { prisma } = await import("@/lib/db");
+  const dateFilter = buildDateOverlapFilter(getDiscoveryDateRange({ date: "" }, now));
+  const curated = await prisma.festival.findMany({
+    where: {
+      AND: [publishedDiscoveryWhere, { featured: true }, ...(dateFilter ? [dateFilter] : [])],
+    },
+    select: PUBLIC_DISCOVERY_SELECT,
+    orderBy: [{ featured_rank: { sort: "asc", nulls: "last" } }, { start_date: { sort: "asc", nulls: "last" } }, { name: "asc" }],
+    take: limit,
+  });
+  if (curated.length) return curated;
+
+  /* Nothing flagged yet: fall back to the soonest upcoming festivals so the row is never empty.
+   * The fallback lives here rather than in the page so a second caller cannot forget it. */
+  const { items } = await discoverApprovedFestivals({ ...defaults, page: 1 }, { now });
+  return items.slice(0, limit);
+}
+
+/**
+ * Filter facets for the discovery controls.
+ *
+ * Deliberately separate from the result query: these depend only on what is published, not on
+ * the page or the active filters, so paginating should not re-derive them. Wrapped in `cache()`
+ * so the page and the suspended result list share one lookup per request.
+ */
+export const getDiscoveryFacets = cache(async () => {
+  if (process.env.DISCOVERY_E2E_FIXTURE === "1") {
+    return { categories: ["Art", "Cultural", "Food"], locations: ["Germantown", "Penn's Landing", "South Philadelphia"] };
+  }
+  const { prisma } = await import("@/lib/db");
+  const [categoryRows, locationRows] = await Promise.all([
+    prisma.category.findMany({
+      where: { festivals: { some: { festival: publishedDiscoveryWhere } } },
+      orderBy: { name: "asc" },
+      select: { name: true },
+    }),
+    prisma.festival.findMany({
+      where: { ...publishedDiscoveryWhere, location: { not: null } },
+      distinct: ["location"],
+      orderBy: { location: "asc" },
+      select: { location: true },
+    }),
+  ]);
+  return {
+    categories: categoryRows.map(({ name }) => name),
+    locations: locationRows.map(({ location }) => location).filter(Boolean),
+  };
+});
+
 export async function discoverApprovedFestivals(filters, { now = new Date() } = {}) {
   if (process.env.DISCOVERY_E2E_FIXTURE === "1") return fixtureDiscovery(filters, now);
 
@@ -118,27 +190,13 @@ export async function discoverApprovedFestivals(filters, { now = new Date() } = 
   const pageQuery = usesRelevanceRanking
     ? { where, select: PUBLIC_DISCOVERY_SELECT, orderBy: databaseOrder(filters.sort), take: RELEVANCE_CANDIDATE_LIMIT }
     : { where, select: PUBLIC_DISCOVERY_SELECT, orderBy: databaseOrder(filters.sort), skip: window.offset, take: window.take };
-  const [records, categoryRows, locationRows] = await Promise.all([
+  const [records, facets] = await Promise.all([
     prisma.festival.findMany(pageQuery),
-    prisma.category.findMany({
-      where: { festivals: { some: { festival: { status: FESTIVAL_STATUS.APPROVED } } } },
-      orderBy: { name: "asc" },
-      select: { name: true },
-    }),
-    prisma.festival.findMany({
-      where: { status: FESTIVAL_STATUS.APPROVED, location: { not: null } },
-      distinct: ["location"],
-      orderBy: { location: "asc" },
-      select: { location: true },
-    }),
+    getDiscoveryFacets(),
   ]);
 
   const paged = usesRelevanceRanking
     ? paginatePublicResults(sortFestivalRecords(records, filters), filters.page, total)
     : publicPageResult(records, filters.page, total);
-  return {
-    ...paged,
-    categories: categoryRows.map(({ name }) => name),
-    locations: locationRows.map(({ location }) => location).filter(Boolean),
-  };
+  return { ...paged, ...facets };
 }

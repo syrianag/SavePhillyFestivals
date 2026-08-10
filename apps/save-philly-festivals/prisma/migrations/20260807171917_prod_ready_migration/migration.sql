@@ -1,0 +1,29 @@
+-- DropForeignKey
+ALTER TABLE "FestivalWorkflowNotification" DROP CONSTRAINT "FestivalWorkflowNotification_transition_fkey";
+
+-- DropIndex
+DROP INDEX "FestivalImportRow_prepared_matched_festival_id_idx";
+
+-- RenameForeignKey
+ALTER TABLE "FestivalRevision" RENAME CONSTRAINT "FestivalRevision_transition_identity_fkey" TO "FestivalRevision_transition_id_festival_id_workflow_revisi_fkey";
+
+-- RenameIndex
+ALTER INDEX "FestivalAsset_festival_id_lifecycle_status_editorial_status_cre" RENAME TO "FestivalAsset_festival_id_lifecycle_status_editorial_status_idx";
+
+-- RenameIndex
+ALTER INDEX "FestivalRevision_transition_id_festival_id_workflow_revision_ac" RENAME TO "FestivalRevision_transition_id_festival_id_workflow_revisio_key";
+
+-- RenameIndex
+ALTER INDEX "FestivalWorkflowNotification_festival_id_workflow_revision_audi" RENAME TO "FestivalWorkflowNotification_festival_id_workflow_revision__key";
+
+-- RenameIndex
+ALTER INDEX "OrganizerMailingConsentOrganizer_organizer_integration_id_revok" RENAME TO "OrganizerMailingConsentOrganizer_organizer_integration_id_r_idx";
+
+-- RenameIndex
+ALTER INDEX "OrganizerMailingSuppression_normalized_email_organizer_integrat" RENAME TO "OrganizerMailingSuppression_normalized_email_organizer_inte_key";
+
+-- RenameIndex
+ALTER INDEX "ProducerSubmissionNotification_festival_id_workflow_revision_no" RENAME TO "ProducerSubmissionNotification_festival_id_workflow_revisio_key";
+
+-- RenameIndex
+ALTER INDEX "SocialPost_social_feed_id_source_revision_moderation_status_sou" RENAME TO "SocialPost_social_feed_id_source_revision_moderation_status_idx";

@@ -528,7 +528,7 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
             </dl>
 
             {/* Acknowledgements check links */}
-            <div className="space-y-3.5 border-t border-slate-150 pt-6">
+            <div className="space-y-3.5 border-t border-slate-200 pt-6">
               <label className="flex items-start gap-3 text-sm text-slate-800 select-none cursor-pointer">
                 <input 
                   type="checkbox" 
@@ -739,7 +739,7 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
                     {new Date(item.created_at).toLocaleString()}
                   </div>
                   {item.producer_message && (
-                    <p className="mt-1 text-slate-600 bg-slate-50 border border-slate-150 p-2.5 rounded-lg text-xs leading-relaxed max-w-2xl whitespace-pre-wrap">
+                    <p className="mt-1 text-slate-600 bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-xs leading-relaxed max-w-2xl whitespace-pre-wrap">
                       {item.producer_message}
                     </p>
                   )}
@@ -757,7 +757,7 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
         <Card className="shadow-xs border-slate-200 bg-white">
           <CardHeader>
             <CardTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <UploadCloud className="size-5 text-slate-350" />
+              <UploadCloud className="size-5 text-slate-300" />
               Private festival asset
             </CardTitle>
           </CardHeader>

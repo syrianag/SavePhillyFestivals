@@ -34,7 +34,8 @@ function getMonthGrid(year, month) {
 export function CalendarWidget({
   year = 2025,
   month = 10,
-  festivalDates = [],
+  festivalDayKeys = new Set(),
+  todayKey = null,
   selectedDay = null,
   onSelectDay,
   onPrevMonth,
@@ -48,17 +49,16 @@ export function CalendarWidget({
   ];
   const monthLabel = `${monthNames[month]} ${year}`;
 
-  /* Scope the dots to the month actually on screen. Keying on getDate() alone marked the
-   * same day number in every month as having a festival. */
-  const festivalDaySet = new Set(
-    festivalDates
-      .map((value) => new Date(value))
-      .filter((date) => !Number.isNaN(date.getTime()) && date.getFullYear() === year && date.getMonth() === month)
-      .map((date) => date.getDate())
-  );
+  /* Dots are looked up by the same "YYYY-MM-DD" key the day-click filter emits. Deriving them
+   * from Date objects meant the dot was placed in the browser's local zone while the filter
+   * keyed on UTC — so an all-day festival's dot landed a day away from the festival itself. */
+  const dayKeyFor = (day) =>
+    `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const hasFestival = (day) => festivalDayKeys.has(dayKeyFor(day));
 
-  const today = new Date();
-  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+  const todayDay = todayKey && todayKey.startsWith(`${year}-${String(month + 1).padStart(2, "0")}`)
+    ? Number(todayKey.slice(8, 10))
+    : null;
 
   return (
     <section
@@ -114,8 +114,8 @@ export function CalendarWidget({
               );
             }
 
-            const isToday = isCurrentMonth && day === today.getDate();
-            const hasFestival = festivalDaySet.has(day);
+            const isToday = todayDay === day;
+            const dayHasFestival = hasFestival(day);
             const isSelected = day === selectedDay;
 
             return (
@@ -123,14 +123,14 @@ export function CalendarWidget({
                 key={day}
                 type="button"
                 onClick={() => onSelectDay?.(day)}
-                aria-label={`${monthNames[month]} ${day}, ${year}${hasFestival ? ", festival scheduled" : ""}`}
+                aria-label={`${monthNames[month]} ${day}, ${year}${dayHasFestival ? ", festival scheduled" : ""}`}
                 aria-pressed={isSelected}
                 aria-current={isToday ? "date" : undefined}
                 className={cn(
                   "flex aspect-square items-center justify-center rounded-[10.4px] font-ui text-xs font-bold leading-[15px] transition-colors",
                   isSelected
                     ? "bg-brand-orange text-white"
-                    : hasFestival
+                    : dayHasFestival
                       ? "bg-[#E3E1DD] text-black"
                       : "bg-white text-black hover:bg-gray-100"
                 )}

@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import Image from "next/image";
+import { AdSlot } from "@/components/shared/AdSlot";
+import { SPONSOR_SLOTS } from "@/features/sponsors/sponsor-placements";
 
 const footerSections = [
   {
@@ -31,6 +33,21 @@ export function Footer({ className, ...props }) {
       className={cn("bg-brand-dark font-footer text-sm text-white/80", className)}
       {...props}
     >
+      {/* Sponsors lead the footer: it is the first thing past the page content, and one
+        * reviewable strip beats placements scattered down the sides. Renders nothing at
+        * all — divider included — when no slot is sold. */}
+      <AdSlot slot={SPONSOR_SLOTS.FOOTER} className="border-b border-white/10 py-10" />
+
+      {/* Rail sponsors, relocated here below 2xl where the rails themselves are hidden. CSS
+        * cannot move a node across the layout/footer boundary, so the rails and this band are
+        * two renders of the same sponsors with exactly one visible at any width — `hidden`
+        * removes a subtree from the accessibility tree, so screen readers announce one copy. */}
+      <AdSlot
+        slots={[SPONSOR_SLOTS.LEFT_RAIL, SPONSOR_SLOTS.RIGHT_RAIL]}
+        label="Our Sponsors"
+        className="border-b border-white/10 py-10 2xl:hidden"
+      />
+
       <div className="mx-auto flex max-w-[1440px] flex-col gap-10 px-4 py-12 md:flex-row md:items-start md:justify-between md:px-[81px]">
         <Link
           href="/"

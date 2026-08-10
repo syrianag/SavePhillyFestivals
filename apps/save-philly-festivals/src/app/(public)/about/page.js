@@ -4,24 +4,6 @@ import { useState } from "react";
 import { CrossBlock, QuadrantBlock } from "@/components/shared/DecorativeBlocks";
 import { ArrowRight, MapPin, Mail, Phone, Clock } from "lucide-react";
 
-const SPONSORS = [
-  {
-    name: "Alston-Beech Foundation",
-    pillColor: "#e0f2fe",
-    textColor: "#0369a1",
-  },
-  {
-    name: "Philadelphia Activities Fund",
-    pillColor: "#ffedd5",
-    textColor: "#c2410c",
-  },
-  {
-    name: "PECO Powering the Arts",
-    pillColor: "#fef9c3",
-    textColor: "#a16207",
-  },
-];
-
 export default function AboutPage() {
   const [activeTab, setActiveTab] = useState("mission");
 
@@ -54,7 +36,7 @@ export default function AboutPage() {
       <div className="mx-auto flex max-w-[400px] items-center rounded-full p-1 bg-slate-100 border border-slate-200/50 mb-12">
         <button
           onClick={() => setActiveTab("mission")}
-          className="flex h-9 flex-1 items-center justify-center rounded-full font-ui text-sm font-bold transition-all shadow-3xs cursor-pointer"
+          className="flex h-9 flex-1 items-center justify-center rounded-full font-ui text-sm font-bold transition-all shadow-2xs cursor-pointer"
           style={{
             backgroundColor: activeTab === "mission" ? "#FFFFFF" : "transparent",
             color: activeTab === "mission" ? "#4f46e5" : "#64748b",
@@ -64,7 +46,7 @@ export default function AboutPage() {
         </button>
         <button
           onClick={() => setActiveTab("contact")}
-          className="flex h-9 flex-1 items-center justify-center rounded-full font-ui text-sm font-bold transition-all shadow-3xs cursor-pointer"
+          className="flex h-9 flex-1 items-center justify-center rounded-full font-ui text-sm font-bold transition-all shadow-2xs cursor-pointer"
           style={{
             backgroundColor: activeTab === "contact" ? "#FFFFFF" : "transparent",
             color: activeTab === "contact" ? "#4f46e5" : "#64748b",
@@ -94,7 +76,7 @@ export default function AboutPage() {
               We believe that festivals are the heartbeat of our city.
             </p>
 
-            <div className="mt-10 flex flex-col gap-6 text-slate-650 max-w-3xl">
+            <div className="mt-10 flex flex-col gap-6 text-slate-600 max-w-3xl">
               <p className="font-body text-base leading-relaxed">
                 Philadelphia&apos;s festival culture runs deep — from the vibrant block parties in West Philly to the cultural celebrations in Kensington, the food festivals in South Philly to the art walks in Center City. These gatherings are more than just events; they&apos;re the threads that weave together the diverse communities that make Philadelphia the City of Brotherly Love and Sisterly Affection.
               </p>
@@ -126,40 +108,9 @@ export default function AboutPage() {
             </div>
           </section>
 
-          {/* Sponsors section */}
-          <section className="mx-auto mt-20 flex w-full max-w-[1000px] flex-col items-center pb-16">
-            <h2 className="font-serif text-center text-3xl font-bold text-slate-900">
-              Our Sponsors
-            </h2>
-            <p className="mt-3 text-center font-body text-base text-slate-500">
-              We&apos;re grateful for the support of our incredible community partners.
-            </p>
-
-            <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8 w-full">
-              {SPONSORS.map((sponsor) => (
-                <div
-                  key={sponsor.name}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs hover:shadow-xs transition-all duration-300"
-                >
-                  <div className="flex h-[150px] items-center justify-center bg-slate-50 border-b border-slate-100 p-6">
-                    <div className="size-16 rounded-xl bg-white shadow-3xs flex items-center justify-center border border-slate-100 group-hover:scale-103 transition-transform duration-300">
-                      <span className="font-heading text-lg font-bold text-slate-400">Logo</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-1 items-center justify-center p-6 bg-white">
-                    <div
-                      className="inline-flex items-center justify-center px-6 rounded-full border border-slate-100 shadow-3xs"
-                      style={{ backgroundColor: sponsor.pillColor, height: "40px" }}
-                    >
-                      <span className="font-heading text-sm font-bold" style={{ color: sponsor.textColor }}>
-                        {sponsor.name}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+          {/* Sponsors moved to the site footer, where they appear on every page rather
+            * than only for visitors who open this one. See
+            * `src/features/sponsors/sponsor-placements.js`. */}
         </>
       ) : (
         <>
@@ -176,7 +127,7 @@ export default function AboutPage() {
               <div className="flex flex-col gap-8 md:flex-row md:justify-between">
                 <div className="flex flex-col gap-6.5">
                   <div className="flex items-start gap-4">
-                    <div className="p-2.5 rounded-lg bg-indigo-50 text-indigo-650 shrink-0 border border-indigo-100">
+                    <div className="p-2.5 rounded-lg bg-indigo-50 text-indigo-600 shrink-0 border border-indigo-100">
                       <MapPin className="size-5" />
                     </div>
                     <div className="flex flex-col gap-1">
@@ -192,7 +143,7 @@ export default function AboutPage() {
                   </div>
 
                   <div className="flex items-start gap-4">
-                    <div className="p-2.5 rounded-lg bg-indigo-50 text-indigo-650 shrink-0 border border-indigo-100">
+                    <div className="p-2.5 rounded-lg bg-indigo-50 text-indigo-600 shrink-0 border border-indigo-100">
                       <Clock className="size-5" />
                     </div>
                     <div className="flex flex-col gap-1">
@@ -208,7 +159,7 @@ export default function AboutPage() {
                   </div>
 
                   <div className="flex items-start gap-4">
-                    <div className="p-2.5 rounded-lg bg-indigo-50 text-indigo-650 shrink-0 border border-indigo-100">
+                    <div className="p-2.5 rounded-lg bg-indigo-50 text-indigo-600 shrink-0 border border-indigo-100">
                       <Mail className="size-5" />
                     </div>
                     <div className="flex flex-col gap-1">

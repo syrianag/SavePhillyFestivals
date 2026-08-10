@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="120" viewBox="0 0 320 120" role="img" aria-label="Demo sponsor creative: Rowhouse Print Company">
+  <rect width="320" height="120" rx="14" fill="#FFFFFF"/>
+  <rect x="0" y="0" width="8" height="120" rx="4" fill="#FB439B"/>
+
+  <!-- demo tag: this creative must never be mistaken for a sold placement -->
+  <rect x="238" y="10" width="70" height="16" rx="8" fill="#F6C847"/>
+  <text x="273" y="22" font-family="Verdana,Geneva,sans-serif" font-size="8" font-weight="bold"
+        fill="#0A142F" text-anchor="middle" letter-spacing="1">DEMO AD</text>
+
+  <!-- rowhouse mark -->
+  <circle cx="56" cy="60" r="28" fill="#FB439B"/>
+  <g fill="#FFFFFF">
+    <rect x="40" y="54" width="10" height="20" rx="1.5"/>
+    <rect x="52" y="46" width="10" height="28" rx="1.5"/>
+    <rect x="64" y="58" width="10" height="16" rx="1.5"/>
+  </g>
+  <rect x="38" y="74" width="38" height="2.5" rx="1.25" fill="#FE7D0C"/>
+
+  <text x="98" y="52" font-family="Georgia,serif" font-size="17" font-weight="bold" fill="#0A142F">Rowhouse Print Co.</text>
+  <text x="98" y="70" font-family="Verdana,Geneva,sans-serif" font-size="8" fill="#FB439B" letter-spacing="2.5">SIGNAGE &amp; APPAREL</text>
+  <text x="98" y="92" font-family="Verdana,Geneva,sans-serif" font-size="9" fill="#848484">Banners and tees for your festival.</text>
+
+  <text x="98" y="110" font-family="Verdana,Geneva,sans-serif" font-size="8" font-weight="bold" fill="#FF7261">GET A QUOTE &#8594;</text>
+</svg>

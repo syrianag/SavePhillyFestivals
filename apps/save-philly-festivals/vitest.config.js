@@ -20,6 +20,7 @@ export default defineConfig({
         "src/lib/uploads.js",
         "src/features/festivals/festival-schemas.js",
         "src/features/schedule/schedule-storage.js",
+        "src/features/sponsors/sponsor-placements.js",
         "src/features/schedule-email/schedule-email-content.js",
         "src/features/schedule-email/schedule-email-resolution.js",
         "src/features/schedule-email/schedule-email-schema.js",

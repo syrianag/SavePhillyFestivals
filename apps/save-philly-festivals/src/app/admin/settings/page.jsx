@@ -321,7 +321,7 @@ export default function AdminSettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <table className="w-full">
+          <div className="overflow-x-auto"><table className="w-full min-w-3xl">
             <thead>
               <tr className="border-b text-left text-sm font-medium text-muted-foreground">
                 <th className="px-4 py-3">Name</th>
@@ -491,7 +491,7 @@ export default function AdminSettingsPage() {
                 ))
               )}
             </tbody>
-          </table>
+          </table></div>
         </CardContent>
       </Card>
     </div>

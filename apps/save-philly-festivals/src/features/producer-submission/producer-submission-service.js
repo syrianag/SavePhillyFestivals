@@ -6,6 +6,7 @@ import {
   ProducerFestivalNotFoundError,
 } from "./producer-submission-errors";
 import { deliverSubmissionNotifications, PRODUCER_SUBMISSION_TEAM_ALIAS } from "./producer-submission-notifications";
+import { allDayTimedMirror } from "@/features/festivals/discovery";
 
 function isUniqueConstraintError(error) {
   return error?.code === "P2002";
@@ -21,8 +22,11 @@ function toPersistencePatch(input) {
     data.all_day_start = null;
     data.all_day_end = null;
   } else if (data.calendar_date_type === "all_day") {
-    data.start_date = null;
-    data.end_date = null;
+    /* Mirror the all-day range onto the timed columns rather than nulling them. Public
+     * discovery selects, sorts, and filters on `start_date`, so a null here makes the festival
+     * render as "Dates TBD" and drops it from every date filter — the exact defect the
+     * 20260810120000 backfill migration repaired for the imported catalog. */
+    Object.assign(data, allDayTimedMirror(data.all_day_start, data.all_day_end));
   }
   return data;
 }

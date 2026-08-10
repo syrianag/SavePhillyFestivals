@@ -160,10 +160,10 @@ export function ScheduleEmailForm({ items, inputId }) {
   const consentFeedbackId = `${inputId}-consent-feedback`;
 
   return (
-    <div className="rounded-xl border border-[#333333] bg-[#1A1A1A] p-3">
+    <div className="rounded-xl border border-slate-200/60 bg-white p-4 shadow-2xs">
       <form onSubmit={handleEmailSubmit}>
-        <label htmlFor={inputId} className="font-body text-sm font-semibold text-white">Email this schedule</label>
-        <p id={helpId} className="mt-1 font-ui text-xs leading-relaxed text-[#A9A9A9]">
+        <label htmlFor={inputId} className="font-body text-sm font-semibold text-slate-900">Email this schedule</label>
+        <p id={helpId} className="mt-1 font-ui text-xs leading-relaxed text-slate-500">
           Send every saved item to your inbox. This is transactional and does not sign you up for marketing.
         </p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
@@ -176,26 +176,26 @@ export function ScheduleEmailForm({ items, inputId }) {
             }}
             aria-describedby={`${helpId} ${emailFeedbackId}`}
             placeholder="you@example.com"
-            className="min-w-0 flex-1 rounded-full border border-brand-text-muted bg-[#111111] px-4 py-2 font-ui text-sm text-white placeholder:text-brand-text-muted focus:border-white focus:outline-none focus:ring-2 focus:ring-brand-yellow" />
+            className="min-w-0 flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 font-ui text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20" />
           <button type="submit" disabled={emailSubmitting || items.length === 0}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-brand-yellow px-4 font-body text-sm font-bold text-black transition-opacity disabled:cursor-not-allowed disabled:opacity-50">
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-slate-900 px-4 font-body text-sm font-bold text-white hover:bg-slate-800 transition-opacity disabled:cursor-not-allowed disabled:opacity-50">
             <Mail className="size-4" aria-hidden="true" /> {emailSubmitting ? "Sending…" : "Email schedule"}
           </button>
         </div>
         <div id={emailFeedbackId} role={emailFeedback?.kind === "error" ? "alert" : "status"} aria-live="polite"
-          className={`mt-2 min-h-5 font-ui text-xs ${emailFeedback?.kind === "error" ? "text-brand-yellow" : "text-emerald-300"}`}>
+          className={`mt-2 min-h-5 font-ui text-xs ${emailFeedback?.kind === "error" ? "text-red-700" : "text-emerald-700"}`}>
           {emailFeedback?.message || ""}
         </div>
       </form>
 
-      <form onSubmit={handleConsentSubmit} className="mt-3 border-t border-[#333333] pt-3">
+      <form onSubmit={handleConsentSubmit} className="mt-3 border-t border-slate-200 pt-3">
         <fieldset disabled={consentSubmitting || !organizers.length}>
-          <legend className="font-body text-sm font-semibold text-white">Optional organizer emails</legend>
-          <p className="mt-1 font-ui text-xs leading-relaxed text-[#A9A9A9]">
+          <legend className="font-body text-sm font-semibold text-slate-900">Optional organizer emails</legend>
+          <p className="mt-1 font-ui text-xs leading-relaxed text-slate-500">
             Separately choose which authorized organizers may email you. Nothing is selected by default.
           </p>
           {organizers.map((organizer) => (
-            <label key={organizer.id} className="mt-2 flex items-start gap-2 font-ui text-xs text-white">
+            <label key={organizer.id} className="mt-2 flex items-start gap-2 font-ui text-xs text-slate-700">
               <input type="checkbox" checked={selectedOrganizers.includes(organizer.id)}
                 onChange={() => {
                   setSelectedOrganizers((current) => current.includes(organizer.id)
@@ -203,16 +203,16 @@ export function ScheduleEmailForm({ items, inputId }) {
                     : [...current, organizer.id]);
                   setConsentAcknowledged(false);
                 }}
-                className="mt-0.5 size-4 accent-brand-yellow" />
+                className="mt-0.5 size-4 accent-slate-900" />
               <span><strong>{organizer.name}</strong> for {organizer.festival_name}</span>
             </label>
           ))}
-          {!organizers.length && <p className="mt-2 font-ui text-xs text-[#A9A9A9]">{eligibilityUnavailable ? "Organizer choices are temporarily unavailable." : "No selected festival currently offers authorized organizer emails."}</p>}
+          {!organizers.length && <p className="mt-2 font-ui text-xs text-slate-500">{eligibilityUnavailable ? "Organizer choices are temporarily unavailable." : "No selected festival currently offers authorized organizer emails."}</p>}
           {organizers.length > 0 && <div className="mt-3">
-            <p className="font-ui text-xs font-semibold text-white">Choose email categories:</p>
+            <p className="font-ui text-xs font-semibold text-slate-900">Choose email categories:</p>
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-2">
               {preferenceOptions.map(([value, label]) => (
-                <label key={value} className="flex items-center gap-2 font-ui text-xs text-white">
+                <label key={value} className="flex items-center gap-2 font-ui text-xs text-slate-700">
                   <input type="checkbox" checked={preferences.includes(value)}
                     onChange={() => {
                       setPreferences((current) => current.includes(value)
@@ -220,33 +220,33 @@ export function ScheduleEmailForm({ items, inputId }) {
                         : [...current, value]);
                       setConsentAcknowledged(false);
                     }}
-                    className="size-4 accent-brand-yellow" /> {label}
+                    className="size-4 accent-slate-900" /> {label}
                 </label>
               ))}
             </div>
           </div>}
         </fieldset>
         {organizers.length > 0 && (
-          <label className="mt-3 flex items-start gap-2 font-ui text-xs text-white">
+          <label className="mt-3 flex items-start gap-2 font-ui text-xs text-slate-700">
             <input
               type="checkbox"
               checked={consentAcknowledged}
               onChange={(event) => setConsentAcknowledged(event.target.checked)}
-              className="mt-0.5 size-4 accent-brand-yellow"
+              className="mt-0.5 size-4 accent-slate-900"
             />
             <span>{CONSENT_TEXT}</span>
           </label>
         )}
         <button type="submit" disabled={consentSubmitting || !email || !selectedOrganizers.length || !preferences.length || !consentAcknowledged}
-          className="mt-3 min-h-9 rounded-full border border-brand-yellow px-4 font-body text-xs font-bold text-brand-yellow disabled:cursor-not-allowed disabled:opacity-50">
+          className="mt-3 min-h-10 rounded-full border border-slate-300 px-4 font-body text-xs font-bold text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
           {consentSubmitting ? "Recording…" : "Request organizer emails"}
         </button>
         {consentManagement && <button type="button" onClick={handleConsentRevocation} disabled={consentSubmitting}
-          className="ml-2 mt-3 font-ui text-xs text-[#A9A9A9] underline disabled:opacity-50">
+          className="ml-2 mt-3 font-ui text-xs text-slate-500 underline disabled:opacity-50">
           Revoke organizer request
         </button>}
         <div id={consentFeedbackId} role={consentFeedback?.kind === "error" ? "alert" : "status"} aria-live="polite"
-          className={`mt-2 min-h-5 font-ui text-xs ${consentFeedback?.kind === "error" ? "text-brand-yellow" : "text-emerald-300"}`}>
+          className={`mt-2 min-h-5 font-ui text-xs ${consentFeedback?.kind === "error" ? "text-red-700" : "text-emerald-700"}`}>
           {consentFeedback?.message || ""}
         </div>
       </form>

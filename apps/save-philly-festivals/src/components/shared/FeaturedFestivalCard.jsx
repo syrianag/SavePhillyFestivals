@@ -23,7 +23,7 @@ export function FeaturedFestivalCard({
   return (
     <div
       className={cn(
-        "flex w-[min(896px,85vw)] flex-shrink-0 flex-col overflow-hidden rounded-2xl border border-slate-100 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-white",
+        "flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-100 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-white",
         className
       )}
       {...props}
@@ -52,7 +52,7 @@ export function FeaturedFestivalCard({
 
       {/* Description Content */}
       <div
-        className="flex h-auto min-h-[220px] flex-col px-5 pb-5 pt-4 md:h-[260px] md:px-7 md:pt-6"
+        className="flex h-auto min-h-[220px] flex-col px-5 pb-5 pt-4 md:min-h-[260px] md:px-7 md:pt-6"
         style={{ 
           background: `linear-gradient(180deg, ${bgColor}ee 0%, ${bgColor}ff 100%)` 
         }}

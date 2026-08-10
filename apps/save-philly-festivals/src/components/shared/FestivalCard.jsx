@@ -93,7 +93,7 @@ export function FestivalCard({
         </div>
       </>
     );
-    const cardClass = cn("group flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-150 shadow-2xs hover:shadow-xs transition-all duration-300 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 bg-white", className);
+    const cardClass = cn("group flex w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 shadow-2xs hover:shadow-xs transition-all duration-300 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 bg-white", className);
     return slug ? (
       <Link href={`/festivals/${slug}`} aria-label={`View ${title}`} data-slot="festival-card" className={cardClass} {...props}>{card}</Link>
     ) : (
@@ -143,11 +143,24 @@ export function FestivalCard({
       >
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-[18px]">
+            {/* The title is the link, not the whole card: this variant also carries a Save
+              * button, and nesting a button inside a link is invalid and unusable with a
+              * keyboard. `slug` is what builds the href — passing `href` instead silently
+              * rendered a card with nothing clickable at all. */}
             <h3
               className="font-body text-lg font-bold leading-[22px]"
               style={{ color: getTextColorForBg(bgColor) }}
             >
-              {title}
+              {slug ? (
+                <Link
+                  href={`/festivals/${slug}`}
+                  className="rounded-sm hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  {title}
+                </Link>
+              ) : (
+                title
+              )}
             </h3>
 
             <div className="flex flex-col gap-2">

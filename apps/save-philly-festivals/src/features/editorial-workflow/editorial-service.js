@@ -1,3 +1,4 @@
+import { allDayTimedMirror } from "@/features/festivals/discovery";
 import { assertEditorialTransition, validTransitions } from "./editorial-transition-policy";
 import { EditorialConflictError, EditorialNotFoundError } from "./editorial-repository";
 import { deliverWorkflowNotification } from "./editorial-notifications";
@@ -10,6 +11,59 @@ export async function getEditorialFestival(id, { repository }) {
   const festival = await repository.findDetail(id);
   if (!festival) throw new EditorialNotFoundError();
   return { ...festival, valid_actions: validTransitions(festival.workflow_state) };
+}
+
+/**
+ * Editor content edit, distinct from a workflow transition.
+ *
+ * Dates arrive as strings from the wire and are converted here; all-day festivals also get
+ * their timed mirror written, because public discovery sorts and filters on `start_date` and a
+ * null there makes the festival render as "Dates TBD" and drop out of every date filter.
+ */
+export async function updateEditorialFestival(festivalId, input, dependencies) {
+  const { repository, user } = dependencies;
+  const current = await repository.findForTransition(festivalId);
+  if (!current) throw new EditorialNotFoundError();
+  if (current.revision !== input.expected_revision) throw new EditorialConflictError();
+
+  const { expected_revision: _ignored, reason, ...data } = input;
+  if (!Object.keys(data).length) throw new EditorialConflictError();
+
+  /* Whether the caller actually supplied dates, captured before the all-day mirror is applied
+   * below. The mirror writes start_date/end_date as derived values, so testing `data` after it
+   * would resync the occurrence on every edit — including a pure name change. */
+  const datesChanged = ["calendar_date_type", "start_date", "end_date", "all_day_start", "all_day_end"]
+    .some((key) => Object.hasOwn(data, key));
+  for (const key of ["start_date", "end_date"]) {
+    if (Object.hasOwn(data, key) && data[key] !== null) data[key] = new Date(data[key]);
+  }
+  for (const key of ["all_day_start", "all_day_end"]) {
+    if (Object.hasOwn(data, key) && data[key] !== null) data[key] = new Date(`${data[key]}T00:00:00.000Z`);
+  }
+
+  const dateType = data.calendar_date_type ?? current.calendar_date_type;
+  if (dateType === "timed") {
+    if (Object.hasOwn(data, "calendar_date_type")) {
+      data.all_day_start = null;
+      data.all_day_end = null;
+    }
+  } else {
+    const allDayStart = Object.hasOwn(data, "all_day_start") ? data.all_day_start : current.all_day_start;
+    const allDayEnd = Object.hasOwn(data, "all_day_end") ? data.all_day_end : current.all_day_end;
+    Object.assign(data, allDayTimedMirror(allDayStart, allDayEnd));
+  }
+
+  return {
+    festival: await repository.updateEditable({
+      festivalId,
+      expectedRevision: input.expected_revision,
+      data,
+      reason,
+      datesChanged,
+      actorUserId: user.id,
+      ...(dependencies.createId ? { createId: dependencies.createId } : {}),
+    }),
+  };
 }
 
 export async function transitionFestival(festivalId, input, dependencies) {

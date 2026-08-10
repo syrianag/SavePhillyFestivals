@@ -5,8 +5,8 @@ import { producerNotificationProvider } from "@/lib/mail";
 import { authorizeEditor } from "./editorial-authorization";
 import { EditorialPolicyError } from "./editorial-transition-policy";
 import { editorialRepository } from "./editorial-repository";
-import { EDITORIAL_JSON_BODY_LIMIT, festivalIdSchema, listFestivalsQuerySchema, notificationIdSchema, reviewAssetSchema, transitionFestivalSchema } from "./editorial-schema";
-import { getEditorialFestival, listEditorialFestivals, retryWorkflowNotification, reviewFestivalAsset, transitionFestival } from "./editorial-service";
+import { EDITORIAL_JSON_BODY_LIMIT, festivalIdSchema, listFestivalsQuerySchema, notificationIdSchema, reviewAssetSchema, transitionFestivalSchema, updateFestivalSchema } from "./editorial-schema";
+import { getEditorialFestival, listEditorialFestivals, retryWorkflowNotification, reviewFestivalAsset, transitionFestival, updateEditorialFestival } from "./editorial-service";
 import { enforceProducerMutationOrigin, producerEdgeRateLimitVerified } from "@/features/producer-submission/producer-request-security";
 
 const HEADERS = { "Cache-Control": "private, no-store" };
@@ -84,6 +84,14 @@ export async function handleAdminTransition(request, context, injected) {
     const values = await authorized(injected); const gate = mutationGate(request, values); if (gate) return gate;
     const parsed = await parseJson(request, transitionFestivalSchema); if (parsed.response) return parsed.response;
     return json(await transitionFestival(id, parsed.data, values));
+  } catch (error) { return handled(error); }
+}
+export async function handleAdminUpdate(request, context, injected) {
+  const id = await idFrom(context); if (!id) return json({ error: "Festival not found." }, 404);
+  try {
+    const values = await authorized(injected); const gate = mutationGate(request, values); if (gate) return gate;
+    const parsed = await parseJson(request, updateFestivalSchema); if (parsed.response) return parsed.response;
+    return json(await updateEditorialFestival(id, parsed.data, values));
   } catch (error) { return handled(error); }
 }
 export async function handleAdminNotificationRetry(request, context, injected) {

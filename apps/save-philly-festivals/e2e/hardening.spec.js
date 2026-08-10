@@ -52,14 +52,37 @@ test("calendar exposes selected-day and month-control semantics", async ({ page 
   // The calendar loads unfiltered so it never opens pre-filtered to a day with no festivals.
   await expect(page.getByRole("button", { pressed: true })).toHaveCount(0);
 
-  // Selecting a day marks exactly that day pressed and filters the list to it.
-  const day = page.getByRole("button", { name: /^[A-Z][a-z]+ 15, \d{4}/ });
+  // Navigate to the month holding the all-day fixture (September 2026).
+  // Month-and-year only; the festival list's date headings carry a day number and a comma.
+  const monthHeading = page.getByRole("heading", { level: 3, name: /^[A-Z][a-z]+ \d{4}$/ });
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    if ((await monthHeading.textContent())?.trim() === "September 2026") break;
+    await page.getByRole("button", { name: /show next month/i }).click();
+  }
+  await expect(monthHeading).toHaveText("September 2026");
+
+  /* The day must advertise a festival before it is clicked. Asserting only on aria-pressed and
+   * the Clear chip — both of which appear even when the filter matches nothing — is what let
+   * the all-day day-key defect ship: every dot was one day away from its festival. */
+  const day = page.getByRole("button", { name: /^September 15, 2026, festival scheduled$/ });
+  await expect(day).toBeVisible();
   await day.click();
   await expect(page.getByRole("button", { pressed: true })).toHaveCount(1);
   await expect(page.getByRole("button", { name: /clear date/i })).toBeVisible();
 
-  // Selecting it again clears the filter, as does the Clear control.
+  // The festival on that day is actually listed — the assertion the old spec was missing.
+  await expect(page.getByRole("heading", { name: "Germantown Heritage Days" })).toBeVisible();
+
+  /* The fixture spans Sept 15-16, so clicking its second day must find it too. A multi-day
+   * festival used to match only its first day. */
   await day.click();
+  const secondDay = page.getByRole("button", { name: /^September 16, 2026, festival scheduled$/ });
+  await expect(secondDay).toBeVisible();
+  await secondDay.click();
+  await expect(page.getByRole("heading", { name: "Germantown Heritage Days" })).toBeVisible();
+
+  // Selecting it again clears the filter, as does the Clear control.
+  await secondDay.click();
   await expect(page.getByRole("button", { pressed: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /clear date/i })).toHaveCount(0);
 });

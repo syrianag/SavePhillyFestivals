@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  allDayTimedMirror,
   buildDateOverlapFilter,
+  expandFestivalDayKeys,
+  festivalDayKey,
   festivalOverlapsRange,
   getDiscoveryDateRange,
   paginatePublicResults,
@@ -74,24 +77,127 @@ describe("New York date ranges and interval overlap", () => {
     expect(festivalOverlapsRange({ start_date: "2026-06-12T04:00:00Z", end_date: null }, range)).toBe(false);
   });
 
-  it("builds the equivalent Prisma overlap predicate", () => {
+  it("builds the equivalent Prisma overlap predicate for timed and all-day festivals", () => {
     const start = new Date("2026-06-10T04:00:00.000Z");
     const end = new Date("2026-06-12T04:00:00.000Z");
-    expect(buildDateOverlapFilter({ start, end })).toEqual({
-      AND: [
-        { start_date: { not: null } },
-        { start_date: { lt: end } },
-        { OR: [{ end_date: { gte: start } }, { end_date: null, start_date: { gte: start } }] },
+    const startDay = new Date("2026-06-10T00:00:00.000Z");
+    const endDay = new Date("2026-06-12T00:00:00.000Z");
+    expect(buildDateOverlapFilter({ start, end, startDay, endDay })).toEqual({
+      OR: [
+        {
+          AND: [
+            { start_date: { not: null } },
+            { start_date: { lt: end } },
+            { OR: [{ end_date: { gte: start } }, { end_date: null, start_date: { gte: start } }] },
+          ],
+        },
+        {
+          AND: [
+            { start_date: null },
+            { all_day_start: { not: null } },
+            { all_day_start: { lt: endDay } },
+            { OR: [{ all_day_end: { gte: startDay } }, { all_day_end: null, all_day_start: { gte: startDay } }] },
+          ],
+        },
       ],
+    });
+  });
+
+  /* All-day columns are `@db.Date`, so they must be compared against a UTC date part. Passing
+   * the zoned instant would shift the boundary by a day. */
+  it("carries separate zoned and calendar-day bounds", () => {
+    const range = getDiscoveryDateRange(parseDiscoveryParams({}), new Date("2026-08-10T12:00:00.000Z"));
+    expect(range.start.toISOString()).toBe("2026-08-01T04:00:00.000Z");
+    expect(range.startDay.toISOString()).toBe("2026-08-01T00:00:00.000Z");
+    expect(range.end).toBeNull();
+  });
+
+  it("defaults to the current month forward and opts out with date=all", () => {
+    const now = new Date("2026-08-10T12:00:00.000Z");
+    expect(getDiscoveryDateRange(parseDiscoveryParams({}), now).startDay.toISOString()).toBe("2026-08-01T00:00:00.000Z");
+    expect(getDiscoveryDateRange(parseDiscoveryParams({ date: "all" }), now)).toEqual({
+      start: null, end: null, startDay: null, endDay: null,
+    });
+    expect(buildDateOverlapFilter(getDiscoveryDateRange(parseDiscoveryParams({ date: "all" }), now))).toBeNull();
+  });
+
+  it("matches all-day festivals that carry no timed start", () => {
+    const range = { start: new Date("2026-06-10T04:00:00.000Z"), end: new Date("2026-06-12T04:00:00.000Z") };
+    expect(festivalOverlapsRange(
+      { start_date: null, all_day_start: "2026-06-11T00:00:00.000Z", all_day_end: "2026-06-11T00:00:00.000Z" },
+      range
+    )).toBe(true);
+    expect(festivalOverlapsRange({ start_date: null, all_day_start: null }, range)).toBe(false);
+  });
+});
+
+/* The defect these cover: all-day dates round-trip as UTC midnight, so zoning them lands on the
+ * previous evening in Philadelphia. That put every calendar dot one day away from the festival
+ * it represented, making all-day festivals unreachable by clicking their own dot. */
+describe("calendar day keys", () => {
+  const allDay = {
+    calendar_date_type: "all_day",
+    start_date: null,
+    all_day_start: new Date("2026-08-15T00:00:00.000Z"),
+    all_day_end: new Date("2026-08-17T00:00:00.000Z"),
+  };
+
+  it("reads all-day dates as calendar days, not zoned instants", () => {
+    expect(festivalDayKey(allDay)).toBe("2026-08-15");
+  });
+
+  it("zones timed dates into the festival's own time zone", () => {
+    expect(festivalDayKey({
+      calendar_date_type: "timed",
+      start_date: new Date("2026-09-13T02:00:00.000Z"),
+      time_zone: "America/New_York",
+    })).toBe("2026-09-12");
+  });
+
+  it("expands a multi-day festival to every day it spans", () => {
+    expect(expandFestivalDayKeys(allDay)).toEqual(["2026-08-15", "2026-08-16", "2026-08-17"]);
+  });
+
+  it("expands a single-day festival to exactly one key", () => {
+    expect(expandFestivalDayKeys({ ...allDay, all_day_end: allDay.all_day_start })).toEqual(["2026-08-15"]);
+  });
+
+  it("returns no keys when a festival has no date at all", () => {
+    expect(expandFestivalDayKeys({ calendar_date_type: "all_day", start_date: null, all_day_start: null })).toEqual([]);
+  });
+});
+
+/* Guards the invariant the 20260810120000 backfill established: an all-day festival must carry
+ * a timed mirror, or it drops out of every date filter and renders as "Dates TBD". */
+describe("all-day timed mirror", () => {
+  it("mirrors midnight in Philadelphia for both ends of the range", () => {
+    expect(allDayTimedMirror(new Date("2026-08-15T00:00:00.000Z"), new Date("2026-08-17T00:00:00.000Z"))).toEqual({
+      start_date: new Date("2026-08-15T04:00:00.000Z"),
+      end_date: new Date("2026-08-17T04:00:00.000Z"),
+    });
+  });
+
+  it("collapses a missing end onto the start", () => {
+    expect(allDayTimedMirror(new Date("2025-12-06T00:00:00.000Z"), null)).toEqual({
+      start_date: new Date("2025-12-06T05:00:00.000Z"),
+      end_date: new Date("2025-12-06T05:00:00.000Z"),
     });
   });
 });
 
 describe("approved discovery predicates", () => {
-  it("always pins public collection queries to approved", () => {
+  it("always pins public collection queries to published", () => {
     const where = buildApprovedDiscoveryWhere(parseDiscoveryParams({ q: "food", location: "South" }));
-    expect(where.status).toBe("approved");
-    expect(where.AND).toHaveLength(2);
+    expect(where.workflow_state).toBe("published");
+    /* search + location + the default current-month-forward date bound */
+    expect(where.AND).toHaveLength(3);
+  });
+
+  it("drops the date bound only when the caller opts into past festivals", () => {
+    const upcoming = buildApprovedDiscoveryWhere(parseDiscoveryParams({ q: "food" }));
+    expect(upcoming.AND).toHaveLength(2);
+    const all = buildApprovedDiscoveryWhere(parseDiscoveryParams({ q: "food", date: "all" }));
+    expect(all.AND).toHaveLength(1);
   });
 
   it("allowlists public card fields without producer contact metadata", () => {
@@ -129,12 +235,12 @@ describe("production discovery query", () => {
     prismaMock.festival.count.mockResolvedValueOnce(1);
     prismaMock.category.findMany.mockResolvedValueOnce([]);
 
-    const result = await discoverApprovedFestivals(parseDiscoveryParams({}));
+    const result = await discoverApprovedFestivals(parseDiscoveryParams({ date: "all" }));
 
     expect(prismaMock.festival.findMany).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        where: { status: "approved" },
+        where: { workflow_state: "published" },
         select: PUBLIC_DISCOVERY_SELECT,
       })
     );

@@ -2,7 +2,9 @@ export const DISCOVERY_TIME_ZONE = "America/New_York";
 export const DISCOVERY_PAGE_SIZE = 24;
 export const DISCOVERY_MAX_PAGE_SIZE = 48;
 
-const DATE_PRESETS = new Set(["this-week", "this-month", "next-month", "custom"]);
+/* "all" opts out of the default current-month-forward bound so past festivals stay reachable
+ * from discovery, not just from their detail page. */
+const DATE_PRESETS = new Set(["this-week", "this-month", "next-month", "custom", "all"]);
 const SORTS = new Set(["soonest", "relevance", "newest", "name"]);
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -58,7 +60,7 @@ export function parseDiscoveryParams(input = {}) {
   };
 }
 
-function datePartsInTimeZone(date, timeZone = DISCOVERY_TIME_ZONE) {
+export function datePartsInTimeZone(date, timeZone = DISCOVERY_TIME_ZONE) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
     year: "numeric",
@@ -100,67 +102,150 @@ function parseCalendarDate(value) {
   return { year, month, day };
 }
 
-export function getDiscoveryDateRange(filters, now = new Date()) {
-  if (filters.date === "custom" || filters.start || filters.end) {
-    const startParts = filters.start ? parseCalendarDate(filters.start) : null;
-    const endParts = filters.end ? addCalendarDays(parseCalendarDate(filters.end), 1) : null;
-    return {
-      start: startParts ? zonedStartOfDay(startParts.year, startParts.month, startParts.day) : null,
-      end: endParts ? zonedStartOfDay(endParts.year, endParts.month, endParts.day) : null,
-    };
-  }
-
-  const today = datePartsInTimeZone(now);
-  if (filters.date === "this-week") {
-    return {
-      start: zonedStartOfDay(today.year, today.month, today.day),
-      end: (() => {
-        const end = addCalendarDays(today, 7);
-        return zonedStartOfDay(end.year, end.month, end.day);
-      })(),
-    };
-  }
-
-  if (filters.date === "this-month") {
-    const nextMonth = new Date(Date.UTC(today.year, today.month, 1));
-    return {
-      start: zonedStartOfDay(today.year, today.month, 1),
-      end: zonedStartOfDay(nextMonth.getUTCFullYear(), nextMonth.getUTCMonth() + 1, 1),
-    };
-  }
-
-  if (filters.date === "next-month") {
-    const start = new Date(Date.UTC(today.year, today.month, 1));
-    const end = new Date(Date.UTC(today.year, today.month + 1, 1));
-    return {
-      start: zonedStartOfDay(start.getUTCFullYear(), start.getUTCMonth() + 1, 1),
-      end: zonedStartOfDay(end.getUTCFullYear(), end.getUTCMonth() + 1, 1),
-    };
-  }
-
-  return { start: null, end: null };
+/* Calendar-day counterpart to zonedStartOfDay. `all_day_start`/`all_day_end` are `@db.Date`
+ * columns, so Prisma compares them against a UTC date part — passing a zoned instant such as
+ * 2026-08-01T04:00:00Z at a `date` column silently shifts the boundary by a day. Every range
+ * therefore carries both forms: `start`/`end` for the timed columns, `startDay`/`endDay` for
+ * the all-day ones. */
+function utcDayBoundary(year, month, day) {
+  return new Date(Date.UTC(year, month - 1, day));
 }
 
+function rangeFor(startParts, endParts) {
+  return {
+    start: startParts ? zonedStartOfDay(startParts.year, startParts.month, startParts.day) : null,
+    end: endParts ? zonedStartOfDay(endParts.year, endParts.month, endParts.day) : null,
+    startDay: startParts ? utcDayBoundary(startParts.year, startParts.month, startParts.day) : null,
+    endDay: endParts ? utcDayBoundary(endParts.year, endParts.month, endParts.day) : null,
+  };
+}
+
+export const EMPTY_DISCOVERY_RANGE = Object.freeze({ start: null, end: null, startDay: null, endDay: null });
+
+export function getDiscoveryDateRange(filters, now = new Date()) {
+  if (filters.date === "custom" || filters.start || filters.end) {
+    return rangeFor(
+      filters.start ? parseCalendarDate(filters.start) : null,
+      filters.end ? addCalendarDays(parseCalendarDate(filters.end), 1) : null
+    );
+  }
+
+  /* Explicit opt-out: the only way to see festivals that have already happened. */
+  if (filters.date === "all") return EMPTY_DISCOVERY_RANGE;
+
+  const today = datePartsInTimeZone(now);
+  if (filters.date === "this-week") return rangeFor(today, addCalendarDays(today, 7));
+  if (filters.date === "this-month") return rangeFor({ ...today, day: 1 }, monthStart(today, 1));
+  if (filters.date === "next-month") return rangeFor(monthStart(today, 1), monthStart(today, 2));
+
+  /* Default: current month forward, with no upper bound. Public views lead with what is still
+   * ahead; past festivals remain reachable by direct link and via `date=all`. */
+  return rangeFor({ ...today, day: 1 }, null);
+}
+
+function monthStart(parts, monthsAhead) {
+  const date = new Date(Date.UTC(parts.year, parts.month - 1 + monthsAhead, 1));
+  return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: 1 };
+}
+
+/* Matches a festival stored either way: timed festivals carry `start_date`/`end_date`, all-day
+ * ones carry `all_day_start`/`all_day_end`. The backfill migration mirrors all-day dates onto
+ * the timed columns, so today the first branch alone would suffice — the second branch is the
+ * guard against importer runs that land rows before the mirror is written. */
 export function buildDateOverlapFilter(range) {
-  if (!range.start && !range.end) return null;
-  const clauses = [{ start_date: { not: null } }];
-  if (range.end) clauses.push({ start_date: { lt: range.end } });
+  if (!range.start && !range.end && !range.startDay && !range.endDay) return null;
+
+  const timed = [{ start_date: { not: null } }];
+  if (range.end) timed.push({ start_date: { lt: range.end } });
   if (range.start) {
-    clauses.push({
+    timed.push({
       OR: [
         { end_date: { gte: range.start } },
         { end_date: null, start_date: { gte: range.start } },
       ],
     });
   }
-  return { AND: clauses };
+
+  const allDay = [{ start_date: null }, { all_day_start: { not: null } }];
+  if (range.endDay) allDay.push({ all_day_start: { lt: range.endDay } });
+  if (range.startDay) {
+    allDay.push({
+      OR: [
+        { all_day_end: { gte: range.startDay } },
+        { all_day_end: null, all_day_start: { gte: range.startDay } },
+      ],
+    });
+  }
+
+  return { OR: [{ AND: timed }, { AND: allDay }] };
 }
 
 export function festivalOverlapsRange(festival, range) {
-  if (!festival.start_date) return false;
-  const start = new Date(festival.start_date);
-  const end = festival.end_date ? new Date(festival.end_date) : start;
+  const rawStart = festival.start_date ?? festival.all_day_start;
+  if (!rawStart) return false;
+  const start = new Date(rawStart);
+  const rawEnd = festival.start_date ? festival.end_date : festival.all_day_end;
+  const end = rawEnd ? new Date(rawEnd) : start;
   return (!range.end || start < range.end) && (!range.start || end >= range.start);
+}
+
+/* All-day dates are `@db.Date`, which round-trips as UTC midnight — so its UTC parts ARE the
+ * intended calendar day and must not be re-zoned. Timed dates are instants and do need zoning.
+ * Mixing the two conventions is what put calendar dots one day off from the filter they drive. */
+export function festivalDayKey(record) {
+  const isAllDay = record?.calendar_date_type === "all_day"
+    || (!record?.start_date && Boolean(record?.all_day_start));
+  const value = isAllDay ? record?.all_day_start : record?.start_date;
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = isAllDay
+    ? { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() }
+    : datePartsInTimeZone(date, record?.time_zone || DISCOVERY_TIME_ZONE);
+  return toDayKey(parts);
+}
+
+function toDayKey({ year, month, day }) {
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+const MAX_EXPANDED_DAYS = 366;
+
+/* Every calendar day a festival occupies, so a multi-day festival is reachable by clicking any
+ * of its days rather than only its first. Capped so a corrupt end date cannot hang a render. */
+export function expandFestivalDayKeys(record) {
+  const startKey = festivalDayKey(record);
+  if (!startKey) return [];
+  const isAllDay = record?.calendar_date_type === "all_day"
+    || (!record?.start_date && Boolean(record?.all_day_start));
+  const endValue = isAllDay ? record?.all_day_end : record?.end_date;
+  const endKey = endValue ? festivalDayKey({ ...record, start_date: isAllDay ? null : endValue, all_day_start: isAllDay ? endValue : null }) : null;
+  if (!endKey || endKey <= startKey) return [startKey];
+
+  const keys = [];
+  let cursor = parseCalendarDate(startKey);
+  for (let index = 0; index < MAX_EXPANDED_DAYS; index += 1) {
+    const key = toDayKey(cursor);
+    keys.push(key);
+    if (key >= endKey) break;
+    cursor = addCalendarDays(cursor, 1);
+  }
+  return keys;
+}
+
+/* The timed mirror of an all-day range, matching the backfill migration exactly: midnight in
+ * America/New_York on the inclusive first and last day. Shared so the producer write path
+ * cannot reintroduce the null `start_date` the migration just repaired. */
+export function allDayTimedMirror(allDayStart, allDayEnd) {
+  if (!allDayStart) return { start_date: null, end_date: null };
+  const startDate = new Date(allDayStart);
+  if (Number.isNaN(startDate.getTime())) return { start_date: null, end_date: null };
+  const endSource = allDayEnd ? new Date(allDayEnd) : startDate;
+  const end = Number.isNaN(endSource.getTime()) ? startDate : endSource;
+  return {
+    start_date: zonedStartOfDay(startDate.getUTCFullYear(), startDate.getUTCMonth() + 1, startDate.getUTCDate()),
+    end_date: zonedStartOfDay(end.getUTCFullYear(), end.getUTCMonth() + 1, end.getUTCDate()),
+  };
 }
 
 function relevanceScore(festival, query) {

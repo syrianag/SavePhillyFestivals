@@ -9,6 +9,7 @@ import {
   mapPublicFestival,
   PUBLIC_FESTIVAL_SELECT,
 } from "@/features/festivals/public-festival";
+import { buildDateOverlapFilter, getDiscoveryDateRange } from "@/features/festivals/discovery";
 
 
 
@@ -97,12 +98,20 @@ export async function getPublicFestivalBySlug(slug) {
   return mapPublicFestival(festival);
 }
 
-export async function getPublicFestivalCatalog() {
+/**
+ * The calendar catalog, bounded to the current month forward by default.
+ *
+ * Without a bound this loads every published festival — with its schedules and primary
+ * occurrence — on every request, and the calendar opens on the oldest historical date rather
+ * than on what is coming up. Pass `{ date: "all" }` to include past festivals.
+ */
+export async function getPublicFestivalCatalog(filters = {}) {
   const fixture = getDiscoveryE2eFestivalCatalog();
   if (fixture !== undefined) return [...fixture, ...editorialE2EPublicCatalog()].map(mapPublicFestival);
 
+  const dateFilter = buildDateOverlapFilter(getDiscoveryDateRange(filters));
   const festivals = await prisma.festival.findMany({
-    where: publishedDiscoveryWhere,
+    where: dateFilter ? { AND: [publishedDiscoveryWhere, dateFilter] } : publishedDiscoveryWhere,
     select: PUBLIC_FESTIVAL_SELECT,
     orderBy: { start_date: "asc" },
   });

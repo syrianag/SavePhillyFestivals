@@ -1,22 +1,13 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { DiscoveryControls } from "@/components/shared/DiscoveryControls";
 import { FeaturedFestivalCard } from "@/components/shared/FeaturedFestivalCard";
-import { FestivalCard } from "@/components/shared/FestivalCard";
 import { formatFestivalDate, parseDiscoveryParams } from "@/features/festivals/discovery";
-import { discoverApprovedFestivals } from "@/features/festivals/public-discovery";
+import { getDiscoveryFacets, getFeaturedFestivals } from "@/features/festivals/public-discovery";
+import { FestivalResults, FestivalResultsSkeleton } from "@/features/festivals/FestivalResults";
 import { articles } from "@/lib/festivals";
 
 const CARD_COLORS = ["#1E7BF6", "#206C4E", "#F6C847", "#FE7D0C", "#FF8577", "#FB439B"];
-
-function pageHref(filters, page) {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries({ ...filters, page })) {
-    if (value && !(key === "sort" && value === (filters.q ? "relevance" : "soonest"))) {
-      params.set(key, String(value));
-    }
-  }
-  return `/?${params.toString()}#festival-results`;
-}
 
 function displayLocation(festival) {
   return festival.location || festival.city || "Philadelphia";
@@ -24,24 +15,19 @@ function displayLocation(festival) {
 
 export default async function Home({ searchParams }) {
   const filters = parseDiscoveryParams(await searchParams);
-  let discovery;
-  let databaseFailed = false;
 
+  /* Only the page shell's own data is awaited here. The result grid loads inside a Suspense
+   * boundary below, so paginating re-renders the list without tearing down the hero, the search
+   * controls, or the featured row. */
+  let facets = { categories: [], locations: [] };
+  /* Editor-curated promotions; `getFeaturedFestivals` falls back to the soonest upcoming
+   * festivals when nothing is flagged, so the row is never empty. */
+  let featured = [];
   try {
-    discovery = await discoverApprovedFestivals(filters);
+    [facets, featured] = await Promise.all([getDiscoveryFacets(), getFeaturedFestivals(2)]);
   } catch (error) {
-    databaseFailed = true;
-    console.error("Public festival discovery failed", error);
-    discovery = {
-      items: [],
-      pagination: { page: 1, pageSize: 24, total: 0, pages: 1, offset: 0 },
-      categories: [],
-      locations: [],
-    };
+    console.error("Homepage shell data failed to load", error);
   }
-
-  const featured = discovery.items.slice(0, 2);
-  const resultLabel = `${discovery.pagination.total} ${discovery.pagination.total === 1 ? "festival" : "festivals"} found`;
 
   return (
     <>
@@ -52,25 +38,27 @@ export default async function Home({ searchParams }) {
           <div className="absolute -left-20 -top-20 size-80 rounded-full bg-indigo-300/20 blur-3xl pointer-events-none" />
           <div className="absolute right-10 bottom-0 size-96 rounded-full bg-rose-200/15 blur-3xl pointer-events-none" />
           
-          <div className="relative z-10 max-w-4xl">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-0.5 text-xs font-bold text-indigo-700 border border-indigo-500/20 mb-5 shadow-3xs">
+          <div className="relative z-10 mx-auto max-w-4xl text-center">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-0.5 text-xs font-bold text-indigo-700 border border-indigo-500/20 mb-5 shadow-2xs">
               ✨ Celebrating Community & Culture
             </span>
             <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-none text-slate-900 mb-5">
               Discover Philadelphia&apos;s <span className="bg-gradient-to-r from-indigo-600 via-indigo-500 to-rose-500 bg-clip-text text-transparent">Vibrant Festivals</span>
             </h1>
-            <p className="text-base sm:text-lg text-slate-600 mb-8 max-w-2xl font-sans leading-relaxed">
+            <p className="text-base sm:text-lg text-slate-600 mb-8 mx-auto max-w-2xl font-sans leading-relaxed">
               From summer block parties and art walks to cultural celebrations, explore the events that make every Philly neighborhood unique.
             </p>
             
-            <div className="max-w-[960px] text-left">
-              <DiscoveryControls filters={filters} categories={discovery.categories} locations={discovery.locations} />
+            {/* Controls stay left-aligned internally — centered form fields are hard to
+              * scan — but the block itself centers under the heading. */}
+            <div className="mx-auto max-w-[960px] text-left">
+              <DiscoveryControls filters={filters} categories={facets.categories} locations={facets.locations} />
             </div>
           </div>
         </div>
 
         {/* Discovery view switcher tabs */}
-        <nav aria-label="Discovery views" className="mt-8 flex items-center gap-4 border-b border-slate-200 pb-3">
+        <nav aria-label="Discovery views" className="mt-8 flex items-center justify-center gap-4 border-b border-slate-200 pb-3">
           <button 
             type="button" 
             aria-current="page" 
@@ -94,8 +82,11 @@ export default async function Home({ searchParams }) {
       </section>
 
       {featured.length > 0 && (
-        <section aria-label="Featured festival results" className="overflow-hidden pb-10">
-          <div className="flex gap-5 overflow-x-auto px-4 pb-6 md:gap-[38px] md:pl-[81px] md:pr-[81px]">
+        <section aria-label="Featured festival results" className="pb-10">
+          {/* A grid rather than a scroll row. The cards were `w-[min(896px,85vw)]` with
+            * `flex-shrink-0`, so two of them needed ~170vw and could never fit any viewport —
+            * the row was permanently horizontally scrolled at every screen size. */}
+          <div className="mx-auto grid max-w-[1440px] grid-cols-1 gap-5 px-4 pb-6 md:grid-cols-2 md:gap-[38px] md:px-[81px]">
             {featured.map((festival, index) => (
               <FeaturedFestivalCard
                 key={festival.id}
@@ -110,11 +101,6 @@ export default async function Home({ searchParams }) {
                 image={festival.image_url}
               />
             ))}
-          </div>
-          <div aria-hidden="true" className="mt-2 hidden items-center justify-end gap-2 px-4 md:flex md:px-[81px]">
-            <span className="size-[8px] rounded-full bg-slate-900" />
-            <span className="size-[8px] rounded-full bg-slate-200" />
-            <span className="size-[8px] rounded-full bg-slate-200" />
           </div>
         </section>
       )}
@@ -137,75 +123,18 @@ export default async function Home({ searchParams }) {
           <h2 id="festival-results-heading" className="font-heading text-xl font-bold text-slate-900 md:text-2xl">
             {filters.category ? `${filters.category} festivals` : "Discover festivals"}
           </h2>
-          <p aria-live="polite" className="font-ui text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-            {databaseFailed ? "Results unavailable" : resultLabel}
-          </p>
         </div>
 
-        {databaseFailed ? (
-          <div role="alert" className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 px-6 py-12 text-center">
-            <h3 className="font-heading text-2xl font-bold text-slate-800">Festival listings are temporarily unavailable</h3>
-            <p className="mx-auto mt-2 max-w-xl font-body text-slate-500">We couldn&apos;t load approved festivals right now. Please try again shortly.</p>
-          </div>
-        ) : discovery.items.length === 0 ? (
-          <div className="mt-8 rounded-2xl bg-slate-50 border border-slate-100 px-6 py-12 text-center">
-            <h3 className="font-heading text-2xl font-bold text-slate-800">No festivals match your search</h3>
-            <p className="mx-auto mt-2 max-w-xl font-body text-slate-500">Try a different keyword, date range, category, or location.</p>
-            <Link 
-              href="/" 
-              className="mt-6 inline-flex h-10 items-center justify-center rounded-full bg-slate-900 px-6 font-ui text-sm font-semibold text-white shadow-2xs hover:bg-slate-800 transition-colors"
-            >
-              Clear all filters
-            </Link>
-          </div>
-        ) : (
-          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-            {discovery.items.map((festival, index) => (
-              <FestivalCard
-                key={festival.id}
-                variant="compact"
-                id={festival.id}
-                slug={festival.slug}
-                image={festival.image_url}
-                title={festival.name}
-                date={formatFestivalDate(festival.start_date, festival.end_date)}
-                location={displayLocation(festival)}
-                category={festival.categories?.[0]?.category?.name}
-                bgColor={CARD_COLORS[index % CARD_COLORS.length]}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Custom Modern Pagination */}
-        {!databaseFailed && discovery.pagination.pages > 1 && (
-          <nav aria-label="Festival result pages" className="mt-12 flex items-center justify-center gap-3 border-t border-slate-100 pt-8">
-            {discovery.pagination.page > 1 && (
-              <Link 
-                href={pageHref(filters, discovery.pagination.page - 1)} 
-                className="rounded-full border border-slate-350 px-4 py-2 font-ui text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-              >
-                Previous
-              </Link>
-            )}
-            <span className="font-ui text-sm font-bold text-slate-500">
-              Page {discovery.pagination.page} of {discovery.pagination.pages}
-            </span>
-            {discovery.pagination.page < discovery.pagination.pages && (
-              <Link 
-                href={pageHref(filters, discovery.pagination.page + 1)} 
-                className="rounded-full bg-slate-900 px-5 py-2 font-ui text-sm font-semibold text-white shadow-2xs hover:bg-slate-800 transition-colors"
-              >
-                Next
-              </Link>
-            )}
-          </nav>
-        )}
+        {/* Only this subtree re-renders while paginating; `key` re-suspends it per query so the
+          * skeleton appears for the new page instead of the previous results lingering. */}
+        <Suspense key={JSON.stringify(filters)} fallback={<FestivalResultsSkeleton />}>
+          <FestivalResults filters={filters} />
+        </Suspense>
       </section>
 
       {/* Tours Promotion Banner */}
       <section className="mx-auto max-w-[1440px] px-4 pb-10 md:px-[81px] md:pb-14">
-        <div className="flex flex-col overflow-hidden rounded-3xl bg-indigo-650 md:flex-row md:items-center shadow-md">
+        <div className="flex flex-col overflow-hidden rounded-3xl bg-indigo-600 md:flex-row md:items-center shadow-md">
           <div className="w-full shrink-0 px-6 py-8 sm:px-10 md:w-[480px] md:px-12 md:py-12">
             <p className="font-serif text-2xl leading-normal text-amber-300 md:text-[28px] md:leading-[36px]">
               Explore hidden gems and local favorites with our trusted guided tours!
@@ -213,7 +142,7 @@ export default async function Home({ searchParams }) {
             <div className="mt-6">
               <Link 
                 href="/tours" 
-                className="inline-flex h-10 items-center justify-center rounded-full bg-white px-5 font-ui text-sm font-bold text-indigo-750 transition-all hover:bg-slate-50 shadow-xs"
+                className="inline-flex h-10 items-center justify-center rounded-full bg-white px-5 font-ui text-sm font-bold text-indigo-700 transition-all hover:bg-slate-50 shadow-xs"
               >
                 Learn More
               </Link>

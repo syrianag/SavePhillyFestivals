@@ -6,7 +6,8 @@ test("home page renders festival discovery content", async ({ page }) => {
   await expect(page).toHaveTitle(/Save Philly Festivals/i);
   await expect(page.getByRole("heading", { name: "About Philly Fests" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Featured" })).toBeVisible();
-  await expect(page.getByText("2 festivals found")).toBeVisible();
+  // Three discovery fixtures: two timed, plus the all-day festival that guards the day-key path.
+  await expect(page.getByText("3 festivals found")).toBeVisible();
   await expect(page.getByRole("link", { name: "View Riverfront Arts Festival" })).toHaveAttribute("href", "/festivals/riverfront-arts-festival");
 });
 

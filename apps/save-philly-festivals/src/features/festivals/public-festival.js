@@ -1,4 +1,20 @@
+import { expandFestivalDayKeys } from "@/features/festivals/discovery";
+
 export const PHILADELPHIA_TIME_ZONE = "America/New_York";
+
+/* Renders a "YYYY-MM-DD" calendar-day key as prose. Formatted in UTC on purpose: the key is a
+ * calendar day with no instant attached, so zoning it would shift it back a day. */
+function formatCalendarDayLabel(dayKey) {
+  if (!dayKey) return null;
+  const [year, month, day] = dayKey.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
 
 export const PUBLIC_FESTIVAL_SELECT = Object.freeze({
   id: true,
@@ -25,6 +41,10 @@ export const PUBLIC_FESTIVAL_SELECT = Object.freeze({
   history: true,
   start_date: true,
   end_date: true,
+  calendar_date_type: true,
+  all_day_start: true,
+  all_day_end: true,
+  time_zone: true,
   occurrences: {
     where: { is_primary: true },
     take: 1,
@@ -190,6 +210,24 @@ export function mapPublicFestival(record) {
 
   const startDate = primaryOccurrence?.start_at || primaryOccurrence?.all_day_start || record.start_date;
   const endDate = primaryOccurrence?.end_at || primaryOccurrence?.all_day_end || record.end_date;
+
+  /* All-day dates are stored as `@db.Date`, i.e. UTC midnight. Formatting them in Philadelphia
+   * time lands on the previous evening, which is what made a one-day festival read as
+   * "Thursday, August 14 at 8:00 PM" instead of "Friday, August 15". Day keys and labels for
+   * all-day festivals therefore read the UTC parts and never render a time. */
+  const dayKeySource = {
+    calendar_date_type: primaryOccurrence?.calendar_date_type || record.calendar_date_type,
+    start_date: primaryOccurrence?.start_at || record.start_date,
+    end_date: primaryOccurrence?.end_at || record.end_date,
+    all_day_start: primaryOccurrence?.all_day_start || record.all_day_start,
+    all_day_end: primaryOccurrence?.all_day_end || record.all_day_end,
+    time_zone: primaryOccurrence?.time_zone || record.time_zone,
+  };
+  const isAllDay = dayKeySource.calendar_date_type === "all_day"
+    || (!dayKeySource.start_date && Boolean(dayKeySource.all_day_start));
+  const dayKeys = expandFestivalDayKeys(dayKeySource);
+  const allDayStartLabel = isAllDay ? formatCalendarDayLabel(dayKeys[0]) : null;
+  const allDayEndLabel = isAllDay ? formatCalendarDayLabel(dayKeys[dayKeys.length - 1]) : null;
   const locality = [record.city, record.state].filter(Boolean).join(", ");
   const address = [locality, record.zip_code].filter(Boolean).join(" ");
 
@@ -211,14 +249,17 @@ export function mapPublicFestival(record) {
     history: record.history || null,
     start_date: startDate || null,
     end_date: endDate || null,
+    all_day: isAllDay,
+    day_keys: dayKeys,
     categories,
     tags,
     schedules,
     socialLinks: getOfficialSocialLinks(record),
-    dateLabel: startDate
-      ? formatPhiladelphiaDateTime(startDate)
-      : "Dates and times to be announced",
-    endDateLabel: endDate ? formatPhiladelphiaDateTime(endDate) : null,
+    dateLabel: allDayStartLabel
+      || (startDate ? formatPhiladelphiaDateTime(startDate) : "Dates and times to be announced"),
+    endDateLabel: isAllDay
+      ? (allDayEndLabel !== allDayStartLabel ? allDayEndLabel : null)
+      : (endDate ? formatPhiladelphiaDateTime(endDate) : null),
     locationLabel: record.location?.trim() || "Location to be announced",
     addressLabel: address || "Address details to be announced",
   };

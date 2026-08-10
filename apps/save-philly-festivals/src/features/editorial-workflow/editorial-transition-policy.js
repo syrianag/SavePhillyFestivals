@@ -12,8 +12,12 @@ export const FESTIVAL_TRANSITIONS = Object.freeze({
   archived: Object.freeze([]),
 });
 
-const INTERNAL_REASON_REQUIRED = new Set(["changes_requested", "rejected", "canceled", "archived"]);
-const PRODUCER_MESSAGE_REQUIRED = new Set(["changes_requested", "rejected"]);
+/* Exported so the transition dialog can label and require these fields from the same source
+ * the server validates against. They previously drifted: the dialog marked the internal reason
+ * "(Optional)" while archiving — the supported replacement for deletion — required one, so an
+ * editor's first attempt to archive a festival came back as a 422. */
+export const INTERNAL_REASON_REQUIRED = Object.freeze(["changes_requested", "rejected", "canceled", "archived"]);
+export const PRODUCER_MESSAGE_REQUIRED = Object.freeze(["changes_requested", "rejected"]);
 
 export class EditorialPolicyError extends Error {
   constructor(message, code = "invalid_transition") {
@@ -33,10 +37,10 @@ export function assertEditorialTransition({ role, fromState, toState, reason, pr
   if (!validTransitions(fromState).includes(toState)) {
     throw new EditorialPolicyError(`Transition from ${fromState} to ${toState} is not allowed.`);
   }
-  if (INTERNAL_REASON_REQUIRED.has(toState) && !reason) {
+  if (INTERNAL_REASON_REQUIRED.includes(toState) && !reason) {
     throw new EditorialPolicyError("An internal reason is required.", "reason_required");
   }
-  if (PRODUCER_MESSAGE_REQUIRED.has(toState) && !producerMessage) {
+  if (PRODUCER_MESSAGE_REQUIRED.includes(toState) && !producerMessage) {
     throw new EditorialPolicyError("A producer-safe message is required.", "producer_message_required");
   }
   if (publicMessage && toState !== "canceled") {

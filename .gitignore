@@ -32,6 +32,13 @@ test-results/
 # *.festival-import-report.json
 # *.festival-import-report.csv
 
+# Signed import approvals, reviewer keys, and backup/restore evidence.
+# Never commit — see docs/FESTIVAL-DATA-IMPORT-RUNBOOK.md and Activation-Gate.md 5.3.
+restricted/
+
+# Internal teaching reference; reused as a template in student repositories
+governance-doc.md
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
@@ -70,3 +77,9 @@ docs/Festivals_Postgres_Export.csv
 *.festival-source.csv
 .vercel
 .env*
+
+# Client call recordings and transcripts. Third-party conversation material — never commit.
+# These were committed once in error and stripped from the branch before it was ever pushed.
+docs/DiasporaDNA Launchpad Interns CheckIn & Handoff Document_otter_ai/
+*call-transcript*.txt
+*Summary-Call*.txt

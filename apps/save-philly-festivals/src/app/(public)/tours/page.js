@@ -26,14 +26,14 @@ export default function ToursPage() {
           </div>
           
           <div className="relative z-10 space-y-4 max-w-xl my-auto">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/10 px-3.5 py-1 text-xs font-bold text-amber-300 border border-amber-400/20 shadow-3xs">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/10 px-3.5 py-1 text-xs font-bold text-amber-300 border border-amber-400/20 shadow-2xs">
               <Compass className="size-3.5" />
               GUIDED EXPERIENCES
             </span>
             <h1 className="font-heading text-4xl sm:text-5xl font-extrabold tracking-tight leading-none text-amber-300">
               City of Festivals Tours
             </h1>
-            <p className="text-base sm:text-lg text-slate-350 leading-relaxed font-sans">
+            <p className="text-base sm:text-lg text-slate-300 leading-relaxed font-sans">
               Ride the streets of the City of Festivals to witness a memory lane of good times at the Philly Festivals Tour.
             </p>
           </div>
@@ -66,7 +66,7 @@ export default function ToursPage() {
 
       {/* Main description paragraph */}
       <section className="pb-10 border-b border-slate-100 mb-10">
-        <p className="max-w-4xl font-body text-base sm:text-lg leading-relaxed text-slate-650">
+        <p className="max-w-4xl font-body text-base sm:text-lg leading-relaxed text-slate-600">
           Philadelphia&apos;s festival culture lives in its neighborhoods—each one with its own flavors, sounds, and stories. Our guided tours take you through the communities that make these celebrations happen, connecting you to the people and places behind the music, food, and traditions that define our city. Whether you hop on a bus, lace up your sneakers, or explore at your own pace, you&apos;ll experience the block parties, cultural celebrations, and community gatherings that make Philly the City of Brotherly Love and Sisterly Affection.
         </p>
       </section>
@@ -122,7 +122,7 @@ export default function ToursPage() {
               
               <button
                 type="button"
-                className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-900 hover:bg-slate-900 hover:text-white py-2.5 font-ui text-sm font-bold text-slate-900 transition-all cursor-pointer shadow-3xs"
+                className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-900 hover:bg-slate-900 hover:text-white py-2.5 font-ui text-sm font-bold text-slate-900 transition-all cursor-pointer shadow-2xs"
               >
                 Book now ({tour.price})
               </button>

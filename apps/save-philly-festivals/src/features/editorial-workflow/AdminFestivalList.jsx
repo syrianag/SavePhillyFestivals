@@ -16,17 +16,63 @@ const stateBadgeMap = {
   archived: { variant: "outline", className: "bg-slate-100 text-slate-500 border-slate-200", label: "Archived" },
 };
 
-function pageHref(state, page) {
+/* Every active filter has to survive a state-pill click and a page change, or paginating past
+ * page one silently discards the search the editor just typed. */
+function pageHref(state, page, filters = {}) {
   const params = new URLSearchParams();
   if (state) params.set("state", state);
+  if (filters.q) params.set("q", filters.q);
+  if (filters.start) params.set("start", filters.start);
+  if (filters.end) params.set("end", filters.end);
+  if (filters.featured) params.set("featured", "1");
   if (page && page > 1) params.set("page", String(page));
   const query = params.toString();
   return `/admin/festivals${query ? `?${query}` : ""}`;
 }
 
-export default function AdminFestivalList({ festivals, selectedState, pagination, counts = {}, totalCount = 0 }) {
+export default function AdminFestivalList({ festivals, selectedState, pagination, activeFilters = {}, counts = {}, totalCount = 0 }) {
+  const hasFilters = Boolean(activeFilters.q || activeFilters.start || activeFilters.end || activeFilters.featured);
   return (
     <div className="space-y-6">
+      {/* Plain GET form: the results are server-rendered, so the URL stays the single source of
+        * truth for what the editor is looking at and the view is shareable. */}
+      <form method="get" action="/admin/festivals" className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
+        {selectedState && <input type="hidden" name="state" value={selectedState} />}
+        <div className="min-w-52 flex-1">
+          <label htmlFor="admin-festival-search" className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">
+            Search name or location
+          </label>
+          <input
+            id="admin-festival-search"
+            name="q"
+            type="search"
+            defaultValue={activeFilters.q}
+            maxLength={120}
+            className="h-9 w-full rounded-md border border-slate-200 px-3 text-sm focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
+          />
+        </div>
+        <div>
+          <label htmlFor="admin-festival-start" className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">From</label>
+          <input id="admin-festival-start" name="start" type="date" defaultValue={activeFilters.start}
+            className="h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400" />
+        </div>
+        <div>
+          <label htmlFor="admin-festival-end" className="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-700">To</label>
+          <input id="admin-festival-end" name="end" type="date" defaultValue={activeFilters.end}
+            className="h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400" />
+        </div>
+        <div className="flex items-center gap-2 pb-2">
+          <input id="admin-festival-featured" name="featured" type="checkbox" value="1" defaultChecked={activeFilters.featured} className="size-4 rounded border-slate-300" />
+          <label htmlFor="admin-festival-featured" className="text-sm text-slate-700">Featured only</label>
+        </div>
+        <Button type="submit" size="sm">Apply</Button>
+        {hasFilters && (
+          <Link href={pageHref(selectedState, 1)} className="pb-2 text-sm font-semibold text-slate-500 underline underline-offset-2 hover:text-slate-800">
+            Clear filters
+          </Link>
+        )}
+      </form>
+
       {/* State Filters */}
       <nav aria-label="Festival state filters" className="flex flex-wrap gap-2 items-center">
         <Link 
@@ -35,7 +81,7 @@ export default function AdminFestivalList({ festivals, selectedState, pagination
               ? "bg-slate-900 border-slate-900 text-white" 
               : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
           }`} 
-          href={pageHref(null, 1)}
+          href={pageHref(null, 1, activeFilters)}
         >
           All <span className="ml-1 opacity-70">({totalCount})</span>
         </Link>
@@ -51,7 +97,7 @@ export default function AdminFestivalList({ festivals, selectedState, pagination
                   ? "bg-slate-900 border-slate-900 text-white" 
                   : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
               }`} 
-              href={pageHref(state, 1)}
+              href={pageHref(state, 1, activeFilters)}
             >
               {config.label} <span className="ml-1 opacity-70">({count})</span>
             </Link>
@@ -145,7 +191,7 @@ export default function AdminFestivalList({ festivals, selectedState, pagination
           </div>
           <div className="flex items-center gap-2">
             <Link 
-              href={pageHref(selectedState, pagination.page - 1)} 
+              href={pageHref(selectedState, pagination.page - 1, activeFilters)} 
               className={`rounded-lg border px-4 py-1.5 font-ui text-sm font-semibold transition-colors ${
                 pagination.page <= 1 
                   ? "pointer-events-none opacity-40 bg-slate-50 text-slate-400 border-slate-200" 
@@ -155,7 +201,7 @@ export default function AdminFestivalList({ festivals, selectedState, pagination
               Previous
             </Link>
             <Link 
-              href={pageHref(selectedState, pagination.page + 1)} 
+              href={pageHref(selectedState, pagination.page + 1, activeFilters)} 
               className={`rounded-lg border px-4 py-1.5 font-ui text-sm font-semibold transition-colors ${
                 pagination.page >= pagination.pages 
                   ? "pointer-events-none opacity-40 bg-slate-50 text-slate-400 border-slate-200" 

@@ -21,20 +21,18 @@ function toCard(festival, index) {
     title: festival.name,
     date: festival.dateLabel,
     rawDate: festival.start_date,
+    /* Every calendar day this festival occupies, computed server-side in the festival's own
+     * time zone. The client never parses these back into Dates — that is what previously put
+     * the calendar's dots one day away from the filter they drive. */
+    dayKeys: festival.day_keys?.length ? festival.day_keys : [],
     location: festival.locationLabel,
     category: festival.categories[0]?.name || "Community",
     tags: festival.tags.map((tag) => tag.name),
     description: festival.description,
     bgColor: colors[index % colors.length],
     image: festival.image_url,
-    href: `/festivals/${festival.slug}`,
+    slug: festival.slug,
   };
-}
-
-function formatDateKey(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "tbd";
-  return date.toISOString().slice(0, 10);
 }
 
 /* Build the same YYYY-MM-DD key the festival list is grouped by, from the calendar's
@@ -44,38 +42,100 @@ function toSelectedDateKey(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-function formatSelectedDateLabel(dateKey) {
-  return new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(new Date(`${dateKey}T12:00:00`));
+function addDaysToKey(dayKey, days) {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day + days));
+  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}-${String(shifted.getUTCDate()).padStart(2, "0")}`;
 }
 
-function groupByDate(list) {
+/**
+ * Which calendar days the current view is asking about.
+ *
+ * One predicate drives both membership and grouping. Previously they disagreed: a festival
+ * matched the filter if *any* of its days qualified, but was then always listed under its first
+ * day. A market running May through October therefore appeared under a May heading while the
+ * user was filtered to September — the dates on screen had no relation to the filter.
+ */
+function buildDayScope({ selectedDateKey, dateFilter, todayKey }) {
+  if (selectedDateKey) return (key) => key === selectedDateKey;
+
+  const [year, month] = todayKey.split("-").map(Number);
+  const monthPrefix = (offset) => {
+    const shifted = new Date(Date.UTC(year, month - 1 + offset, 1));
+    return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}`;
+  };
+
+  if (dateFilter === "this-week") {
+    const weekEnd = addDaysToKey(todayKey, 7);
+    return (key) => key >= todayKey && key <= weekEnd;
+  }
+  if (dateFilter === "this-month") return (key) => key.startsWith(monthPrefix(0));
+  if (dateFilter === "next-month") return (key) => key.startsWith(monthPrefix(1));
+  return () => true;
+}
+
+/* Groups each festival under the first day it occupies that the current view is actually
+ * asking about, so every heading on screen belongs to the active filter. */
+function groupByScopedDay(list, inScope) {
   const groups = new Map();
   for (const festival of list) {
-    const key = formatDateKey(festival.rawDate);
+    const key = festival.dayKeys.find(inScope) || festival.dayKeys[0] || "tbd";
     groups.set(key, [...(groups.get(key) || []), festival]);
   }
   return [...groups.entries()].sort(([left], [right]) => left.localeCompare(right));
 }
 
-function filterByDate(list, dateFilter) {
-  if (!dateFilter) return list;
-  const now = new Date();
-  return list.filter((festival) => {
-    const date = new Date(festival.rawDate);
-    if (dateFilter === "this-week") {
-      const weekEnd = new Date(now);
-      weekEnd.setDate(weekEnd.getDate() + 7);
-      return date >= now && date <= weekEnd;
-    }
-    if (dateFilter === "this-month") {
-      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-    }
-    if (dateFilter === "next-month") {
-      const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      return date.getMonth() === next.getMonth() && date.getFullYear() === next.getFullYear();
-    }
-    return true;
-  });
+/* Compact "Mon D" for a day key, formatted in UTC because a day key is a calendar day with no
+ * instant attached — zoning it would shift it back a day. */
+function formatDayKeyShort(dayKey, withYear = false) {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
+    ...(withYear ? { year: "numeric" } : {}),
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
+/* A run long enough that a continuous multi-day festival is unlikely to be the whole story.
+ * Only 8 of the published catalog exceed this, and they are the ones that read as errors when
+ * they surface in a month they did not start in. */
+const EXTENDED_RUN_DAYS = 13;
+
+/**
+ * The date a card should show, relative to the day it is filed under.
+ *
+ * A festival spanning months is listed under whichever of its days the current filter covers,
+ * so printing its overall start date contradicts the heading directly above it — a market
+ * running May through October read as "Sunday, May 17" beneath an "August 1" heading.
+ *
+ * The label therefore answers "why is this here?": on its opening day it shows the full run,
+ * and on any later day it says it is still going and when it ends. It deliberately never claims
+ * the festival "recurs" — the imported data carries a start and an end date and nothing about
+ * which days within that window it actually happens, so asserting a pattern would be a guess.
+ */
+function scopedDateLabel(festival, groupDayKey) {
+  const { dayKeys } = festival;
+  if (dayKeys.length < 2) return festival.date;
+
+  const first = dayKeys[0];
+  const last = dayKeys[dayKeys.length - 1];
+  if (groupDayKey === first) {
+    return `Runs ${formatDayKeyShort(first)} \u2013 ${formatDayKeyShort(last, true)}`;
+  }
+  return `Ongoing \u00b7 through ${formatDayKeyShort(last, true)}`;
+}
+
+/* Flags a run long enough to be worth calling out at a glance, so the card reads as deliberate
+ * rather than as a stray date. */
+function runBadge(festival) {
+  const { dayKeys } = festival;
+  if (dayKeys.length < 2) return undefined;
+  return dayKeys.length > EXTENDED_RUN_DAYS ? "Ongoing" : `${dayKeys.length} days`;
+}
+
+function formatSelectedDateLabel(dateKey) {
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "long" }).format(new Date(`${dateKey}T12:00:00`));
 }
 
 function ScheduleRow({ title, detail, onRemove, stale = false }) {
@@ -221,12 +281,12 @@ function ScheduleBuilder({ festivals, onToast, headingId }) {
       ) : (
         <div className="flex flex-col gap-3" data-testid="saved-schedule">
           {overlaps.length > 0 && (
-            <div role="status" className="rounded-xl border border-amber-250 bg-amber-50/60 px-3.5 py-3 text-sm text-amber-900">
+            <div role="status" className="rounded-xl border border-amber-200 bg-amber-50/60 px-3.5 py-3 text-sm text-amber-900">
               <p className="flex items-center gap-2 font-semibold">
                 <AlertTriangle className="size-4 text-amber-600" aria-hidden="true" /> Time overlap warning
               </p>
               {overlaps.map(([left, right]) => (
-                <p key={`${left.id}:${right.id}`} className="mt-1 text-xs text-amber-850">
+                <p key={`${left.id}:${right.id}`} className="mt-1 text-xs text-amber-800">
                   {left.title} overlaps with {right.title}. Both remain saved.
                 </p>
               ))}
@@ -289,7 +349,7 @@ function ScheduleBuilder({ festivals, onToast, headingId }) {
         </p>
       )}
       {exportError && (
-        <p role="alert" className="font-ui text-xs text-red-750 font-semibold">
+        <p role="alert" className="font-ui text-xs text-red-700 font-semibold">
           {exportError} Your saved schedule is unchanged.
         </p>
       )}
@@ -297,14 +357,19 @@ function ScheduleBuilder({ festivals, onToast, headingId }) {
   );
 }
 
-export function CalendarClient({ festivals }) {
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
+/* `todayKey` is computed on the server in Philadelphia time and passed down. Deriving it from
+ * `new Date()` here made the server (UTC on Vercel) and the browser disagree about the current
+ * day, which shifted the initial month and the "today" highlight during hydration. */
+export function CalendarClient({ festivals, todayKey, includePast = false }) {
+  const [todayYear, todayMonth] = todayKey.split("-").map(Number);
+  const [year, setYear] = useState(todayYear);
+  const [month, setMonth] = useState(todayMonth - 1);
   /* Starts unselected so the page never loads pre-filtered to a day with no festivals. */
   const [selectedDay, setSelectedDay] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState({ date: "", type: "", area: "" });
+  /* Defaults to the current month: the calendar exists to answer "what is on now", and an
+   * unfiltered list opened on every festival in the catalog. */
+  const [filters, setFilters] = useState({ date: "this-month", type: "", area: "" });
   const [toast, setToast] = useState(null);
   const cards = useMemo(() => festivals.map(toCard), [festivals]);
 
@@ -325,11 +390,20 @@ export function CalendarClient({ festivals }) {
         festival.location.toLowerCase().includes(filters.area.toLowerCase())
       );
     }
-    if (selectedDateKey) {
-      filtered = filtered.filter((festival) => formatDateKey(festival.rawDate) === selectedDateKey);
-    }
-    return groupByDate(filterByDate(filtered, filters.date));
-  }, [cards, filters, searchQuery, selectedDateKey]);
+    /* A festival is in view when any day it spans is in scope, and it is then listed under
+     * that day — so multi-day festivals are reachable from every one of their days and always
+     * appear under a date the current filter actually covers. */
+    const inScope = buildDayScope({ selectedDateKey, dateFilter: filters.date, todayKey });
+    filtered = filtered.filter((festival) => festival.dayKeys.some(inScope));
+    return groupByScopedDay(filtered, inScope);
+  }, [cards, filters, searchQuery, selectedDateKey, todayKey]);
+
+  /* Every day that has at least one festival, so the widget's dots come from exactly the same
+   * keys the filter matches on. */
+  const festivalDayKeys = useMemo(
+    () => new Set(cards.flatMap((festival) => festival.dayKeys)),
+    [cards]
+  );
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-12">
@@ -340,7 +414,7 @@ export function CalendarClient({ festivals }) {
           <div className="absolute -left-20 -top-20 size-80 rounded-full bg-indigo-300/10 blur-3xl pointer-events-none" />
           <div className="absolute right-10 bottom-0 size-96 rounded-full bg-rose-200/10 blur-3xl pointer-events-none" />
           <div className="relative z-10 max-w-4xl">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-0.5 text-xs font-bold text-indigo-700 border border-indigo-500/20 mb-3 shadow-3xs">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-0.5 text-xs font-bold text-indigo-700 border border-indigo-500/20 mb-3 shadow-2xs">
               📅 Schedule & Planning
             </span>
             <h1 className="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 mb-3">
@@ -357,7 +431,8 @@ export function CalendarClient({ festivals }) {
             <CalendarWidget
               year={year}
               month={month}
-              festivalDates={cards.map((festival) => festival.rawDate)}
+              festivalDayKeys={festivalDayKeys}
+              todayKey={todayKey}
               selectedDay={selectedDay}
               onSelectDay={(day) => setSelectedDay((current) => (current === day ? null : day))}
               onPrevMonth={() => {
@@ -417,6 +492,20 @@ export function CalendarClient({ festivals }) {
               </div>
             )}
 
+            {/* The calendar defaults to the current month forward. Past festivals stay published
+              * and reachable — this is the explicit way back to them. */}
+            <p className="font-ui text-sm text-slate-500">
+              {includePast
+                ? "Showing all festivals, including ones that have already happened. "
+                : "Showing festivals from this month onward. "}
+              <Link
+                href={includePast ? "/calendar" : "/calendar?date=all"}
+                className="font-semibold text-slate-800 underline underline-offset-2 hover:text-slate-900"
+              >
+                {includePast ? "Show upcoming only" : "Include past festivals"}
+              </Link>
+            </p>
+
             {grouped.length === 0 ? (
               <div className="rounded-2xl border border-slate-200/60 bg-white py-16 text-center text-slate-500 shadow-2xs">
                 {selectedDateKey
@@ -435,17 +524,16 @@ export function CalendarClient({ festivals }) {
                     {entries.map((festival) => (
                       <FestivalCard
                         key={festival.id}
-                        variant="long"
                         id={festival.id}
                         image={festival.image}
                         title={festival.title}
-                        date={festival.date}
+                        date={scopedDateLabel(festival, dateKey)}
                         location={festival.location}
                         category={festival.category}
-                        badge={festival.badge}
+                        badge={runBadge(festival)}
                         bgColor={festival.bgColor}
                         tags={festival.tags}
-                        href={festival.href}
+                        slug={festival.slug}
                         showSave
                       />
                     ))}

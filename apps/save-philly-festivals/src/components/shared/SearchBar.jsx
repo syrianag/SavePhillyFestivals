@@ -45,7 +45,7 @@ export function SearchBar({ className, onSearch, onFilter, filters, onFilterChan
       </div>
 
       <div className="flex flex-wrap gap-2.5">
-        <div className="flex h-[36px] items-center gap-1 rounded-full border border-slate-200 bg-white px-[14px] py-[6px] shadow-3xs transition-colors hover:border-slate-300">
+        <div className="flex h-[36px] items-center gap-1 rounded-full border border-slate-200 bg-white px-[14px] py-[6px] shadow-2xs transition-colors hover:border-slate-300">
           <select
             aria-label="Filter festivals by date"
             value={filters?.date || ""}
@@ -58,7 +58,7 @@ export function SearchBar({ className, onSearch, onFilter, filters, onFilterChan
             <option value="next-month">Next Month</option>
           </select>
         </div>
-        <div className="flex h-[36px] items-center gap-1 rounded-full border border-slate-200 bg-white px-[14px] py-[6px] shadow-3xs transition-colors hover:border-slate-300">
+        <div className="flex h-[36px] items-center gap-1 rounded-full border border-slate-200 bg-white px-[14px] py-[6px] shadow-2xs transition-colors hover:border-slate-300">
           <select
             aria-label="Filter festivals by type"
             value={filters?.type || ""}
@@ -74,7 +74,7 @@ export function SearchBar({ className, onSearch, onFilter, filters, onFilterChan
             <option value="Holidays">Holidays</option>
           </select>
         </div>
-        <div className="flex h-[36px] items-center gap-1 rounded-full border border-slate-200 bg-white px-[14px] py-[6px] shadow-3xs transition-colors hover:border-slate-300">
+        <div className="flex h-[36px] items-center gap-1 rounded-full border border-slate-200 bg-white px-[14px] py-[6px] shadow-2xs transition-colors hover:border-slate-300">
           <select
             aria-label="Filter festivals by area"
             value={filters?.area || ""}

@@ -1,10 +1,8 @@
 import "./globals.css";
 
 import { Albert_Sans, Maven_Pro, Nunito, Montaga, Inter, DM_Sans } from "next/font/google";
-import { RootLayout as LayoutShell } from "@/components/layouts/RootLayout";
 import { ScheduleProvider } from "@/features/schedule/schedule-context";
 import Providers from "@/components/layouts/Providers";
-import { auth } from "@/lib/auth";
 
 const albertSans = Albert_Sans({
   subsets: ["latin"],
@@ -47,10 +45,16 @@ export const metadata = {
   description: "Discover and manage Philadelphia festivals",
 };
 
-export default async function RootLayout({ children }) {
-  const session = await auth();
-  const isStaff = session?.user?.role === "admin" || session?.user?.role === "super_admin";
-
+/**
+ * The document shell only: fonts, providers, and <body>.
+ *
+ * Navigation, footer, and the main landmark belong to each route group's own layout — see
+ * `(public)/layout.jsx`, `admin/layout.jsx`, `producer/layout.jsx`, and `(auth)/layout.jsx`.
+ * Keeping chrome out of here also keeps `auth()` off the public request path: this layout runs
+ * for every page, and it previously resolved a session on purely public routes just to decide
+ * whether to draw a footer.
+ */
+export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
@@ -59,7 +63,7 @@ export default async function RootLayout({ children }) {
       <body className="antialiased">
         <Providers>
           <ScheduleProvider>
-            <LayoutShell isStaff={isStaff}>{children}</LayoutShell>
+            {children}
           </ScheduleProvider>
         </Providers>
       </body>

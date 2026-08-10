@@ -7,6 +7,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { INTERNAL_REASON_REQUIRED } from "@/features/editorial-workflow/editorial-transition-policy";
+import AdminFestivalEditor from "@/features/editorial-workflow/AdminFestivalEditor";
 import { 
   Calendar, 
   User, 
@@ -87,13 +89,21 @@ export default function AdminFestivalDetail({ initialFestival }) {
   const [status, setStatus] = useState({ pending: false, error: "", notice: "" });
 
   const isConflict = status.error && status.error.includes("Revision conflict");
+  /* Mirrors the server-side policy exactly. Archiving is the supported replacement for
+   * deletion and requires a reason, so a dialog that treated it as optional turned an
+   * editor's first archive attempt into a 422. */
+  const reasonRequired = INTERNAL_REASON_REQUIRED.includes(activeDialog);
 
   async function handleTransitionSubmit(event) {
     if (event) event.preventDefault();
-    
+
     // Validation
     if ((activeDialog === "changes_requested" || activeDialog === "rejected") && !producerMessage.trim()) {
       setStatus((s) => ({ ...s, error: "Producer message is required for this action." }));
+      return;
+    }
+    if (reasonRequired && !reason.trim()) {
+      setStatus((s) => ({ ...s, error: "An internal reason is required for this action." }));
       return;
     }
     if (activeDialog === "canceled" && !publicMessage.trim()) {
@@ -213,6 +223,12 @@ export default function AdminFestivalDetail({ initialFestival }) {
               Private editorial record. Contact details and internal editor logs are kept strictly internal.
             </p>
           </div>
+          {/* Merge rather than replace: the PATCH response carries festival scalars but not the
+            * detail-only fields (valid_actions, transition history) this view renders. */}
+          <AdminFestivalEditor
+            festival={festival}
+            onSaved={(updated) => setFestival((current) => ({ ...current, ...updated }))}
+          />
         </div>
       </div>
 
@@ -459,13 +475,13 @@ export default function AdminFestivalDetail({ initialFestival }) {
           
           {/* Editorial Actions Control Panel */}
           {!isConflict && festival.valid_actions && festival.valid_actions.length > 0 && (
-            <Card className="shadow-xs border-slate-900 bg-slate-900 text-white overflow-hidden">
-              <CardHeader className="border-b border-slate-800 bg-slate-950/40">
-                <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
-                  <Sparkles className="size-5 text-amber-400" />
+            <Card className="shadow-xs border-slate-200 bg-white overflow-hidden">
+              <CardHeader className="border-b border-slate-200 bg-slate-50">
+                <CardTitle className="font-heading text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Sparkles className="size-5 text-amber-500" />
                   Editorial Action
                 </CardTitle>
-                <CardDescription className="text-slate-400">Apply state transitions to this festival submission</CardDescription>
+                <CardDescription className="text-slate-500">Apply state transitions to this festival submission</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-3">
                 <div className="flex flex-col gap-2">
@@ -668,16 +684,22 @@ export default function AdminFestivalDetail({ initialFestival }) {
               </div>
             )}
 
-            {/* Internal Reason (Optional, private to editors) */}
+            {/* Internal Reason — private to editors. Required for the states the transition
+              * policy names, so the dialog cannot ask for less than the server enforces. */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                Internal Reason <span className="text-slate-400 font-normal">(Optional)</span>
+                Internal Reason{" "}
+                <span className="text-slate-400 font-normal">
+                  {reasonRequired ? "(Required)" : "(Optional)"}
+                </span>
               </label>
               <textarea
                 className="w-full min-h-17.5 rounded-lg border border-slate-200 p-2.5 text-sm focus:border-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400"
                 placeholder="Log internal comments or notes about this action..."
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
+                required={reasonRequired}
+                aria-required={reasonRequired}
                 maxLength={2000}
               />
               <span className="text-[11px] text-slate-400 block leading-tight">

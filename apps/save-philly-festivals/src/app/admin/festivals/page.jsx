@@ -42,7 +42,20 @@ export default async function AdminFestivalsPage({ searchParams }) {
   const page = isNaN(requestedPage) ? 1 : requestedPage;
   const limit = 10;
 
-  const result = await (editorialE2ERepository() || editorialRepository).list({ state, page, limit });
+  /* Name/location search and a date range, alongside the existing state pills. Only validated
+   * values are forwarded — the query schema is strict, so an unrecognised param would 400. */
+  const isCalendarDay = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const filters = {
+    state,
+    page,
+    limit,
+    ...(params?.q ? { q: String(params.q).slice(0, 120) } : {}),
+    ...(isCalendarDay(params?.start) ? { start: params.start } : {}),
+    ...(isCalendarDay(params?.end) ? { end: params.end } : {}),
+    ...(params?.featured === "1" ? { featured: "1" } : {}),
+  };
+
+  const result = await (editorialE2ERepository() || editorialRepository).list(filters);
   const { counts, total } = await getWorkflowStateCounts();
 
   return (
@@ -57,6 +70,7 @@ export default async function AdminFestivalsPage({ searchParams }) {
         festivals={result.festivals} 
         selectedState={state} 
         pagination={result.pagination}
+        activeFilters={{ q: filters.q || "", start: filters.start || "", end: filters.end || "", featured: filters.featured === "1" }}
         counts={counts}
         totalCount={total}
       />

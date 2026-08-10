@@ -5,26 +5,26 @@ export const metadata = {
   description: "Learn how Philadelphia festival producers can submit an event for review.",
 };
 
-/* Each advertised step links to the route that actually performs it, so the 1-2-3 is
- * navigable rather than display-only copy. Step 1 carries a callback so login returns
- * the producer to the submission editor. */
+/* Each advertised step links to the route that actually performs it, so the 1-2-3 is navigable
+ * rather than display-only copy. Step 1 was "Sign in", which quietly assumed somebody had
+ * already created the account for you — there was no way to register at all. */
 const SUBMISSION_STEPS = [
   {
-    href: "/login?callbackUrl=%2Fproducer%2Fsubmit",
-    title: "1. Sign in",
-    body: "Use a verified producer account. The login flow returns you to the secure submission editor.",
-    action: "Sign in",
+    href: "/signup",
+    title: "1. Sign up",
+    body: "Create an account, then request producer access. Our team reviews each request and emails you the decision.",
+    action: "Create an account",
   },
   {
     href: "/producer/submit",
-    title: "2. Save a private draft",
-    body: "Add festival, location, date, and private contact information at your own pace.",
+    title: "2. Create a draft",
+    body: "Add festival, location, date, and private contact information at your own pace. Drafts stay private.",
     action: "Start a draft",
   },
   {
     href: "/producer/dashboard",
-    title: "3. Submit for review",
-    body: "Confirm the information and send it to the team. Public listing remains subject to editorial approval.",
+    title: "3. Track your submission",
+    body: "Follow its status through review, read the team's feedback, and resubmit if changes are requested.",
     action: "Track your submissions",
   },
 ];

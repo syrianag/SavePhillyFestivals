@@ -1,5 +1,6 @@
 export const DISCOVERY_DETAIL_SLUG = "riverfront-arts-festival";
 export const DISCOVERY_UNAPPROVED_SLUG = "unapproved-neighborhood-festival";
+export const DISCOVERY_ALL_DAY_SLUG = "germantown-heritage-days";
 
 export const DISCOVERY_E2E_FESTIVALS = [
   {
@@ -32,6 +33,30 @@ export const DISCOVERY_E2E_FESTIVALS = [
     latitude: 39.9312,
     longitude: -75.1585,
     categories: [{ category: { name: "Food", slug: "food" } }],
+  },
+  /* An all-day, multi-day festival — the shape every CSV-imported festival takes, and the one
+   * the other two fixtures cannot reproduce. Their timed mid-day UTC values format to the same
+   * calendar day in UTC and in Philadelphia, so they hid the day-key defect that put calendar
+   * dots one day away from the festivals they represent. `T00:00:00.000Z` is what a `@db.Date`
+   * column actually round-trips, and in Philadelphia that instant is the previous evening. */
+  {
+    id: "e2e-approved-3",
+    slug: DISCOVERY_ALL_DAY_SLUG,
+    name: "Germantown Heritage Days",
+    description: "Two days of neighborhood history, music, and food in Germantown.",
+    location: "Germantown",
+    city: "Philadelphia",
+    start_date: null,
+    end_date: null,
+    calendar_date_type: "all_day",
+    all_day_start: new Date("2026-09-15T00:00:00.000Z"),
+    all_day_end: new Date("2026-09-16T00:00:00.000Z"),
+    time_zone: "America/New_York",
+    created_at: new Date("2026-07-20T12:00:00.000Z"),
+    image_url: null,
+    latitude: 40.0362,
+    longitude: -75.1735,
+    categories: [{ category: { name: "Cultural", slug: "cultural" } }],
   },
 ];
 
@@ -97,10 +122,29 @@ const unavailableFeedDetailFixture = {
   tags: [],
 };
 
+const allDayDetailFixture = {
+  ...DISCOVERY_E2E_FESTIVALS[2],
+  state: "PA",
+  zip_code: "19144",
+  website_url: "https://example.com/germantown-heritage-days",
+  logo_url: null,
+  social_instagram: null,
+  social_facebook: null,
+  social_twitter: null,
+  social_tiktok: null,
+  social_youtube: null,
+  story: null,
+  mission: null,
+  history: null,
+  schedules: [],
+  tags: [],
+};
+
 export function getDiscoveryE2eFestival(slug) {
   if (process.env.DISCOVERY_E2E_FIXTURE !== "1") return undefined;
   if (slug === DISCOVERY_DETAIL_SLUG) return detailFixture;
   if (slug === unavailableFeedDetailFixture.slug) return unavailableFeedDetailFixture;
+  if (slug === DISCOVERY_ALL_DAY_SLUG) return allDayDetailFixture;
   return null;
 }
 
@@ -109,5 +153,6 @@ export function getDiscoveryE2eFestivalCatalog() {
   return [
     detailFixture,
     unavailableFeedDetailFixture,
+    allDayDetailFixture,
   ];
 }

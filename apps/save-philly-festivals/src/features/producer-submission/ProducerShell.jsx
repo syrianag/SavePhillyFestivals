@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SkipLink } from "@/components/shared/SkipLink";
 import { signOut } from "next-auth/react";
 import { LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
@@ -34,6 +35,7 @@ export default function ProducerShell({ children, user }) {
 
   return (
     <div className="min-h-screen min-w-0 bg-slate-50">
+      <SkipLink />
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
         <div className="mx-auto flex min-h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link href="/" className="min-w-0 shrink" aria-label="Save Philly Festivals home">
@@ -58,10 +60,12 @@ export default function ProducerShell({ children, user }) {
           </nav>
         )}
       </header>
-      <div className="mx-auto min-w-0 max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* Owns its own main landmark: producer screens no longer sit inside the public shell,
+        * which previously supplied both this and a second, visitor-facing navigation bar. */}
+      <main id="main-content" tabIndex={-1} className="mx-auto min-w-0 max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
         <p className="mb-4 truncate text-sm text-slate-500">Signed in as {user.email}</p>
         {children}
-      </div>
+      </main>
     </div>
   );
 }

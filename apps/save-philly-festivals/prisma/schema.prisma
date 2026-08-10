@@ -206,6 +206,10 @@ model Festival {
   accuracy_acknowledged_at       DateTime?
   terms_acknowledged_at          DateTime?
   terms_version                  Int?
+  // Editor-curated homepage promotion. Before this, "featured" was purely positional — the
+  // first two rows of the discovery sort — so there was no way to promote or demote anything.
+  featured              Boolean          @default(false)
+  featured_rank         Int?
   created_at            DateTime         @default(now())
   updated_at            DateTime         @updatedAt
 
@@ -232,6 +236,7 @@ model Festival {
   @@index([status])
   @@index([workflow_state, start_date, id])
   @@index([start_date])
+  @@index([featured, featured_rank])
   @@index([slug])
   @@index([calendar_status, calendar_published_at])
 }
@@ -916,6 +921,8 @@ model User {
   overridden_festival_import_backups FestivalImportBatch[] @relation("FestivalImportBackupOverrideActor")
   reviewed_festival_import_rows FestivalImportRow[] @relation("FestivalImportRowReviewer")
   overridden_festival_import_matches FestivalImportRow[] @relation("FestivalImportMatchOverrideActor")
+  producer_access_requests ProducerAccessRequest[] @relation("ProducerAccessRequester")
+  decided_producer_access_requests ProducerAccessRequest[] @relation("ProducerAccessDecider")
   account_transitions UserAccountTransition[] @relation("UserAccountTransitionTarget")
   performed_account_transitions UserAccountTransition[] @relation("UserAccountTransitionActor")
 
@@ -977,6 +984,104 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// ─── Sponsors ──────────────────────────────────────────────
+// Editor-managed ad placements. Replaces the hardcoded constants in
+// `src/features/sponsors/sponsor-placements.js`, which required a redeploy to change.
+//
+// Creatives are referenced by URL rather than uploaded: `src/lib/uploads.js` writes into
+// `public/`, which does not persist on Vercel, and `/api/upload` is retired (410). The CSP
+// already allows `img-src 'self' blob: data: https:`, so an https URL needs no infrastructure.
+// Deliberately no ad-network fields — the CSP blocks third-party ad scripts and iframes by
+// design, and self-hosted creatives were the chosen posture.
+
+enum SponsorSlot {
+  left_rail
+  right_rail
+  footer
+}
+
+enum SponsorStatus {
+  draft
+  active
+  archived
+}
+
+model Sponsor {
+  id           String        @id @default(uuid())
+  name         String
+  slot         SponsorSlot
+  status       SponsorStatus @default(draft)
+  sort_order   Int           @default(0)
+  href         String?
+  alt_text     String?
+  image_url    String?
+  image_width  Int?
+  image_height Int?
+  // Fallback rendering when a sponsor has no artwork yet, matching the existing pill treatment.
+  pill_color   String?
+  text_color   String?
+  starts_at    DateTime?
+  ends_at      DateTime?
+  created_by_user_id String?
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+
+  @@index([slot, status, sort_order])
+}
+
+
+// ─── Producer access requests ──────────────────────────────
+// Self-serve signup creates a `public` account, which grants nothing. Becoming a producer is a
+// separate, reviewed step so an open registration endpoint cannot hand out submission rights.
+
+enum ProducerAccessRequestStatus {
+  pending
+  approved
+  rejected
+  withdrawn
+}
+
+model ProducerAccessRequest {
+  id             String                      @id @default(uuid())
+  user_id        String
+  status         ProducerAccessRequestStatus @default(pending)
+  organization   String?
+  festival_name  String?
+  message        String?
+  decided_by_user_id String?
+  decided_at     DateTime?
+  decision_reason String?
+  created_at     DateTime                    @default(now())
+  updated_at     DateTime                    @updatedAt
+
+  user       User @relation("ProducerAccessRequester", fields: [user_id], references: [id], onDelete: Cascade)
+  decided_by User? @relation("ProducerAccessDecider", fields: [decided_by_user_id], references: [id], onDelete: SetNull)
+
+  // One open request per account: re-requesting while a decision is pending would queue
+  // duplicates for the reviewer.
+  @@index([status, created_at])
+  @@index([user_id, status])
+}
+
+// ─── Editable email templates ──────────────────────────────
+// Copy the client can change without a deploy. Bodies are rendered by substituting {{token}}
+// placeholders only — never evaluated — so an editable template cannot become code execution.
+
+model EmailTemplate {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  subject     String
+  body        String
+  description String?
+  enabled     Boolean  @default(true)
+  updated_by_user_id String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([key])
 }
 
 // ─── Email Log ─────────────────────────────────────────────

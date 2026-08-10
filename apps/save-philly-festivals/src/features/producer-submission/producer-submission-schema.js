@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { allDayTimedMirror } from "@/features/festivals/discovery";
+
 export const PRODUCER_TERMS_VERSION = 1;
 export const ASSET_RIGHTS_VERSION = 1;
 export const PRODUCER_JSON_BODY_LIMIT = 32 * 1024;
@@ -120,8 +122,18 @@ export const completeFestivalSchema = z.object({
     if (!festival.all_day_start || !festival.all_day_end || festival.all_day_end < festival.all_day_start) {
       context.addIssue({ code: "custom", path: ["all_day_end"], message: "All-day festivals require a valid inclusive date range" });
     }
-    if (festival.start_date || festival.end_date) {
-      context.addIssue({ code: "custom", path: ["start_date"], message: "All-day festivals cannot include timed dates" });
+    /* Timed values are permitted on an all-day festival only as the derived mirror of its
+     * all-day range. Public discovery sorts and filters on `start_date`, so all-day festivals
+     * must carry one — but it may not disagree with the all-day dates it is derived from. */
+    const mirror = allDayTimedMirror(festival.all_day_start, festival.all_day_end);
+    const mismatched = (value, expected) =>
+      Boolean(value) && (!expected || new Date(value).getTime() !== expected.getTime());
+    if (mismatched(festival.start_date, mirror.start_date) || mismatched(festival.end_date, mirror.end_date)) {
+      context.addIssue({
+        code: "custom",
+        path: ["start_date"],
+        message: "All-day festivals may only carry timed dates derived from their all-day range",
+      });
     }
   }
 });

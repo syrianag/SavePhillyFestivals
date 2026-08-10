@@ -10,10 +10,15 @@ describe("UI components contract", () => {
     const files = [
       "src/features/editorial-workflow/AdminFestivalList.jsx",
       "src/features/editorial-workflow/AdminFestivalDetail.jsx",
+      "src/features/editorial-workflow/AdminFestivalEditor.jsx",
       "src/features/social-feed/AdminSocialFeedManager.jsx",
       "src/features/producer-submission/ProducerSubmissionEditor.jsx",
       "src/features/festival-import/AdminImportBatchList.jsx",
       "src/features/festival-import/AdminImportBatchDetail.jsx",
+      "src/features/sponsors/AdminSponsorList.jsx",
+      "src/features/producer-access/AdminProducerRequests.jsx",
+      "src/features/producer-access/AdminEmailTemplates.jsx",
+      "src/features/producer-access/ProducerAccessPanel.jsx",
     ];
 
     for (const file of files) {

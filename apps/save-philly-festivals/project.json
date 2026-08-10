@@ -3,13 +3,19 @@
   "name": "save-philly-festivals",
   "projectType": "application",
   "sourceRoot": "apps/save-philly-festivals/src",
-  "tags": ["scope:product", "platform:nextjs"],
+  "tags": [
+    "scope:product",
+    "platform:nextjs"
+  ],
   "targets": {
     "dev": {
       "executor": "nx:run-commands",
       "cache": false,
       "options": {
-        "commands": ["node scripts/preflight-dev.mjs", "next dev"],
+        "commands": [
+          "node scripts/preflight-dev.mjs",
+          "next dev"
+        ],
         "parallel": false,
         "cwd": "{projectRoot}"
       }
@@ -17,8 +23,12 @@
     "build": {
       "executor": "nx:run-commands",
       "//": "src/generated/prisma is gitignored, so the build must generate it rather than assume it exists. Relying on the root postinstall broke Vercel builds that restored an install cache: pnpm install was skipped, postinstall never ran, and next build failed with `Can't resolve '@/generated/prisma/client'`.",
-      "dependsOn": ["prisma-generate"],
-      "outputs": ["{projectRoot}/.next"],
+      "dependsOn": [
+        "prisma-generate"
+      ],
+      "outputs": [
+        "{projectRoot}/.next"
+      ],
       "options": {
         "command": "next build",
         "cwd": "{projectRoot}"
@@ -55,7 +65,9 @@
     },
     "test-coverage": {
       "executor": "nx:run-commands",
-      "outputs": ["{projectRoot}/coverage"],
+      "outputs": [
+        "{projectRoot}/coverage"
+      ],
       "options": {
         "command": "vitest run --config vitest.config.js --coverage",
         "cwd": "{projectRoot}"
@@ -64,7 +76,10 @@
     "e2e": {
       "executor": "nx:run-commands",
       "cache": false,
-      "outputs": ["{projectRoot}/playwright-report", "{projectRoot}/test-results"],
+      "outputs": [
+        "{projectRoot}/playwright-report",
+        "{projectRoot}/test-results"
+      ],
       "options": {
         "command": "playwright test --config playwright.config.js",
         "cwd": "{projectRoot}"
@@ -73,7 +88,9 @@
     "prisma-generate": {
       "executor": "nx:run-commands",
       "cache": false,
-      "outputs": ["{projectRoot}/src/generated/prisma"],
+      "outputs": [
+        "{projectRoot}/src/generated/prisma"
+      ],
       "options": {
         "command": "prisma generate",
         "cwd": "{projectRoot}"
@@ -139,6 +156,14 @@
       "cache": false,
       "options": {
         "command": "tsx --tsconfig jsconfig.json scripts/festival-publish-batch.mjs",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "festival-unpublish-batch": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "tsx --tsconfig jsconfig.json scripts/festival-unpublish-batch.mjs",
         "cwd": "{projectRoot}"
       }
     },

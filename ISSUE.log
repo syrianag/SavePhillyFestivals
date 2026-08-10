@@ -1,0 +1,131 @@
+# ISSUE.log
+
+Running log of known defects, gaps, and deferred decisions for Save Philly Festivals.
+Newest first. Each entry records what is wrong, why it matters, and what closes it.
+
+Status values: OPEN | IN PROGRESS | RESOLVED | DEFERRED | WONTFIX
+
+---
+
+## 2026-08-10 — Signed-in `public` users cannot reach their application status
+**Status:** RESOLVED 2026-08-10
+**Severity:** High — blocks the producer onboarding flow end to end
+**Area:** `src/components/shared/NavBar.jsx`
+
+**What's wrong**
+`/account` correctly tracks a producer-access application (pending → "Awaiting review",
+rejected → shows the decision reason and allows reapplying, approved → "Producer access
+active"). The page works. It is simply unreachable through the UI.
+
+`NavBar` computes `isStaff` and `isProducer` and renders the email chip and Sign Out button only
+when `(isStaff || isProducer)`. A self-registered user holds the `public` role by design —
+signup grants nothing, and producer access is approved separately — so that user sees a "Login"
+button while already signed in, gets no Sign Out control, and has no link to `/account`.
+
+**Why it matters**
+This is the exact person the page exists for. Someone who signs up and requests access has no
+way to check on it short of typing the URL, and the nav actively tells them they are logged out.
+It makes a working feature look broken.
+
+**Fixed by**
+`NavBar` now derives `isSignedIn` from the session rather than from the role, shows a "My account"
+link to `/account`, and gates the email chip and Sign Out on it. Applied to both the desktop nav
+and the mobile disclosure menu. `isStaff`/`isProducer` still drive the portal links, so a
+`public` user correctly sees no admin or producer portal.
+
+Verified: signed-out visitors still see only "Login" and no account link; lint, 336 unit tests,
+and the production build all pass.
+
+---
+
+## 2026-08-10 — Self-service signup does not verify email ownership
+**Status:** OPEN (accepted risk for the Aug 14 handoff)
+**Severity:** Low
+**Area:** `src/features/producer-access/`
+
+Anyone can register with an address they do not control. Acceptable because registration grants
+no capability — the account is `public` until an administrator approves producer access, and a
+human reviews every request. Worth closing before the platform is promoted publicly, since
+decision emails are sent to an unverified address.
+
+---
+
+## 2026-08-10 — QA verification account exists on the production database
+**Status:** RESOLVED (mitigated; row is permanent)
+**Severity:** Low
+**Area:** `User` table
+
+`qa-producer-flow@example.test` was created while verifying the producer-access flow against the
+production database and was briefly an active producer account. `UserAccountTransition` rows are
+append-only by database trigger, so the user cannot be deleted. It has been deactivated
+(`status: deactivated`, revision 2) and `src/lib/auth.js` authenticates only `status === "active"`
+users, so it cannot sign in. It will remain visible in Admin → Settings.
+
+---
+
+## 2026-08-10 — Account emails and organizer emails share one provider
+**Status:** RESOLVED (by design, documented here so it is not "simplified" later)
+**Severity:** Critical if regressed
+**Area:** `src/features/producer-access/producer-access-notifications.js`
+
+Producer-access decision emails and festival workflow notifications both send through Resend.
+Festival notifications are addressed to organizer contact details imported from the source
+spreadsheet — people who never signed up for anything — and there are ~1,600 outbox rows waiting.
+
+Account emails are therefore gated on their own switch, `ACCOUNT_EMAILS_ENABLED`, in addition to
+`RESEND_API_KEY`. Setting the API key alone must never arm organizer email. Do not "simplify"
+this by keying account email off the presence of the API key.
+
+Mitigating fact, verified: there is no bulk notification sweeper, so a key alone would not drain
+the backlog. Delivery happens inline during an admin transition or via the one-at-a-time retry
+button.
+
+---
+
+## 2026-08-10 — 405 imported festivals are unpublished; the public site is empty
+**Status:** OPEN (deliberate, operator decision)
+**Severity:** Informational
+**Area:** data
+
+All 405 imported festivals were moved `published → unpublished` on request. Only `published`
+festivals are publicly discoverable, so search, the calendar, the map, and imported festival
+detail pages currently return nothing.
+
+Reversing is one transition each. Note that `festival-publish-batch.mjs` deliberately excludes
+`unpublished` from `PUBLISHABLE_FROM` so a festival taken down on purpose is not silently
+republished by a bulk job — restoring all 405 needs that guard relaxed or an explicit
+`--include-unpublished` flag.
+
+---
+
+## 2026-08-10 — Long-running festivals are date ranges, not real recurrence
+**Status:** DEFERRED (needs client input)
+**Severity:** Low
+**Area:** `src/features/schedule/CalendarClient.jsx`, importer
+
+Eight published festivals span more than 13 days; two exceed 60. The source spreadsheet gave a
+start and an end date and nothing about which days inside that window the event actually runs, so
+Clover Market (May 17 – Oct 4) is stored as one continuous 140-day range when it is really a
+market on selected Sundays.
+
+Mitigated in the UI: multi-day festivals show "Runs May 17 – Oct 4" on their opening day and
+"Ongoing · through Oct 4" on any later day, plus an "Ongoing" badge past 13 days. The label
+deliberately never claims the festival "recurs", because that cannot be inferred from duration —
+Fringe and Welcome America genuinely do run continuously.
+
+Closing properly needs either a `schedule_note` field the client fills in ("Sundays, May–October")
+or real `FestivalOccurrence` rows per date. The schema already supports the latter; nobody has the
+actual dates yet.
+
+---
+
+## 2026-08-10 — Imported festivals have no imagery and no descriptions
+**Status:** DEFERRED (needs client decision)
+**Severity:** Low
+**Area:** data / importer
+
+Of 405 published festivals, zero have `image_url`, `logo_url`, or an Instagram handle. 267 have a
+website URL, which is the only usable source. Pulling imagery would mean crawling 267 third-party
+sites for Open Graph images, with copyright questions about republishing and a storage decision
+(Vercel's filesystem is not durable). Text search matches only name, location, and mapped
+category as a result. Branded placeholders cover the gap for now.
