@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { CrossBlock, QuadrantBlock } from "@/components/shared/DecorativeBlocks";
-import { ArrowRight, MapPin, Mail, Phone, Clock } from "lucide-react";
+import { ArrowRight, MapPin, Mail, Clock } from "lucide-react";
 
 const SPONSORS = [
   {
@@ -24,6 +25,37 @@ const SPONSORS = [
 
 export default function AboutPage() {
   const [activeTab, setActiveTab] = useState("mission");
+  const [sending, setSending] = useState(false);
+  const [formNotice, setFormNotice] = useState({ status: "idle", message: "" });
+
+  async function handleContactSubmit(e) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    setSending(true);
+    setFormNotice({ status: "idle", message: "" });
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.get("name"),
+          email: formData.get("email"),
+          message: formData.get("message"),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFormNotice({ status: "error", message: data.error || "Your message could not be sent. Please try again." });
+      } else {
+        setFormNotice({ status: "success", message: "Thanks for reaching out — we'll get back to you soon." });
+        e.currentTarget.reset();
+      }
+    } catch {
+      setFormNotice({ status: "error", message: "Your message could not be sent. Please try again." });
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <div className="relative mx-auto max-w-[1440px] overflow-hidden px-4 md:px-[81px] py-10 md:py-16">
@@ -181,12 +213,14 @@ export default function AboutPage() {
                     </div>
                     <div className="flex flex-col gap-1">
                       <h3 className="font-heading text-base font-bold text-slate-900">
-                        Office Address
+                        Festival Producers
                       </h3>
                       <p className="font-body text-sm text-slate-500">
-                        1234 Market Street, Suite 200
+                        Submitting a festival? It&apos;s free.
                         <br />
-                        Philadelphia, PA 19107
+                        <Link href="/producer" className="font-semibold text-indigo-600 hover:underline">
+                          Start your submission
+                        </Link>
                       </p>
                     </div>
                   </div>
@@ -213,12 +247,10 @@ export default function AboutPage() {
                     </div>
                     <div className="flex flex-col gap-1">
                       <h3 className="font-heading text-base font-bold text-slate-900">
-                        Support
+                        Contact
                       </h3>
                       <p className="font-body text-sm text-slate-500">
                         info@savephillyfestivals.org
-                        <br />
-                        (215) 555-0142
                       </p>
                     </div>
                   </div>
@@ -236,27 +268,46 @@ export default function AboutPage() {
 
             {/* Contact form */}
             <form
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={handleContactSubmit}
               className="flex w-full flex-col gap-6 rounded-2xl bg-white p-6 sm:p-10 border border-slate-200 shadow-sm"
             >
               <div className="flex flex-col gap-6">
+                {formNotice.message && (
+                  <div
+                    role={formNotice.status === "error" ? "alert" : "status"}
+                    className={`rounded-lg border px-4 py-3 text-sm font-semibold ${
+                      formNotice.status === "error"
+                        ? "border-red-200 bg-red-50 text-red-800"
+                        : "border-green-200 bg-green-50 text-green-800"
+                    }`}
+                  >
+                    {formNotice.message}
+                  </div>
+                )}
                 <div className="flex w-full flex-col gap-6 sm:flex-row">
                   <div className="flex w-full flex-col gap-2">
-                    <label className="font-ui text-sm font-bold text-slate-700">
+                    <label htmlFor="contact-name" className="font-ui text-sm font-bold text-slate-700">
                       Your Name
                     </label>
                     <input
+                      id="contact-name"
+                      name="name"
                       type="text"
+                      required
+                      maxLength={200}
                       placeholder="Enter your full name"
                       className="w-full h-10 px-4 rounded-lg border border-slate-200 bg-slate-50/50 font-body text-sm text-slate-900 outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                     />
                   </div>
                   <div className="flex w-full flex-col gap-2">
-                    <label className="font-ui text-sm font-bold text-slate-700">
+                    <label htmlFor="contact-email" className="font-ui text-sm font-bold text-slate-700">
                       Email Address
                     </label>
                     <input
+                      id="contact-email"
+                      name="email"
                       type="email"
+                      required
                       placeholder="Enter your email address"
                       className="w-full h-10 px-4 rounded-lg border border-slate-200 bg-slate-50/50 font-body text-sm text-slate-900 outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                     />
@@ -264,10 +315,14 @@ export default function AboutPage() {
                 </div>
 
                 <div className="flex w-full flex-col gap-2">
-                  <label className="font-ui text-sm font-bold text-slate-700">
+                  <label htmlFor="contact-message" className="font-ui text-sm font-bold text-slate-700">
                     Message
                   </label>
                   <textarea
+                    id="contact-message"
+                    name="message"
+                    required
+                    maxLength={5000}
                     placeholder="Write your message here..."
                     className="w-full min-h-[120px] p-4 rounded-lg border border-slate-200 bg-slate-50/50 font-body text-sm text-slate-900 outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none"
                   />
@@ -276,9 +331,10 @@ export default function AboutPage() {
                 <div className="flex justify-end mt-2">
                   <button
                     type="submit"
-                    className="flex items-center justify-center gap-2 rounded-full font-ui text-base font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all px-6 py-3 cursor-pointer shadow-xs"
+                    disabled={sending}
+                    className="flex items-center justify-center gap-2 rounded-full font-ui text-base font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-all px-6 py-3 cursor-pointer shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Send Message
+                    {sending ? "Sending..." : "Send Message"}
                     <ArrowRight className="size-5" />
                   </button>
                 </div>

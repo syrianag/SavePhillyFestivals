@@ -3,6 +3,7 @@ export const FESTIVAL_STATUS = {
   PENDING: "pending",
   APPROVED: "approved",
   REJECTED: "rejected",
+  PUBLISHED: "published",
 };
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PUBLICATION_STATES } from "./publication-policy";
+import { FeaturedToggle } from "./FeaturedToggle";
 import { Calendar, User, Eye, History } from "lucide-react";
 
 const stateBadgeMap = {
@@ -69,6 +70,7 @@ export default function AdminFestivalList({ festivals, selectedState, pagination
                 <th className="p-4">State</th>
                 <th className="p-4">Revision</th>
                 <th className="p-4">Last Updated</th>
+                <th className="p-4 text-center">Featured</th>
                 <th className="p-4 pr-6 text-right">Actions</th>
               </tr>
             </thead>
@@ -110,6 +112,9 @@ export default function AdminFestivalList({ festivals, selectedState, pagination
                           {new Date(festival.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </td>
+                      <td className="p-4 text-center">
+                        <FeaturedToggle festivalId={festival.id} featured={festival.featured} />
+                      </td>
                       <td className="p-4 pr-6 text-right">
                         <Link 
                           href={`/admin/festivals/${festival.id}`} 
@@ -124,7 +129,7 @@ export default function AdminFestivalList({ festivals, selectedState, pagination
                 })
               ) : (
                 <tr>
-                  <td className="p-12 text-center text-slate-500" colSpan={5}>
+                  <td className="p-12 text-center text-slate-500" colSpan={6}>
                     <div className="flex flex-col items-center justify-center gap-2">
                       <div className="text-lg font-semibold text-slate-700">No festivals match this queue</div>
                       <p className="text-sm max-w-sm">There are no submissions currently under the &ldquo;{selectedState ? selectedState.replaceAll("_", " ") : "All"}&rdquo; state filter.</p>

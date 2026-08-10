@@ -33,6 +33,7 @@ const emptyForm = {
   contact_email: "",
   contact_phone: "",
   website_url: "",
+  image_url: "",
   location: "",
   city: "Philadelphia",
   state: "PA",
@@ -80,6 +81,7 @@ function editablePayload(form, revision) {
     contact_email: form.contact_email.trim() || null,
     contact_phone: form.contact_phone.trim() || null,
     website_url: form.website_url.trim() || null,
+    image_url: form.image_url.trim() || null,
     location: form.location.trim() || null,
     city: form.city.trim() || null,
     state: form.state.trim() || null,
@@ -602,6 +604,13 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
                 <Field id="website_url" label="Website (optional)">
                   <input id="website_url" name="website_url" type="url" value={form.website_url} onChange={update} className={inputClass} placeholder="https://example.com" />
                 </Field>
+                <Field id="image_url" label="Public image URL (optional)">
+                  <input id="image_url" name="image_url" type="url" value={form.image_url} onChange={update} className={inputClass} placeholder="https://example.com/festival-photo.jpg" />
+                </Field>
+                <div className="sm:col-span-2 -mt-2 rounded-lg bg-slate-50 px-4 py-3 border border-slate-100 text-xs font-semibold text-slate-600 leading-relaxed">
+                  Add a photo hosted on your own site, Instagram post, or other public URL so it can appear on your
+                  festival page and in the Digital Exhibit after review. You can also upload a private image below.
+                </div>
                 <div className="sm:col-span-2 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label htmlFor="description" className={labelClass}>Description</label>

@@ -111,6 +111,10 @@ const festivals = [
     city: "Philadelphia",
     state: "PA",
     zip_code: "19131",
+    latitude: 39.9629,
+    longitude: -75.205,
+    image_url:
+      "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=1600&q=80",
     website_url: "https://www.mannmusiccenter.org",
     status: "approved",
     submitted_by: "producer@savephillyfestivals.org",
@@ -136,6 +140,10 @@ const festivals = [
     city: "Philadelphia",
     state: "PA",
     zip_code: "19147",
+    latitude: 39.9389,
+    longitude: -75.1585,
+    image_url:
+      "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=1600&q=80",
     website_url: "https://www.southphillycaribbeanfest.org",
     status: "approved",
     submitted_by: "producer@savephillyfestivals.org",
@@ -161,6 +169,10 @@ const festivals = [
     city: "Philadelphia",
     state: "PA",
     zip_code: "19106",
+    latitude: 39.9442,
+    longitude: -75.1383,
+    image_url:
+      "https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1600&q=80",
     website_url: "https://www.penns-landing.com",
     status: "approved",
     submitted_by: null,
@@ -186,6 +198,10 @@ const festivals = [
     city: "Philadelphia",
     state: "PA",
     zip_code: "19125",
+    latitude: 39.9662,
+    longitude: -75.1333,
+    image_url:
+      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80",
     website_url: "https://www.fishtownfest.org",
     status: "approved",
     submitted_by: "producer@savephillyfestivals.org",
@@ -211,6 +227,10 @@ const festivals = [
     city: "Philadelphia",
     state: "PA",
     zip_code: "19131",
+    latitude: 39.9629,
+    longitude: -75.205,
+    image_url:
+      "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1600&q=80",
     website_url: "https://www.phlcaribbeanjazz.org",
     status: "approved",
     submitted_by: null,
@@ -238,6 +258,10 @@ const festivals = [
     city: "Philadelphia",
     state: "PA",
     zip_code: "19103",
+    latitude: 39.9581,
+    longitude: -75.1713,
+    image_url:
+      "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?auto=format&fit=crop&w=1600&q=80",
     website_url: "https://www.logansquareartsfest.org",
     status: "pending",
     submitted_by: "producer@savephillyfestivals.org",
@@ -263,6 +287,10 @@ const festivals = [
     city: "Philadelphia",
     state: "PA",
     zip_code: "19103",
+    latitude: 39.9493,
+    longitude: -75.1718,
+    image_url:
+      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1600&q=80",
     website_url: "https://www.rittenhouserow.org",
     status: "pending",
     submitted_by: null,
@@ -290,6 +318,10 @@ const festivals = [
     city: "Philadelphia",
     state: "PA",
     zip_code: "19119",
+    latitude: 40.0577,
+    longitude: -75.1851,
+    image_url:
+      "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1600&q=80",
     website_url: "https://www.germantownavemusic.org",
     status: "draft",
     submitted_by: "producer@savephillyfestivals.org",
@@ -315,6 +347,10 @@ const festivals = [
     city: "Philadelphia",
     state: "PA",
     zip_code: "19125",
+    latitude: 39.9668,
+    longitude: -75.1262,
+    image_url:
+      "https://images.unsplash.com/photo-1503265192943-9d7eea6fc77a?auto=format&fit=crop&w=1600&q=80",
     website_url: "https://www.penntreatyparkfest.org",
     status: "draft",
     submitted_by: null,
@@ -342,6 +378,10 @@ const festivals = [
     city: "Philadelphia",
     state: "PA",
     zip_code: "19148",
+    latitude: 39.9042,
+    longitude: -75.174,
+    image_url:
+      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1600&q=80",
     website_url: "https://www.phillytacochallenge.com",
     status: "rejected",
     submitted_by: "producer@savephillyfestivals.org",
@@ -630,13 +670,19 @@ async function seedTags() {
 const seedWorkflowState = Object.freeze({
   draft: "draft",
   pending: "pending_review",
-  approved: "approved",
+  approved: "published",
   rejected: "rejected",
 });
+
+/* A single deterministic publication timestamp for every seed-published festival keeps the
+ * fixture idempotent across re-runs: the audit validator compares revision snapshots field
+ * by field, so a per-run `new Date()` would make the second seed diverge and fail. */
+const SEED_PUBLISHED_AT = new Date("2026-05-01T12:00:00.000Z");
 
 function seedFestivalData(festival, slug) {
   const workflowState = seedWorkflowState[festival.status];
   if (!workflowState) throw new Error(`Unsupported seed workflow state: ${festival.status}`);
+  const published = workflowState === "published";
   return {
     name: festival.name,
     slug,
@@ -645,9 +691,11 @@ function seedFestivalData(festival, slug) {
     city: festival.city,
     state: festival.state,
     zip_code: festival.zip_code,
+    latitude: festival.latitude ?? null,
+    longitude: festival.longitude ?? null,
+    image_url: festival.image_url ?? null,
     website_url: festival.website_url,
     logo_url: null,
-    image_url: null,
     rejection_reason: null,
     submitted_by: festival.submitted_by,
     contact_name: festival.contact_name,
@@ -664,9 +712,9 @@ function seedFestivalData(festival, slug) {
     all_day_end: null,
     calendar_status: "confirmed",
     calendar_sequence: 0,
-    calendar_published_at: null,
-    first_published_at: null,
-    published_at: null,
+    calendar_published_at: published ? SEED_PUBLISHED_AT : null,
+    first_published_at: published ? SEED_PUBLISHED_AT : null,
+    published_at: published ? SEED_PUBLISHED_AT : null,
     canceled_at: null,
     public_message: null,
     workflow_state: workflowState,
@@ -739,24 +787,62 @@ async function ensureFestivalAudit(transaction, festival, actor) {
 }
 
 async function seedFestivals(actor) {
+  const seedFestivalSelect = {
+    ...FESTIVAL_REVISION_SNAPSHOT_SELECT,
+    image_url: true,
+    latitude: true,
+    longitude: true,
+  };
+
+  async function ensurePrimaryOccurrence(transaction, festival) {
+    if (festival.workflow_state !== "published") return;
+    const existing = await transaction.festivalOccurrence.findFirst({
+      where: { festival_id: festival.id, source_key: "seed-primary" },
+      select: { id: true },
+    });
+    if (existing) return;
+    const now = new Date();
+    await transaction.festivalOccurrence.create({
+      data: {
+        id: randomUUID(),
+        festival_id: festival.id,
+        source_key: "seed-primary",
+        is_primary: true,
+        calendar_date_type: "timed",
+        time_zone: "America/New_York",
+        start_at: festival.start_date,
+        end_at: festival.end_date,
+        all_day_start: null,
+        all_day_end: null,
+        calendar_status: "confirmed",
+        calendar_sequence: 0,
+        calendar_published_at: festival.calendar_published_at,
+        updated_at: now,
+      },
+    });
+  }
+
   for (const f of festivals) {
     const slug = generateSlug(f.name);
     const desired = seedFestivalData(f, slug);
     const festival = await prisma.$transaction(async (transaction) => {
       const existing = await transaction.festival.findUnique({
         where: { slug },
-        select: FESTIVAL_REVISION_SNAPSHOT_SELECT,
+        select: seedFestivalSelect,
       });
+      let created;
       if (existing) {
         assertSeedFestivalStable(existing, desired);
         await ensureFestivalAudit(transaction, existing, actor);
-        return existing;
+        created = existing;
+      } else {
+        created = await transaction.festival.create({
+          data: { id: randomUUID(), ...desired },
+          select: seedFestivalSelect,
+        });
+        await ensureFestivalAudit(transaction, created, actor);
       }
-      const created = await transaction.festival.create({
-        data: { id: randomUUID(), ...desired },
-        select: FESTIVAL_REVISION_SNAPSHOT_SELECT,
-      });
-      await ensureFestivalAudit(transaction, created, actor);
+      await ensurePrimaryOccurrence(transaction, created);
       return created;
     });
 

@@ -12,6 +12,12 @@ export async function getEditorialFestival(id, { repository }) {
   return { ...festival, valid_actions: validTransitions(festival.workflow_state) };
 }
 
+export async function setFestivalFeatured(festivalId, featured, { repository }) {
+  const current = await repository.findForTransition(festivalId);
+  if (!current) throw new EditorialNotFoundError();
+  return repository.setFeatured(festivalId, featured);
+}
+
 export async function transitionFestival(festivalId, input, dependencies) {
   const { repository, user, now = () => new Date() } = dependencies;
   const current = await repository.findForTransition(festivalId);

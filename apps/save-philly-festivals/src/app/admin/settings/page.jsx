@@ -38,6 +38,18 @@ function availableRoles(currentUser) {
   return currentUser?.role === "super_admin" ? ROLE_OPTIONS : ["public", "producer"];
 }
 
+function defaultRoleForTab(tab, currentUser) {
+  if (tab === "staff") return currentUser?.role === "super_admin" ? "super_admin" : "admin";
+  return "producer";
+}
+
+function createableRolesForTab(tab, currentUser) {
+  if (tab === "staff") {
+    return currentUser?.role === "super_admin" ? ["admin", "super_admin"] : ["admin"];
+  }
+  return ["producer", "public"];
+}
+
 function canManageUser(currentUser, user) {
   return currentUser?.role === "super_admin" || !PRIVILEGED_ROLES.has(user.role);
 }
@@ -73,13 +85,14 @@ export default function AdminSettingsPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ text: "", type: "" });
+  const [tab, setTab] = useState("producers");
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: "",
     email: "",
     password: "",
-    role: "public",
+    role: "producer",
   });
   const [createLoading, setCreateLoading] = useState(false);
 
@@ -130,7 +143,7 @@ export default function AdminSettingsPage() {
       if (!res.ok) throw new Error(data.error || "Failed to create user");
       flash("Account created successfully.");
       setCreateOpen(false);
-      setCreateForm({ name: "", email: "", password: "", role: "public" });
+      setCreateForm({ name: "", email: "", password: "", role: defaultRoleForTab(tab, currentUser) });
       await fetchUsers();
     } catch (err) {
       flash(err.message, "error");
@@ -197,6 +210,10 @@ export default function AdminSettingsPage() {
     );
   }
 
+  const producerUsers = users.filter((user) => user.role === "producer");
+  const staffUsers = users.filter((user) => user.role === "admin" || user.role === "super_admin");
+  const activeUsers = tab === "producers" ? producerUsers : staffUsers;
+
   return (
     <div className="space-y-6">
       <div>
@@ -205,6 +222,31 @@ export default function AdminSettingsPage() {
       </div>
 
       <MessageBanner message={message.text} type={message.type} />
+
+      <div role="tablist" aria-label="Account management" className="flex w-fit rounded-xl border border-slate-200 bg-slate-100 p-1">
+        <button
+          role="tab"
+          aria-selected={tab === "producers"}
+          onClick={() => setTab("producers")}
+          className={`flex items-center gap-2 rounded-lg px-4 py-2 font-ui text-sm font-bold transition-colors cursor-pointer ${
+            tab === "producers" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Producers
+          <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-xs">{producerUsers.length}</span>
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === "staff"}
+          onClick={() => setTab("staff")}
+          className={`flex items-center gap-2 rounded-lg px-4 py-2 font-ui text-sm font-bold transition-colors cursor-pointer ${
+            tab === "staff" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Admins &amp; Staff
+          <span className="rounded-full bg-slate-200/70 px-2 py-0.5 text-xs">{staffUsers.length}</span>
+        </button>
+      </div>
 
       {currentUser && (
         <Card>
@@ -231,8 +273,11 @@ export default function AdminSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Users ({users.length})</span>
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <span>{tab === "producers" ? `Producer Accounts (${producerUsers.length})` : `Admin & Staff Accounts (${staffUsers.length})`}</span>
+            <Dialog open={createOpen} onOpenChange={(open) => {
+              if (open) setCreateForm((f) => ({ ...f, role: defaultRoleForTab(tab, currentUser) }));
+              setCreateOpen(open);
+            }}>
               <DialogTrigger
                 render={<Button size="sm" />}
               >
@@ -302,7 +347,7 @@ export default function AdminSettingsPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableRoles(currentUser).map((r) => (
+                        {createableRolesForTab(tab, currentUser).map((r) => (
                           <SelectItem key={r} value={r}>
                             {r}
                           </SelectItem>
@@ -333,17 +378,19 @@ export default function AdminSettingsPage() {
               </tr>
             </thead>
             <tbody>
-              {users.length === 0 ? (
+              {activeUsers.length === 0 ? (
                 <tr>
                   <td
                     colSpan={6}
                     className="px-4 py-8 text-center text-muted-foreground"
                   >
-                    No users found.
+                    {tab === "producers"
+                      ? "No producer accounts yet. Use 'Create Account' to add one."
+                      : "No admin or staff accounts found."}
                   </td>
                 </tr>
               ) : (
-                users.map((user) => (
+                activeUsers.map((user) => (
                   <tr
                     key={user.id}
                     className="border-b last:border-0 hover:bg-muted/50"

@@ -4,6 +4,7 @@ import { FeaturedFestivalCard } from "@/components/shared/FeaturedFestivalCard";
 import { FestivalCard } from "@/components/shared/FestivalCard";
 import { formatFestivalDate, parseDiscoveryParams } from "@/features/festivals/discovery";
 import { discoverApprovedFestivals } from "@/features/festivals/public-discovery";
+import { getFeaturedFestivals } from "@/features/festivals/festival-queries";
 import { articles } from "@/lib/festivals";
 
 const CARD_COLORS = ["#1E7BF6", "#206C4E", "#F6C847", "#FE7D0C", "#FF8577", "#FB439B"];
@@ -40,7 +41,12 @@ export default async function Home({ searchParams }) {
     };
   }
 
-  const featured = discovery.items.slice(0, 2);
+  let featured = [];
+  try {
+    featured = await getFeaturedFestivals();
+  } catch (error) {
+    console.error("Featured festival discovery failed", error);
+  }
   const resultLabel = `${discovery.pagination.total} ${discovery.pagination.total === 1 ? "festival" : "festivals"} found`;
 
   return (

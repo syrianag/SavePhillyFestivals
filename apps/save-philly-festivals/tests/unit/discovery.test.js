@@ -88,9 +88,9 @@ describe("New York date ranges and interval overlap", () => {
 });
 
 describe("approved discovery predicates", () => {
-  it("always pins public collection queries to approved", () => {
+  it("always pins public collection queries to approved or published", () => {
     const where = buildApprovedDiscoveryWhere(parseDiscoveryParams({ q: "food", location: "South" }));
-    expect(where.status).toBe("approved");
+    expect(where.status).toEqual({ in: ["approved", "published"] });
     expect(where.AND).toHaveLength(2);
   });
 
@@ -109,7 +109,7 @@ describe("approved discovery predicates", () => {
 });
 
 describe("production discovery query", () => {
-  it("uses approved-only predicates and a public field allowlist", async () => {
+  it("uses approved-or-published predicates and a public field allowlist", async () => {
     const festival = {
       id: "approved-1",
       slug: "approved-festival",
@@ -134,7 +134,7 @@ describe("production discovery query", () => {
     expect(prismaMock.festival.findMany).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        where: { status: "approved" },
+        where: { status: { in: ["approved", "published"] } },
         select: PUBLIC_DISCOVERY_SELECT,
       })
     );

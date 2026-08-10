@@ -120,12 +120,21 @@ export default function ToursPage() {
                 </p>
               </div>
               
-              <button
-                type="button"
-                className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-900 hover:bg-slate-900 hover:text-white py-2.5 font-ui text-sm font-bold text-slate-900 transition-all cursor-pointer shadow-3xs"
-              >
-                Book now ({tour.price})
-              </button>
+              {tour.id === "diy" ? (
+                <Link
+                  href="/map"
+                  className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-900 hover:bg-slate-900 hover:text-white py-2.5 font-ui text-sm font-bold text-slate-900 transition-all shadow-3xs"
+                >
+                  Explore the route ({tour.price})
+                </Link>
+              ) : (
+                <Link
+                  href={`mailto:info@savephillyfestivals.org?subject=${encodeURIComponent(`Tour booking: ${tour.type}`)}`}
+                  className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-900 hover:bg-slate-900 hover:text-white py-2.5 font-ui text-sm font-bold text-slate-900 transition-all shadow-3xs"
+                >
+                  Book now ({tour.price})
+                </Link>
+              )}
             </div>
           </div>
         ))}

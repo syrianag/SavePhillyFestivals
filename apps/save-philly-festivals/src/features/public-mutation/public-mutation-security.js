@@ -13,6 +13,8 @@ const LIMITS = Object.freeze({
   organizer_consent: 10,
   organizer_consent_eligibility: 60,
   organizer_consent_revoke: 10,
+  contact: 10,
+  producer_register: 10,
 });
 const buckets = new Map();
 

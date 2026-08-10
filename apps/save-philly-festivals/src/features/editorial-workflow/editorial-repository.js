@@ -17,6 +17,7 @@ export function isAssetReviewPermitted(festival, expectedRevision) {
 
 const adminFestivalSelect = {
   ...FESTIVAL_REVISION_SNAPSHOT_SELECT,
+  featured: true,
   owner_user_id: true,
   created_at: true,
   updated_at: true,
@@ -81,6 +82,10 @@ export const editorialRepository = {
 
   findForTransition(id) {
     return prisma.festival.findUnique({ where: { id }, select: adminFestivalSelect });
+  },
+
+  setFeatured(id, featured) {
+    return prisma.festival.update({ where: { id }, data: { featured }, select: adminFestivalSelect });
   },
 
   transition({ festivalId, expectedRevision, fromState, toState, reason, producerMessage, publicMessage, actorUserId, now, createId = randomUUID }) {

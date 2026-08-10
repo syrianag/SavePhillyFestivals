@@ -16,12 +16,39 @@ export const SPONSOR_SLOTS = Object.freeze({
   FOOTER: "footer",
 });
 
-/* Empty by default: an unsold slot must render nothing at all rather than a blank
- * placeholder box, which is what the client explicitly asked for. */
+/* Placeholder sponsor creatives. These are self-hosted SVG ads that fill the reserved
+ * rail/footer real estate on the public site until real sponsorship contracts land; swap
+ * an entry's `imageUrl`/`href` for the sold creative without touching `AdSlot` or the
+ * layouts. An empty slot still renders nothing, so removing every entry restores the
+ * unsold, chrome-free layout the client originally asked for. */
 const PLACEMENTS = Object.freeze({
-  [SPONSOR_SLOTS.LEFT_RAIL]: Object.freeze([]),
-  [SPONSOR_SLOTS.RIGHT_RAIL]: Object.freeze([]),
-  [SPONSOR_SLOTS.FOOTER]: Object.freeze([]),
+  [SPONSOR_SLOTS.LEFT_RAIL]: Object.freeze([
+    {
+      name: "Alston-Beech Foundation",
+      imageUrl: "/ads/rail-sponsor-a.svg",
+      alt: "Alston-Beech Foundation, presenting sponsor of community festivals",
+      width: 160,
+      height: 600,
+    },
+  ]),
+  [SPONSOR_SLOTS.RIGHT_RAIL]: Object.freeze([
+    {
+      name: "PECO Powering the Arts",
+      imageUrl: "/ads/rail-sponsor-b.svg",
+      alt: "PECO Powering the Arts, energizing Philadelphia's stages and festivals",
+      width: 160,
+      height: 600,
+    },
+  ]),
+  [SPONSOR_SLOTS.FOOTER]: Object.freeze([
+    {
+      name: "Philadelphia Activities Fund",
+      imageUrl: "/ads/footer-leaderboard.svg",
+      alt: "Philadelphia Activities Fund, supporting the festivals we love",
+      width: 728,
+      height: 90,
+    },
+  ]),
 });
 
 /**

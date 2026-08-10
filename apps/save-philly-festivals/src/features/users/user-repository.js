@@ -68,6 +68,27 @@ export const userRepository = Object.freeze({
     });
   },
 
+  /**
+   * Self-service producer registration. Distinct from admin-managed account creation:
+   * the account is created as a producer role and email-verified at signup (there is no
+   * email verification loop yet), so the producer can immediately begin a submission.
+   */
+  async createSelfServiceProducer({ name, email, password }) {
+    const id = randomUUID();
+    const password_hash = await bcrypt.hash(password, 12);
+    return prisma.user.create({
+      data: {
+        id,
+        name: name ?? null,
+        email,
+        password_hash,
+        role: "producer",
+        email_verified: new Date(),
+      },
+      select: USER_SELECT,
+    });
+  },
+
   transitionRole({ target, toRole, actorUserId, reason }) {
     return prisma.$transaction(async (transaction) => {
       const current = await lockAccount(transaction, target);

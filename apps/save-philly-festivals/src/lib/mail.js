@@ -6,6 +6,66 @@ const resendClient = process.env.RESEND_API_KEY
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "noreply@savephillyfestivals.com";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://savephillyfestivals.com";
+const CONTACT_EMAIL = process.env.CONTACT_EMAIL || "info@savephillyfestivals.org";
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[char]);
+}
+
+export async function sendContactEmail({ name, email, message }) {
+  const subject = `New contact message from ${name || "a visitor"}`;
+
+  const html = `
+    <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 32px;">
+      <h2 style="margin: 0 0 8px;">New Contact Message</h2>
+      <p style="color: #555; margin: 0 0 24px;">A visitor sent a message through the contact form.</p>
+
+      <div style="background: #f7f7f7; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+        <p style="margin: 0 0 4px;"><strong>Name:</strong> ${escapeHtml(name)}</p>
+        <p style="margin: 0;"><strong>Email:</strong> ${escapeHtml(email)}</p>
+      </div>
+
+      <div style="white-space: pre-wrap; color: #333;">${escapeHtml(message)}</div>
+
+      <p style="color: #999; font-size: 12px; margin-top: 32px;">Save Philly Festivals</p>
+    </div>
+  `.trim();
+
+  return sendEmail({ to: CONTACT_EMAIL, subject, html, replyTo: email });
+}
+
+export async function sendCommunicationEmail({ toEmail, fromEmail, subject, body }) {
+  const to = toEmail || fromEmail;
+
+  if (!to) {
+    return { success: false, code: "no_recipient" };
+  }
+
+  const replyTo = fromEmail && fromEmail !== FROM_EMAIL ? fromEmail : undefined;
+  const cc = fromEmail && to !== fromEmail ? fromEmail : undefined;
+  const safeSubject = subject?.trim() || "Message from Save Philly Festivals";
+
+  const html = `
+    <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 32px;">
+      <h2 style="margin: 0 0 8px;">${escapeHtml(safeSubject)}</h2>
+      ${fromEmail ? `<p style="color: #555; margin: 0 0 24px;">From: ${escapeHtml(fromEmail)}</p>` : ""}
+
+      <div style="background: #f7f7f7; border-radius: 8px; padding: 20px; margin-bottom: 24px; white-space: pre-wrap;">
+        ${escapeHtml(body || "")}
+      </div>
+
+      <p style="color: #999; font-size: 12px; margin-top: 32px;">Save Philly Festivals</p>
+    </div>
+  `.trim();
+
+  return sendEmail({ to, subject: safeSubject, html, replyTo, cc });
+}
 
 export async function sendScheduleConfirmation({ to, festivalName, scheduleTitle, startTime, endTime }) {
   const startStr = startTime ? new Date(startTime).toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" }) : "";

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { AdSlot } from "@/components/shared/AdSlot";
+import { SPONSOR_SLOTS } from "@/features/sponsors/sponsor-placements";
 import { getPublicFestivalMapPins } from "@/features/festivals/festival-queries";
 import { FestivalMap } from "@/features/festivals/FestivalMap";
 
@@ -46,6 +48,12 @@ export default async function MapPage() {
       </nav>
 
       <FestivalMap pins={pins} />
+
+      <AdSlot
+        slot={SPONSOR_SLOTS.FOOTER}
+        orientation="horizontal"
+        className="mt-2 items-center justify-center"
+      />
     </div>
   );
 }

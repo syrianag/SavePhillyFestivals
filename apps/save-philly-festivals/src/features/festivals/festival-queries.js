@@ -130,14 +130,69 @@ export async function getPublicFestivalMapPins() {
         location: festival.location || null,
         latitude: festival.latitude,
         longitude: festival.longitude,
+        image_url: festival.image_url || null,
       }));
   }
 
   return prisma.festival.findMany({
     where: { ...publishedDiscoveryWhere, latitude: { not: null }, longitude: { not: null } },
-    select: { id: true, slug: true, name: true, location: true, latitude: true, longitude: true },
+    select: { id: true, slug: true, name: true, location: true, latitude: true, longitude: true, image_url: true },
     orderBy: { name: "asc" },
   });
+}
+
+/**
+ * Published festivals that are officially featured on the homepage and the digital
+ * exhibit. Falls back to the most recently published festivals when none are marked
+ * featured yet, so the carousel never renders empty during rollout.
+ */
+export async function getFeaturedFestivals({ limit = 4 } = {}) {
+  const fixture = getDiscoveryE2eFestivalCatalog();
+  if (fixture !== undefined) {
+    return (fixture.length ? [...fixture, ...editorialE2EPublicCatalog()] : [])
+      .map(mapPublicFestival)
+      .slice(0, limit);
+  }
+
+  const featured = await prisma.festival.findMany({
+    where: { ...publishedDiscoveryWhere, featured: true },
+    select: PUBLIC_FESTIVAL_SELECT,
+    orderBy: [{ published_at: "desc" }, { start_date: "asc" }],
+    take: limit,
+  });
+
+  if (featured.length) return featured.map(mapPublicFestival);
+
+  const fallback = await prisma.festival.findMany({
+    where: publishedDiscoveryWhere,
+    select: PUBLIC_FESTIVAL_SELECT,
+    orderBy: [{ published_at: "desc" }, { start_date: "asc" }],
+    take: limit,
+  });
+  return fallback.map(mapPublicFestival);
+}
+
+/**
+ * Published festivals that carry a public photo, for the digital exhibit. Only
+ * published festivals appear, and only when a public image URL exists — imported
+ * festivals and pre-publication drafts are excluded until they gain one.
+ */
+export async function getPublicFestivalGallery({ limit = 60 } = {}) {
+  const fixture = getDiscoveryE2eFestivalCatalog();
+  if (fixture !== undefined) {
+    return [...fixture, ...editorialE2EPublicCatalog()]
+      .map(mapPublicFestival)
+      .filter((festival) => festival.image_url)
+      .slice(0, limit);
+  }
+
+  const festivals = await prisma.festival.findMany({
+    where: publishedDiscoveryWhere,
+    select: { ...PUBLIC_FESTIVAL_SELECT, featured: true },
+    orderBy: [{ featured: "desc" }, { published_at: "desc" }, { start_date: "asc" }],
+    take: limit,
+  });
+  return festivals.map(mapPublicFestival).filter((festival) => festival.image_url);
 }
 
 // Public callers must use the approved-only DTO. Private admin lookups remain ID-based.

@@ -198,6 +198,7 @@ model Festival {
   published_at          DateTime?
   canceled_at           DateTime?
   public_message        String?
+  featured              Boolean               @default(false)
   owner_user_id         String?
   workflow_state        FestivalWorkflowState @default(draft)
   revision              Int                   @default(0)

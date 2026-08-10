@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { validatePublicImageUrl } from "@/features/festivals/public-festival";
 
 export const PRODUCER_TERMS_VERSION = 1;
 export const ASSET_RIGHTS_VERSION = 1;
@@ -12,6 +13,10 @@ const requiredText = (max) => boundedText(max).min(1);
 const nullableText = (max) => boundedText(max).nullable();
 const nullableEmail = z.string().trim().max(254).email().transform((value) => value.toLowerCase()).nullable();
 const nullableUrl = z.string().trim().max(2048).url().nullable();
+const nullableImageUrl = z.string().trim().max(2048).nullable().refine(
+  (value) => value === null || validatePublicImageUrl(value) !== null,
+  "Use a valid public image URL",
+);
 
 function newYorkOffset(date) {
   const name = new Intl.DateTimeFormat("en-US", {
@@ -68,6 +73,7 @@ export const patchProducerFestivalSchema = z.object({
   contact_email: nullableEmail.optional(),
   contact_phone: nullableText(40).optional(),
   website_url: nullableUrl.optional(),
+  image_url: nullableImageUrl.optional(),
   calendar_date_type: z.enum(["timed", "all_day"]).optional(),
   time_zone: z.literal(PRODUCER_TIME_ZONE).optional(),
   start_date: nullableNewYorkDateTime.optional(),

@@ -5,8 +5,8 @@ import { producerNotificationProvider } from "@/lib/mail";
 import { authorizeEditor } from "./editorial-authorization";
 import { EditorialPolicyError } from "./editorial-transition-policy";
 import { editorialRepository } from "./editorial-repository";
-import { EDITORIAL_JSON_BODY_LIMIT, festivalIdSchema, listFestivalsQuerySchema, notificationIdSchema, reviewAssetSchema, transitionFestivalSchema } from "./editorial-schema";
-import { getEditorialFestival, listEditorialFestivals, retryWorkflowNotification, reviewFestivalAsset, transitionFestival } from "./editorial-service";
+import { EDITORIAL_JSON_BODY_LIMIT, festivalIdSchema, listFestivalsQuerySchema, notificationIdSchema, reviewAssetSchema, setFeaturedSchema, transitionFestivalSchema } from "./editorial-schema";
+import { getEditorialFestival, listEditorialFestivals, retryWorkflowNotification, reviewFestivalAsset, setFestivalFeatured, transitionFestival } from "./editorial-service";
 import { enforceProducerMutationOrigin, producerEdgeRateLimitVerified } from "@/features/producer-submission/producer-request-security";
 
 const HEADERS = { "Cache-Control": "private, no-store" };
@@ -93,6 +93,14 @@ export async function handleAdminNotificationRetry(request, context, injected) {
   try {
     const values = await authorized(injected); const gate = mutationGate(request, values); if (gate) return gate;
     return json(await retryWorkflowNotification(id, notificationId, values));
+  } catch (error) { return handled(error); }
+}
+export async function handleSetFeatured(request, injected) {
+  try {
+    const values = await authorized(injected);
+    const gate = mutationGate(request, values); if (gate) return gate;
+    const parsed = await parseJson(request, setFeaturedSchema); if (parsed.response) return parsed.response;
+    return json({ festival: await setFestivalFeatured(parsed.data.id, parsed.data.featured, values) });
   } catch (error) { return handled(error); }
 }
 export async function handleAdminAssetReview(request, context, injected) {

@@ -24,6 +24,12 @@ const repository = {
   },
   async findDetail(id) { return detail(producerE2EState().festivals.get(id)); },
   async findForTransition(id) { return clone(producerE2EState().festivals.get(id)); },
+  async setFeatured(id, featured) {
+    const festival = producerE2EState().festivals.get(id);
+    if (!festival) throw new EditorialNotFoundError();
+    festival.featured = featured;
+    return clone(festival);
+  },
   async transition({ festivalId, expectedRevision, fromState, toState, reason, producerMessage, publicMessage, actorUserId, now }) {
     const festival = producerE2EState().festivals.get(festivalId);
     if (!festival) throw new EditorialNotFoundError();

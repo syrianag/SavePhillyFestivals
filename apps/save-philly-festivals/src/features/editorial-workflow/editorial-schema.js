@@ -17,6 +17,11 @@ export const transitionFestivalSchema = z.object({
   public_message: message(1000).optional(),
 }).strict();
 
+export const setFeaturedSchema = z.object({
+  id: festivalIdSchema,
+  featured: z.boolean(),
+}).strict();
+
 export const listFestivalsQuerySchema = z.object({
   state: workflowStateSchema.optional(),
   page: z.coerce.number().int().min(1).max(10000).default(1),

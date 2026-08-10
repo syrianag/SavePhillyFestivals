@@ -73,8 +73,11 @@ export function FestivalMap({ pins = [] }) {
           .addTo(map);
         const name = escapeHtml(pin.name);
         const location = pin.location ? `<p style="margin:4px 0 8px">${escapeHtml(pin.location)}</p>` : "";
+        const image = pin.image_url
+          ? `<img src="${escapeHtml(pin.image_url)}" alt="" loading="lazy" style="display:block;width:180px;height:110px;object-fit:cover;border-radius:8px;margin-bottom:8px" />`
+          : "";
         marker.bindPopup(
-          `<strong>${name}</strong>${location}<a href="/festivals/${encodeURIComponent(pin.slug)}">View festival</a>`
+          `${image}<strong>${name}</strong>${location}<a href="/festivals/${encodeURIComponent(pin.slug)}">View festival</a>`
         );
         markers.push(marker);
       }

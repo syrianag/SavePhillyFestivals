@@ -14,6 +14,8 @@ import { DISCOVERY_E2E_FESTIVALS } from "@/features/festivals/discovery-e2e-fixt
  * from loading an unbounded result set while comfortably covering the public catalog. */
 const RELEVANCE_CANDIDATE_LIMIT = 500;
 
+const PUBLIC_DISCOVERY_STATUSES = [FESTIVAL_STATUS.APPROVED, FESTIVAL_STATUS.PUBLISHED];
+
 export const PUBLIC_DISCOVERY_SELECT = {
   id: true,
   slug: true,
@@ -68,7 +70,7 @@ export function buildApprovedDiscoveryWhere(filters, now = new Date()) {
   const dateFilter = buildDateOverlapFilter(getDiscoveryDateRange(filters, now));
   if (dateFilter) and.push(dateFilter);
 
-  return { status: FESTIVAL_STATUS.APPROVED, ...(and.length ? { AND: and } : {}) };
+  return { status: { in: PUBLIC_DISCOVERY_STATUSES }, ...(and.length ? { AND: and } : {}) };
 }
 
 function databaseOrder(sort) {
@@ -121,12 +123,12 @@ export async function discoverApprovedFestivals(filters, { now = new Date() } = 
   const [records, categoryRows, locationRows] = await Promise.all([
     prisma.festival.findMany(pageQuery),
     prisma.category.findMany({
-      where: { festivals: { some: { festival: { status: FESTIVAL_STATUS.APPROVED } } } },
+      where: { festivals: { some: { festival: { status: { in: PUBLIC_DISCOVERY_STATUSES } } } } },
       orderBy: { name: "asc" },
       select: { name: true },
     }),
     prisma.festival.findMany({
-      where: { status: FESTIVAL_STATUS.APPROVED, location: { not: null } },
+      where: { status: { in: PUBLIC_DISCOVERY_STATUSES }, location: { not: null } },
       distinct: ["location"],
       orderBy: { location: "asc" },
       select: { location: true },

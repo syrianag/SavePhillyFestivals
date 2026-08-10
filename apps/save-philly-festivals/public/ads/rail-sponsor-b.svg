@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="600" viewBox="0 0 160 600" role="img" aria-labelledby="titleB descB">
+  <title id="titleB">PECO Powering the Arts sponsor ad</title>
+  <desc id="descB">Energizing Philadelphia's stages and festivals.</desc>
+  <defs>
+    <linearGradient id="bgB" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff7a59"/>
+      <stop offset="1" stop-color="#c2410c"/>
+    </linearGradient>
+  </defs>
+  <rect width="160" height="600" rx="16" fill="url(#bgB)"/>
+  <g transform="translate(80,120)" stroke="#ffffff" stroke-opacity="0.35" stroke-width="3" fill="none">
+    <path d="M0 -40 L0 0"/>
+    <path d="M0 0 L -14 22 M0 0 L 0 22 M0 0 L 14 22"/>
+  </g>
+  <text x="80" y="250" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#ffffff">PECO</text>
+  <text x="80" y="270" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#ffedd5">Powering the Arts</text>
+  <text x="80" y="320" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#ffedd5">Energizing Philly's</text>
+  <text x="80" y="336" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#ffedd5">stages &amp; festivals</text>
+  <rect x="36" y="372" width="88" height="30" rx="15" fill="#ffffff"/>
+  <text x="80" y="392" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="bold" fill="#c2410c">Learn more</text>
+  <text x="80" y="566" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="9" letter-spacing="2" fill="#fed7aa">AD</text>
+</svg>

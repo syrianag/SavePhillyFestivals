@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,6 +78,16 @@ export default function LoginPage() {
             {loading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
+
+        <p className="text-center text-sm text-muted-foreground">
+          New here?{" "}
+          <Link
+            href="/register?callbackUrl=%2Fproducer%2Fsubmit"
+            className="font-semibold text-indigo-600 hover:underline"
+          >
+            Create a free producer account
+          </Link>
+        </p>
       </div>
     </div>
   );
