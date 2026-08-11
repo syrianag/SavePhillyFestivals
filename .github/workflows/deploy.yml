@@ -31,7 +31,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Matches NODE_VERSION in ci-cd.yml so the release runs on the same Node major the
+          # merge gates were exercised on. The pinned pnpm needs >= 22.13 regardless.
+          node-version: 24
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
