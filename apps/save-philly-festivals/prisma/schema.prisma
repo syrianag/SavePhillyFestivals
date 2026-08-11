@@ -919,6 +919,7 @@ model User {
   overridden_festival_import_matches FestivalImportRow[] @relation("FestivalImportMatchOverrideActor")
   account_transitions UserAccountTransition[] @relation("UserAccountTransitionTarget")
   performed_account_transitions UserAccountTransition[] @relation("UserAccountTransitionActor")
+  password_reset_tokens PasswordResetToken[]
 
   @@index([status, role, created_at])
 }
@@ -992,4 +993,20 @@ model EmailLog {
 
   @@index([to_email])
   @@index([sent_at])
+}
+
+// ─── Account Recovery ─────────────────────────────────────
+model PasswordResetToken {
+  id          String    @id @default(uuid())
+  user_id     String
+  token_hash  String    @unique
+  expires_at  DateTime
+  consumed_at DateTime?
+  replaced_at DateTime?
+  created_at  DateTime  @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
 }

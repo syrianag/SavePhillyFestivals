@@ -167,7 +167,7 @@ function AssetUploader({ festivalId, disabled }) {
     try {
       await producerApi.upload(festivalId, data);
       element.reset();
-      setStatus({ pending: false, error: "", success: "Private asset uploaded successfully. It is not publicly accessible." });
+      setStatus({ pending: false, error: "", success: "Image uploaded for editorial review; editors can view it." });
     } catch (error) {
       setStatus({ pending: false, error: error.message, success: "" });
     }
@@ -178,9 +178,9 @@ function AssetUploader({ festivalId, disabled }) {
       <CardHeader className="border-b border-slate-100">
         <CardTitle id="asset-heading" className="text-lg font-bold text-slate-900 flex items-center gap-2">
           <UploadCloud className="size-5 text-slate-500" />
-          Private festival asset
+          Festival asset for review
         </CardTitle>
-        <CardDescription>Upload a JPEG, PNG, or WebP image up to 10 MB. Files remain private during review.</CardDescription>
+        <CardDescription>Upload a JPEG, PNG, or WebP image up to 10 MB. Images are uploaded for editorial review and are visible to the Philly Festivals team.</CardDescription>
       </CardHeader>
       
       <form onSubmit={upload}>
@@ -260,7 +260,7 @@ function AssetUploader({ festivalId, disabled }) {
             disabled={disabled || status.pending} 
             className="w-full sm:w-auto font-semibold shadow-xs"
           >
-            {status.pending ? "Uploading…" : "Upload private asset"}
+            {status.pending ? "Uploading…" : "Upload asset for review"}
           </Button>
         </CardFooter>
       </form>
@@ -347,7 +347,7 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
       const payload = editablePayload(form, festival.revision);
       const updated = (await producerApi.patch(festival.id, payload)).festival;
       setFestival(updated);
-      setNotice("Draft saved.");
+      setNotice("Saved.");
       return updated;
     } catch (requestError) {
       setError({ message: requestError.message, issues: requestError.issues || [] });
@@ -399,7 +399,7 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
   }
 
   if (!capabilitiesLoading && !initialFestivalId && !mutationsEnabled) {
-    return <ErrorSummary message="Draft changes are temporarily unavailable." issues={[]} />;
+    return <ErrorSummary message="Producer changes are temporarily unavailable." issues={[]} />;
   }
   if (loading) {
     return (
@@ -435,7 +435,7 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
           </Badge>
         </div>
         <p className="mt-2.5 max-w-3xl text-sm text-slate-600 leading-relaxed">
-          {pendingReview ? "Your submission is read-only while the Philly Festivals team reviews it." : festival.workflow_state === "changes_requested" ? "Review the producer-safe feedback, update your festival, and resubmit when ready." : !editableState ? "This submission is read-only. Contact the Philly Festivals team if you need help." : capabilityReadOnly ? "This draft is still private. Changes are temporarily unavailable until required production protections are restored." : "Save as often as you need. Approval is separate from publication, and this record remains private until published."}
+          {pendingReview ? "Your submission is read-only while the Philly Festivals team reviews it." : festival.workflow_state === "changes_requested" ? "Review the producer-safe feedback, update your festival, and resubmit when ready." : !editableState ? "This submission is read-only. Contact the Philly Festivals team if you need help." : capabilityReadOnly ? "This submission is currently restricted. Changes are temporarily unavailable until required production protections are restored." : "Save as often as you need. Approval is separate from publication, and this record is not public until published."}
         </p>
         
         {latestProducerMessage && (
@@ -609,7 +609,7 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
                 </Field>
                 <div className="sm:col-span-2 -mt-2 rounded-lg bg-slate-50 px-4 py-3 border border-slate-100 text-xs font-semibold text-slate-600 leading-relaxed">
                   Add a photo hosted on your own site, Instagram post, or other public URL so it can appear on your
-                  festival page and in the Digital Exhibit after review. You can also upload a private image below.
+                  festival page and in the Digital Exhibit after review. You can also upload an image below for editorial review.
                 </div>
                 <div className="sm:col-span-2 space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -707,7 +707,7 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
                 disabled={Boolean(pendingAction)} 
                 className="font-semibold border-slate-300 bg-white"
               >
-                {pendingAction === "save" ? "Saving…" : "Save draft"}
+                {pendingAction === "save" ? "Saving…" : "Save"}
               </Button>
               
               <Button 
@@ -767,7 +767,7 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
           <CardHeader>
             <CardTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <UploadCloud className="size-5 text-slate-350" />
-              Private festival asset
+              Festival asset for review
             </CardTitle>
           </CardHeader>
           <CardContent>
