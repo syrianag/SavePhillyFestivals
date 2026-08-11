@@ -5,6 +5,9 @@ import { buildFestivalRevisionSnapshot, FESTIVAL_REVISION_SNAPSHOT_SELECT } from
 import { ProducerFestivalConflictError, ProducerFestivalNotFoundError } from "./producer-submission-errors";
 
 const editableStates = ["draft", "changes_requested"];
+// Allow uploads while a submission is pending review so producers can attach images
+// that editors will see. Editing festival fields remains restricted to editableStates.
+const uploadableStates = ["draft", "changes_requested", "pending_review"];
 const festivalSelect = {
   ...FESTIVAL_REVISION_SNAPSHOT_SELECT,
   status: true,
@@ -358,7 +361,7 @@ export const producerSubmissionRepository = {
         select: { workflow_state: true },
       });
       if (!festival) throw new ProducerFestivalNotFoundError();
-      if (!editableStates.includes(festival.workflow_state)) throw new ProducerFestivalConflictError();
+      if (!uploadableStates.includes(festival.workflow_state)) throw new ProducerFestivalConflictError();
 
       return transaction.festivalAsset.create({
         data: {
