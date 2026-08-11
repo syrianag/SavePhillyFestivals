@@ -683,6 +683,28 @@ try {
   }, "Unaudited user role change", /matching immutable audit transition/);
 
   console.log("Verified user role/status constraints, automatic creation audits, revisioned role and delete-equivalent transitions, final active super-admin protection, hard-delete prohibition, deferred audit coherence, and audit immutability.");
+
+  /* Bring the schema up to head before the Prisma evidence run.
+   *
+   * The blocks above stop at the last migration they assert on, but
+   * `scripts/migrate-prisma-evidence.mjs` imports the generated client, whose queries select every
+   * column in the *current* schema. Any migration added after the last named one above therefore
+   * breaks that script — as `20260806164625_add_festival_geocoordinates` did, failing every run with
+   * `The column Festival.latitude does not exist` from 2026-08-06 until this loop was added.
+   *
+   * Derived from the sorted list rather than named explicitly, so a new migration is picked up
+   * automatically. Naming them is what let phase one fall five days behind the schema; only
+   * migrations that need bespoke constraint assertions should be named above.
+   *
+   * These run against the fixture rows inserted earlier, which is deliberate: a migration that
+   * cannot apply to populated tables should fail here rather than during `migrate deploy` in
+   * production. The final `resetPublicSchema()` + `migrate deploy` below still verifies the chain
+   * from empty, so both paths stay covered. */
+  const tailMigrations = migrationNames.filter((name) => name > userManagementMigration);
+  for (const name of tailMigrations) {
+    await client.query(readFileSync(join(migrationsRoot, name, "migration.sql"), "utf8"));
+  }
+  console.log(`Applied ${tailMigrations.length} post-assertion migrations to reach schema head before the Prisma evidence run.`);
 } finally {
   await client.end();
 }
