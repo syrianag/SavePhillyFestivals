@@ -122,7 +122,9 @@ could not create an account at all — an admin had to make one for them.
 ### Step 2 — Request producer access — `/account`
 
 **Action:** Fill in organization, festival name, and a note. Submit. Reach this page from the
-**"My account"** link in the header — it appears as soon as anyone signs in, whatever their role.
+**"My account"** link in the header — it appears for signed-in producers and public users. Staff
+do not see it, because `/account` only shows the producer-access application panel, which an
+admin has no use for; admins administer that queue from the admin portal instead.
 
 **Talking points:**
 > "The request goes into an admin queue. The applicant sees their status here — awaiting review,
@@ -181,6 +183,22 @@ its URL.
 > its state — the protection being that an edit was never invisible. We kept that protection but
 > changed how: a same-state edit is allowed only when it carries a written reason. The audit
 > trail is unchanged."
+
+**Action, while the editor is open:** clear the location field, type a bare venue name like
+`9th Street Italian Market`, and press **Find address**. Pick a suggestion, press **Use this
+address**, and save.
+
+**Talking points:**
+> "About 87 imported festivals have addresses the mapping service cannot resolve on its own —
+> usually a venue name with no street address, so there is nothing for it to retry with. This
+> puts a person in the loop: search, pick the real address, save. The same panel is in the
+> producer submission form, so bad addresses get caught before they enter your queue."
+
+**Worth saying plainly:**
+> "This is a tool, not a bulk repair. The existing 87 still need someone to open each one. It
+> also only proposes address text — the pin itself still comes from the normal automatic
+> matching after you save, so there is exactly one thing deciding where a festival sits on the
+> map."
 
 ### Request changes → approve → publish
 

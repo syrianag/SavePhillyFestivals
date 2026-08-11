@@ -103,6 +103,9 @@ importers:
       eslint-config-next:
         specifier: ^16.3.0
         version: 16.3.0(@typescript-eslint/parser@8.65.0(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3))(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)
+      marked:
+        specifier: ^18.0.9
+        version: 18.0.9
       nx:
         specifier: 22.7.8
         version: 22.7.8
@@ -3800,6 +3803,11 @@ packages:
   marked@0.7.0:
     resolution: {integrity: sha512-c+yYdCZJQrsRjTPhUx7VKkApw9bwDkNbHUKo1ovgcfDjb2kc8rLuRbIFyXL5WOEUwzSSKo3IXpph2K6DqB/KZg==}
     engines: {node: '>=0.10.0'}
+    hasBin: true
+
+  marked@18.0.9:
+    resolution: {integrity: sha512-/Sa4qiiHZxf0/FQdBBowr9q4r10krCwMvpK48FUBdXdUXScDxiQGR9zCPrFgRVR5LU3iySOiIjy09ZQvADir1w==}
+    engines: {node: '>= 20'}
     hasBin: true
 
   math-intrinsics@1.1.0:
@@ -9064,6 +9072,8 @@ snapshots:
       supports-hyperlinks: 1.0.1
 
   marked@0.7.0: {}
+
+  marked@18.0.9: {}
 
   math-intrinsics@1.1.0: {}
 

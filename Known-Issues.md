@@ -85,8 +85,19 @@ The remainder break down as:
 re-resolves changed locations automatically within about ten minutes, and there is a "Geocode now"
 button on the festival page if you want it immediately.
 
+When correcting it by hand does not work — typically a venue name with no street address, where
+the automatic matcher has nothing to retry with — use the **"Find address"** button under the
+location field. It searches the mapping service and offers up to five real candidate addresses to
+pick from. The same panel is in the producer submission form, so new submissions can be corrected
+before they ever enter the queue. It proposes address *text* only; the pin still comes from the
+normal automatic matching after you save.
+
+This is a tool, not a bulk repair: the ~87 festivals that have already failed still need someone
+to open each one and click through the panel.
+
 **Possible improvement:** a second mapping provider that is stronger on street addresses and
-intersections would likely recover a good share of those 54. Not built; say the word.
+intersections would likely recover a good share of those 54 without a human in the loop. Not
+built; say the word.
 
 ---
 
