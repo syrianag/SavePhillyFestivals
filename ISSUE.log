@@ -7,6 +7,33 @@ Status values: OPEN | IN PROGRESS | RESOLVED | DEFERRED | WONTFIX
 
 ---
 
+## 2026-08-11 — Could not reproduce the Nx test-target failure; the *fallback* is the broken one
+**Status:** RESOLVED (could not reproduce) — needs confirmation from whoever hit it
+**Severity:** Low, but the guidance was pointing developers at the worse command
+**Area:** `nx.json`, `vitest.config.js`, the entry below dated 2026-08-10
+
+The geocoding entry below reports that `pnpm exec nx run save-philly-festivals:test` "currently
+fails all 45 test files with `Cannot read properties of undefined (reading 'config')`" and
+recommends the direct-vitest fallback instead. Re-ran both on 2026-08-11 and got the opposite
+result:
+
+- `pnpm exec nx run save-philly-festivals:test` → **45 files, 363 tests, all passing.**
+- `cd apps/save-philly-festivals && ../../node_modules/.bin/vitest run --config vitest.config.js`
+  → **2 files fail, 43 pass, 315 tests.** Both failures are `DATABASE_URL is not configured`
+  thrown at import time from `src/lib/db.js` (`producer-access.test.js` and one other).
+
+The cause of the fallback's failure is not a bug: the Nx target loads the app's `.env.local`,
+and invoking the vitest binary directly does not, so any test file whose import graph reaches
+`src/lib/db.js` throws before a single test runs. That also explains the test-count gap — 363
+via Nx vs 315 direct, i.e. the fallback silently runs 48 fewer tests.
+
+Most likely the original failure was a stale Nx daemon or cache rather than a version mismatch
+(`pnpm exec nx reset` clears both). **Prefer the Nx target**; if the fallback is genuinely needed,
+export `DATABASE_URL` first or accept that it covers less. Reopen this with the full error output
+if the `'config'` failure recurs.
+
+---
+
 ## 2026-08-10 — Geocoding fallback can't help venue-only locations with no comma
 **Status:** RESOLVED — interactive address confirmation shipped on both the producer and admin sides
 **Severity:** Low-medium — cosmetic (missing map pin), not a data-integrity issue
