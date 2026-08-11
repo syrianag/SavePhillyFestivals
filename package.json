@@ -68,7 +68,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.4.2",
-    "gh": "^2.8.9",
     "ics": "^3.12.0",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
