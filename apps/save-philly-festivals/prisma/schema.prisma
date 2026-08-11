@@ -908,6 +908,11 @@ model User {
   email         String   @unique
   email_verified DateTime?
   password_hash String
+  /* Set every time the password changes, and carried as a JWT claim so `auth()` can reject
+   * sessions minted before a reset. It deliberately does NOT ride on `revision`: the
+   * `User_account_revision_trigger` raises unless a revision bump accompanies a role or status
+   * transition, and a password change is neither. */
+  password_changed_at DateTime?
   role          String            @default("public")
   status        UserAccountStatus @default(active)
   revision      Int               @default(0)
@@ -934,8 +939,30 @@ model User {
   decided_producer_access_requests ProducerAccessRequest[] @relation("ProducerAccessDecider")
   account_transitions UserAccountTransition[] @relation("UserAccountTransitionTarget")
   performed_account_transitions UserAccountTransition[] @relation("UserAccountTransitionActor")
+  password_reset_tokens PasswordResetToken[] @relation("PasswordResetTokenSubject")
 
   @@index([status, role, created_at])
+}
+
+/**
+ * Single-use password reset grants.
+ *
+ * Only the SHA-256 hash of the token is stored, matching `OrganizerMailingConsent.management_token_hash`
+ * — a database dump must not hand out working reset links. `consumed_at` makes redemption
+ * one-shot; rows are kept after use so a support question about "who reset when" is answerable.
+ */
+model PasswordResetToken {
+  id           String    @id @default(uuid())
+  user_id      String
+  token_hash   String    @unique
+  expires_at   DateTime
+  consumed_at  DateTime?
+  created_at   DateTime  @default(now())
+
+  user User @relation("PasswordResetTokenSubject", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at])
+  @@index([expires_at])
 }
 
 model UserAccountTransition {

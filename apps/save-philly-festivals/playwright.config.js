@@ -58,6 +58,7 @@ export default defineConfig({
       AUTH_TRUST_HOST: "true",
       DISCOVERY_E2E_FIXTURE: "1",
       PRODUCER_E2E_FIXTURE: "1",
+      PASSWORD_RESET_E2E_FIXTURE: "1",
       PRODUCER_E2E_SECRET: producerE2ESecret,
       CURATOR_SOCIAL_FEED_TOKEN: "",
       FLOCKLER_SOCIAL_FEED_TOKEN: "",

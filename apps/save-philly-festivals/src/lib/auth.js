@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { passwordChangedSinceIssue } from "@/lib/session-validity";
 
 const authSecret = process.env.AUTH_SECRET;
 
@@ -42,6 +43,7 @@ const nextAuth = NextAuth({
           email: user.email,
           name: user.name,
           role: user.role,
+          password_changed_at: user.password_changed_at,
         };
       },
     }),
@@ -54,6 +56,9 @@ const nextAuth = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        /* Stamped at sign-in only. `auth()` compares it against the account's current value to
+         * expire tokens minted before a password reset. */
+        token.password_changed_at = user.password_changed_at ?? null;
       }
       return token;
     },
@@ -62,6 +67,9 @@ const nextAuth = NextAuth({
         session.user.id = token.id || token.sub;
         session.user.role = token.role;
       }
+      /* Carried outside `session.user` because it is a session-validity control value, not a
+       * profile field. */
+      session.passwordChangedAt = token.password_changed_at ?? null;
       return session;
     },
   },
@@ -80,9 +88,10 @@ export async function auth(...args) {
 
   const currentUser = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, name: true, role: true, status: true },
+    select: { id: true, email: true, name: true, role: true, status: true, password_changed_at: true },
   });
   if (!currentUser || currentUser.status !== "active") return null;
+  if (passwordChangedSinceIssue(session, currentUser.password_changed_at)) return null;
 
   return {
     ...session,
