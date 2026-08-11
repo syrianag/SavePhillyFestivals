@@ -86,6 +86,10 @@ export default function AdminFestivalDetail({ initialFestival }) {
   
   const [status, setStatus] = useState({ pending: false, error: "", notice: "" });
 
+  // Viewing modals: 'festival' to inspect the festival submission; asset holds the asset to view
+  const [viewingFestival, setViewingFestival] = useState(false);
+  const [viewingAsset, setViewingAsset] = useState(null);
+
   const isConflict = status.error && status.error.includes("Revision conflict");
 
   async function handleTransitionSubmit(event) {
@@ -274,6 +278,9 @@ export default function AdminFestivalDetail({ initialFestival }) {
                 <div>
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Festival Name</h4>
                   <p className="mt-1.5 text-sm font-semibold text-slate-900">{festival.name || "—"}</p>
+                  <div className="mt-2">
+                    <Button size="sm" variant="outline" onClick={() => setViewingFestival(true)}>View submission for review</Button>
+                  </div>
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Festival URL Slug</h4>
@@ -401,7 +408,7 @@ export default function AdminFestivalDetail({ initialFestival }) {
               {festival.private_assets && festival.private_assets.length ? (
                 festival.private_assets.map((asset) => {
                   const isPending = asset.editorial_status === "pending";
-                  return (
+                    return (
                     <div key={asset.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 space-y-3 hover:border-slate-200 transition-colors">
                       <div className="flex flex-col md:flex-row md:items-start justify-between gap-2">
                         <div>
@@ -423,26 +430,29 @@ export default function AdminFestivalDetail({ initialFestival }) {
                         </div>
                       </div>
                       
-                      {isPending && (
-                        <div className="flex gap-2 pt-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                            onClick={() => reviewAsset(asset, "approved")}
-                          >
-                            Approve asset
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                            onClick={() => reviewAsset(asset, "rejected")}
-                          >
-                            Reject asset
-                          </Button>
-                        </div>
-                      )}
+                      <div className="flex gap-2 pt-2">
+                        <Button size="sm" variant="ghost" onClick={() => setViewingAsset(asset)}>View asset</Button>
+                        {isPending && (
+                          <>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                              onClick={() => reviewAsset(asset, "approved")}
+                            >
+                              Approve asset
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                              onClick={() => reviewAsset(asset, "rejected")}
+                            >
+                              Reject asset
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   );
                 })
@@ -704,6 +714,55 @@ export default function AdminFestivalDetail({ initialFestival }) {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Festival View Modal */}
+      <Dialog open={viewingFestival} onOpenChange={() => { if (!status.pending) setViewingFestival(false); }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-slate-900 font-bold">View submission</DialogTitle>
+            <DialogDescription>Inspect the full producer submission for editorial review.</DialogDescription>
+          </DialogHeader>
+          <div className="py-2 space-y-4">
+            <h3 className="font-semibold">{festival.name || "Untitled Festival"}</h3>
+            <p className="text-sm text-slate-700 whitespace-pre-wrap">{festival.description || "No description provided."}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><strong>Contact:</strong> {festival.contact_name || '—'} / {festival.contact_email || '—'}</div>
+              <div><strong>Location:</strong> {festival.location || '—'}</div>
+            </div>
+          </div>
+          <DialogFooter className="pt-4">
+            <Button variant="outline" onClick={() => setViewingFestival(false)}>Close</Button>
+            <Button onClick={() => { setViewingFestival(false); setActiveDialog('changes_requested'); }} className="font-semibold">Open Editorial Action</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Asset View Modal */}
+      <Dialog open={!!viewingAsset} onOpenChange={() => { if (!status.pending) setViewingAsset(null); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-slate-900 font-bold">Asset details</DialogTitle>
+            <DialogDescription>Preview metadata for the submitted asset.</DialogDescription>
+          </DialogHeader>
+          {viewingAsset && (
+            <div className="py-2 space-y-4">
+              <div className="text-sm text-slate-700">Filename: {viewingAsset.original_filename || viewingAsset.server_filename}</div>
+              <div className="text-sm text-slate-700">MIME: {viewingAsset.mime_type}</div>
+              <div className="text-sm text-slate-700">Size: {viewingAsset.byte_size} bytes</div>
+              <div className="text-sm text-slate-700">Editorial status: {viewingAsset.editorial_status}</div>
+            </div>
+          )}
+          <DialogFooter className="pt-4">
+            <Button variant="outline" onClick={() => setViewingAsset(null)}>Close</Button>
+            {viewingAsset && (
+              <>
+                <Button onClick={() => { reviewAsset(viewingAsset, 'approved'); setViewingAsset(null); }} className="bg-green-600 text-white">Approve</Button>
+                <Button onClick={() => { reviewAsset(viewingAsset, 'rejected'); setViewingAsset(null); }} variant="destructive">Reject</Button>
+              </>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

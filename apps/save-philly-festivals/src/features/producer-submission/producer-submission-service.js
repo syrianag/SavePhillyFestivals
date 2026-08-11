@@ -45,7 +45,8 @@ export async function createOwnedDraft(input, { repository, user, createId = ran
 
   const id = createId();
   try {
-    const festival = await repository.createOwnedDraft({
+    // Create as an immediate submission (pending_review) so editors see new submissions
+    const festival = await repository.createOwnedSubmission({
       id,
       ownerUserId: user.id,
       submissionKey: input.submission_key,

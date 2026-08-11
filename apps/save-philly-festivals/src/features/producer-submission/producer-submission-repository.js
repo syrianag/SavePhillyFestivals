@@ -86,6 +86,62 @@ export const producerSubmissionRepository = {
     });
   },
 
+  // Create and immediately submit as pending_review so producer creates are visible to editors.
+  createOwnedSubmission({ id, ownerUserId, submissionKey, slug }) {
+    return prisma.$transaction(async (transaction) => {
+      const festival = await transaction.festival.create({
+        data: {
+          id,
+          owner_user_id: ownerUserId,
+          submission_key: submissionKey,
+          name: "",
+          slug,
+          workflow_state: "pending_review",
+          revision: 1,
+        },
+        select: festivalSelect,
+      });
+
+      const transition = await transaction.festivalTransition.create({
+        data: {
+          festival_id: id,
+          actor_user_id: ownerUserId,
+          from_state: null,
+          to_state: "pending_review",
+          revision: 1,
+        },
+      });
+
+      await transaction.festivalRevision.create({
+        data: {
+          festival_id: id,
+          workflow_revision: 1,
+          transition_id: transition.id,
+          actor_user_id: ownerUserId,
+          snapshot: buildFestivalRevisionSnapshot(festival),
+        },
+      });
+
+      const occurrenceData = festival.calendar_date_type === "timed"
+        ? { calendar_date_type: "timed", time_zone: festival.time_zone, start_at: festival.start_date, end_at: festival.end_date, all_day_start: null, all_day_end: null }
+        : { calendar_date_type: "all_day", time_zone: festival.time_zone, start_at: null, end_at: null, all_day_start: festival.all_day_start, all_day_end: festival.all_day_end };
+      await transaction.festivalOccurrence.upsert({
+        where: { festival_id_source_key: { festival_id: id, source_key: "legacy-primary" } },
+        create: { id: randomUUID(), festival_id: id, source_key: "legacy-primary", is_primary: true, ...occurrenceData },
+        update: { is_primary: true, ...occurrenceData },
+      });
+
+      await transaction.producerSubmissionNotification.createMany({
+        data: [
+          { festival_id: id, workflow_revision: 1, notification_type: "producer_receipt", recipient_email: festival.contact_email },
+          { festival_id: id, workflow_revision: 1, notification_type: "team_notification", recipient_alias: process.env.PRODUCER_SUBMISSION_TEAM_ALIAS },
+        ],
+      });
+
+      return festival;
+    });
+  },
+
   updateOwnedEditable({ ownerUserId, festivalId, expectedRevision, data }) {
     return prisma.$transaction(async (transaction) => {
       const current = await transaction.festival.findFirst({
