@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@11.13.0",
   "engines": {
-    "node": ">=20.19",
+    "node": ">=22.13",
     "pnpm": ">=11.13.0"
   },
   "//": "No `nx` key here on purpose. liftOff-ops needs `nx.includedScripts: []` because its workspace root is itself an Nx project (root project.json); this workspace has no root project, so adding an `nx` key would register the root as a project named save-philly-festivals and collide with apps/save-philly-festivals. Root scripts here are plain pnpm entry points and are never inferred as Nx targets.",

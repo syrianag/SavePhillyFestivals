@@ -18,7 +18,11 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: "20"
+  # Must satisfy the pnpm version pinned in package.json's packageManager field. pnpm 11 requires
+  # Node >= 22.13 and imports node:sqlite, which does not exist before Node 22 — on Node 20,
+  # `corepack enable` succeeds and the first pnpm invocation dies with ERR_UNKNOWN_BUILTIN_MODULE.
+  # Keep this in step with engines.node when either is bumped.
+  NODE_VERSION: "24"
   NEXT_TELEMETRY_DISABLED: "1"
   NX_DAEMON: "false"
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/save_philly_festivals_ci?schema=public

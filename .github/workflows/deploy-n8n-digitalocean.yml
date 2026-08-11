@@ -31,7 +31,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  NODE_VERSION: "20"
+  # See the note in ci-cd.yml: the pinned pnpm requires Node >= 22.13.
+  NODE_VERSION: "24"
   N8N_COMPOSE_FILE: apps/n8n/config/compose.yaml
 
 jobs:
