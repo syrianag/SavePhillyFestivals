@@ -37,6 +37,30 @@ Set `DATABASE_URL` in `apps/save-philly-festivals/.env.local` before running mig
 
 The remaining production checklist is tracked in [`remaining-production-gates.md`](remaining-production-gates.md).
 
+### Windows setup
+
+Same steps, PowerShell syntax:
+
+```powershell
+corepack enable
+pnpm install --frozen-lockfile
+Copy-Item apps/save-philly-festivals/.env.example apps/save-philly-festivals/.env.local
+pnpm run auth:secret
+pnpm exec nx run save-philly-festivals:prisma-generate --outputStyle=static
+pnpm exec nx run save-philly-festivals:migrate-test --outputStyle=static
+pnpm run dev
+```
+
+`pnpm run dev` runs the full `check` (lint + typecheck across both Nx projects) as a `predev` gate
+before starting `next dev`, and lint on a full/cold Nx cache can take a while — it is not stuck,
+just running `eslint .` for the first time. If you want to skip that gate for fast iteration, use
+`pnpm run dev:web` instead, which starts `next dev` directly.
+
+See [`Windows-OS.md`](Windows-OS.md) for Windows-only friction: PowerShell env-var syntax
+differences from the POSIX examples elsewhere in this repo's docs, the `sh`-dependent
+`deploy:web` script, case-insensitive-filesystem import bugs that only surface in CI, and
+Playwright/Docker Desktop notes.
+
 ## Quality gates
 
 ```sh
