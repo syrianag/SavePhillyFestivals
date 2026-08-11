@@ -116,7 +116,7 @@ export function NavBar() {
               {link.label}
             </Link>
           ))}
-          {isSignedIn && (
+          {isSignedIn && !isStaff && (
             <Link
               href="/account"
               aria-current={pathname === "/account" ? "page" : undefined}
@@ -191,19 +191,21 @@ export function NavBar() {
           ))}
           {isSignedIn ? (
             <>
-              <Link
-                href="/account"
-                onClick={() => setMobileOpen(false)}
-                aria-current={pathname === "/account" ? "page" : undefined}
-                className={cn(
-                  "block rounded-md px-3 py-2 font-body text-base font-bold transition-all",
-                  pathname === "/account"
-                    ? "text-indigo-600 bg-indigo-50/50"
-                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50/50"
-                )}
-              >
-                My account
-              </Link>
+              {!isStaff && (
+                <Link
+                  href="/account"
+                  onClick={() => setMobileOpen(false)}
+                  aria-current={pathname === "/account" ? "page" : undefined}
+                  className={cn(
+                    "block rounded-md px-3 py-2 font-body text-base font-bold transition-all",
+                    pathname === "/account"
+                      ? "text-indigo-600 bg-indigo-50/50"
+                      : "text-slate-500 hover:text-slate-900 hover:bg-slate-50/50"
+                  )}
+                >
+                  My account
+                </Link>
+              )}
               <div className="mt-2 border-t border-slate-100 pt-2 px-3">
                 <span className="block py-1.5 font-ui text-xs font-bold text-slate-500">
                   {session.user.email}
