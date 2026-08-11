@@ -2,6 +2,8 @@ import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
 
 import { producerNotificationProvider } from "@/lib/mail";
+import { searchLocationCandidates } from "@/features/festivals/geocoding-service";
+import { locationLookupRequestSchema } from "@/features/festivals/location-lookup-schema";
 import { authorizeEditor } from "./editorial-authorization";
 import { EditorialPolicyError } from "./editorial-transition-policy";
 import { editorialRepository } from "./editorial-repository";
@@ -92,6 +94,15 @@ export async function handleAdminUpdate(request, context, injected) {
     const values = await authorized(injected); const gate = mutationGate(request, values); if (gate) return gate;
     const parsed = await parseJson(request, updateFestivalSchema); if (parsed.response) return parsed.response;
     return json(await updateEditorialFestival(id, parsed.data, values));
+  } catch (error) { return handled(error); }
+}
+/** Candidate address matches for an editor to confirm on an unresolved festival. Writes nothing;
+ * the editor still saves the chosen text through `handleAdminUpdate` like any other edit. */
+export async function handleAdminLocationLookup(request, injected) {
+  try {
+    const values = await authorized(injected); const gate = mutationGate(request, values); if (gate) return gate;
+    const parsed = await parseJson(request, locationLookupRequestSchema); if (parsed.response) return parsed.response;
+    return json(await searchLocationCandidates(parsed.data));
   } catch (error) { return handled(error); }
 }
 export async function handleAdminNotificationRetry(request, context, injected) {

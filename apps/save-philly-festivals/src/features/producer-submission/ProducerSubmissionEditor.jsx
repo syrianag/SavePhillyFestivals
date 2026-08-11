@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import LocationLookupPanel from "@/features/festivals/LocationLookupPanel";
 
 import { producerApi } from "./producer-api";
 import { dateOnly, isoToNewYorkLocal, newYorkLocalToIso } from "./producer-dates";
@@ -335,6 +336,11 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
     setNotice("");
   }
 
+  function applyLocationCandidate(candidate) {
+    setForm((current) => ({ ...current, location: candidate.label }));
+    setNotice("");
+  }
+
   async function saveDraft(event) {
     event?.preventDefault();
     if (!festival || !["draft", "changes_requested"].includes(festival.workflow_state) || !mutationsEnabled) return festival;
@@ -613,6 +619,13 @@ export default function ProducerSubmissionEditor({ festivalId: initialFestivalId
                   <Field id="location" label="Venue or street address">
                     <input id="location" name="location" value={form.location} onChange={update} maxLength={500} className={inputClass} placeholder="e.g. Navy Yard, 4747 S Broad St" />
                   </Field>
+                  <LocationLookupPanel
+                    endpoint="/api/producer/festivals/location-lookup"
+                    location={form.location}
+                    city={form.city}
+                    state={form.state}
+                    onConfirm={applyLocationCandidate}
+                  />
                 </div>
                 <Field id="city" label="City">
                   <input id="city" name="city" value={form.city} onChange={update} maxLength={100} className={inputClass} />

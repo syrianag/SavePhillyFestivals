@@ -4,6 +4,7 @@ import {
   authorizeGeocodeSweep,
   geocodeFestival,
   runGeocodeSweep,
+  searchLocationCandidates,
 } from "@/features/festivals/geocoding-service";
 
 const bearer = (token) => ({ headers: { get: (name) => (name === "authorization" ? `Bearer ${token}` : null) } });
@@ -95,6 +96,51 @@ describe("geocodeFestival", () => {
     const [, patch] = repository.recordGeocodeAttempt.mock.calls[0];
     expect(patch).not.toHaveProperty("revision");
     expect(patch).not.toHaveProperty("workflow_state");
+  });
+});
+
+describe("searchLocationCandidates", () => {
+  /* This is what closes ISSUE.log's "Geocoding fallback can't help venue-only locations with no
+   * comma" — a human picks from Nominatim's real candidates instead of the single top-1 match
+   * `geocodeFestival` relies on. */
+  it("returns plausible candidates, dropping ones outside the region or too imprecise", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [
+        { display_name: "Italian Market, S 9th St, Philadelphia, PA 19147", lat: "39.93", lon: "-75.16", addresstype: "road" },
+        { display_name: "Pennsylvania, United States", lat: "40.9", lon: "-77.7", addresstype: "state" },
+        { display_name: "Somewhere, MS", lat: "33.5", lon: "-90.1", addresstype: "road" },
+      ],
+    });
+
+    const result = await searchLocationCandidates(
+      { location: "9th Street Italian Market", city: "Philadelphia", state: "PA" },
+      { fetchImpl }
+    );
+
+    expect(result.candidates).toEqual([
+      { label: "Italian Market, S 9th St, Philadelphia, PA 19147", latitude: 39.93, longitude: -75.16 },
+    ]);
+  });
+
+  it("spends no request and returns no candidates for an unmappable location", async () => {
+    const fetchImpl = vi.fn();
+    const result = await searchLocationCandidates(
+      { location: "Various Locations", city: "Philadelphia", state: "PA" },
+      { fetchImpl }
+    );
+    expect(result).toEqual({ query: null, candidates: [] });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("never throws when the provider request fails", async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new Error("network down"));
+    const result = await searchLocationCandidates(
+      { location: "9th Street Italian Market", city: "Philadelphia", state: "PA" },
+      { fetchImpl }
+    );
+    expect(result.candidates).toEqual([]);
   });
 });
 

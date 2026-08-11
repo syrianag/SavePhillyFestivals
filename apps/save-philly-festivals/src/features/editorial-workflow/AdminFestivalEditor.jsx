@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import LocationLookupPanel from "@/features/festivals/LocationLookupPanel";
 
 /* Content fields an editor is realistically correcting on an imported listing. Workflow state
  * is deliberately absent — that stays on the transitions endpoint so the transition policy
@@ -161,6 +162,15 @@ export default function AdminFestivalEditor({ festival, onSaved }) {
                     required={field.required}
                     onChange={(event) => update(field.key, event.target.value)}
                   />
+                  {field.key === "location" && (
+                    <LocationLookupPanel
+                      endpoint="/api/admin/festivals/location-lookup"
+                      location={form.location}
+                      city={form.city}
+                      state={form.state}
+                      onConfirm={(candidate) => update("location", candidate.label)}
+                    />
+                  )}
                 </div>
               ))}
 

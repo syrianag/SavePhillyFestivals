@@ -7,6 +7,83 @@ Status values: OPEN | IN PROGRESS | RESOLVED | DEFERRED | WONTFIX
 
 ---
 
+## 2026-08-10 — Geocoding fallback can't help venue-only locations with no comma
+**Status:** RESOLVED — interactive address confirmation shipped on both the producer and admin sides
+**Severity:** Low-medium — cosmetic (missing map pin), not a data-integrity issue
+**Area:** `src/features/festivals/geocoding-service.js`, `location-lookup-schema.js`,
+`LocationLookupPanel.jsx`, `useLocationLookup.js`, `producer-submission-http.js`, `editorial-http.js`
+
+Investigated a missing map pin on "South Philly Caribbean Festival"
+(`c1919f87-b157-4878-b22c-e2673689bff0`, `location: "9th Street Italian Market"`,
+`geocode_status: failed`, `geocode_failure_reason: no_match`, 3 attempts). Confirmed this is one
+instance of the already-known, already-quantified gap: 238/415 festivals resolved, 87 failed
+(54 `no_match`, 31 `unmappable_location`, 2 `outside_region`), 90 never attempted (no location
+text) — matches the 238/415 (57%) figure already in `Known-Issues.md`.
+
+Root cause: `buildFallbackQuery()` only retries when the raw `location` text has 2+ comma-separated
+segments, so it can drop the leading one ("Venue, 123 Street Ave" → retries as "123 Street Ave").
+**14 of the 54 `no_match` festivals have a comma-less, venue-only location and never got a fallback
+attempt at all** — including this one, "Mann Center Summer Music Festival" →
+`"The Mann Center for the Performing Arts"`, and "Philly Taco Challenge" → `"Xfinity Live!"`.
+Rerunning `festival-geocode.mjs apply` kept producing the same result no matter how many times it
+ran, since there was no second query to fall back to.
+
+**Closed by:** a shared, human-in-the-loop address confirmation step, per the discussion that the
+legacy-imported backlog has no producer (`festival-import-repository.js` never sets
+`submitted_by`) so an admin-only fix wouldn't reach the 87-festival backlog's root cause, while a
+producer-only fix wouldn't touch the backlog. Built both, sharing one service:
+
+- `geocoding-service.js` gained `searchLocationCandidates()` — a single, human-triggered Nominatim
+  lookup (limit 5, same region/precision filtering as `classifyGeocodeResult`) that returns
+  candidate matches instead of writing anything. Same "singular, triggered by a person, not a
+  batch" reasoning that already made the on-demand `geocodeFestival` button acceptable inline.
+- New shared request schema: `location-lookup-schema.js`.
+- Two new POST endpoints, each behind that area's existing authorization/origin/rate-limit gate:
+  `/api/producer/festivals/location-lookup` (`authorizeProducer`, new `location_lookup: 20/min`
+  bucket in `producer-request-security.js`) and `/api/admin/festivals/location-lookup`
+  (`authorizeEditor`, existing `mutationGate`).
+- Shared client hook (`useLocationLookup.js`) and UI (`LocationLookupPanel.jsx`, "Find address" →
+  pick a candidate → "Use this address") mounted under the location field in both
+  `ProducerSubmissionEditor.jsx` (new submissions, so bad addresses stop entering the pipeline at
+  the source) and `AdminFestivalEditor.jsx` (covers the legacy backlog and gives editors an
+  override during review).
+- Deliberately writes only the `location` text, never coordinates — the geocode sweep / existing
+  "Geocode now" button stay the only writer of `latitude`/`longitude`, so this doesn't introduce a
+  second write path that could disagree with the sweep.
+
+Verified: `tests/unit/geocoding-service.test.js` covers candidate filtering (drops
+state/country-level and out-of-region results), the unmappable-location short-circuit (no request
+sent), and provider-failure handling. Lint and `tsc --noEmit --project jsconfig.json` are clean on
+every touched file. Full suite run via the documented direct-vitest fallback
+(`cd apps/save-philly-festivals && ../../node_modules/.bin/vitest run --config vitest.config.js`):
+313 passed, 1 pre-existing unrelated failure (a Windows path-separator bug in
+`tests/unit/uploads.test.js`, backslash vs forward-slash, not touched by this change).
+
+**Not fixed as part of this:** the existing 87 already-failed legacy festivals still need someone
+to open each one in the admin editor and click through the new panel — this ships the tool, not a
+bulk backfill. Running `pnpm exec nx run save-philly-festivals:test` (the Nx-wrapped target, as
+opposed to direct vitest) currently fails all 45 test files with
+`Cannot read properties of undefined (reading 'config')`, reproducible before this change too —
+looks like an Nx/vitest version-wiring issue unrelated to this feature; flagging here rather than
+fixing it, since diagnosing the Nx plugin/vitest 4.x mismatch is a separate task.
+
+---
+
+## 2026-08-10 — Verified: "approved" ≠ "published" is real and already documented correctly
+**Status:** RESOLVED (verified, not a bug — no doc change needed)
+**Severity:** N/A
+**Area:** `prisma/schema.prisma` (`FestivalWorkflowState`), `docs/Client-Call-Walkthrough-Script.md`
+
+Checked whether an approved festival still needs a separate publish step, and whether that's
+disclosed to the client. `FestivalWorkflowState` has `approved` and `published` as distinct,
+sequential states, and `publication-policy.js` gates public visibility on `published` only —
+`approved` festivals stay private. `Client-Call-Walkthrough-Script.md` Phase 3 already states this
+explicitly: "notice approval and publication are separate steps — approving registers editorial
+acceptance while keeping the festival private, so you can preview before it goes live." No change
+made.
+
+---
+
 ## 2026-08-10 — Signed-in `public` users cannot reach their application status
 **Status:** RESOLVED 2026-08-10
 **Severity:** High — blocks the producer onboarding flow end to end

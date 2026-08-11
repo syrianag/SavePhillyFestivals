@@ -2,6 +2,8 @@ import { Buffer } from "node:buffer";
 
 import { NextResponse } from "next/server";
 
+import { searchLocationCandidates } from "@/features/festivals/geocoding-service";
+import { locationLookupRequestSchema } from "@/features/festivals/location-lookup-schema";
 import { authorizeProducer, ProducerAuthenticationError, ProducerAuthorizationError } from "./producer-authorization";
 import { uploadPrivateFestivalAsset } from "./producer-asset-service";
 import { ProducerSubmissionError } from "./producer-submission-errors";
@@ -254,6 +256,26 @@ export async function handleUploadAsset(request, context, injected) {
     const asset = await uploadPrivateFestivalAsset(festivalId, parsed.file, parsed.metadata, dependencies);
     return json({ asset: presentFestivalAsset(asset) }, 201);
   } catch (error) { return handledError(error, "private asset upload"); }
+}
+
+/**
+ * Suggests resolvable address candidates for a producer to confirm, so a venue name that would
+ * later fail geocoding (see ISSUE.log, "Geocoding fallback can't help venue-only locations with
+ * no comma") gets caught before submission instead of showing up as a missing map pin in review.
+ * Never writes anything — the producer still has to pick a candidate and save the draft normally.
+ */
+export async function handleLocationLookup(request, injected) {
+  try {
+    const dependencies = await authenticatedDependencies(injected);
+    const rejected = originError(request, dependencies)
+      || deploymentRateLimitError(dependencies)
+      || rateLimitError(dependencies, dependencies.user, "location_lookup");
+    if (rejected) return rejected;
+    const parsed = await parseJson(request, locationLookupRequestSchema);
+    if (parsed.response) return parsed.response;
+    const result = await searchLocationCandidates(parsed.data);
+    return json(result);
+  } catch (error) { return handledError(error, "location lookup"); }
 }
 
 export async function handleProducerCapabilities(_request, injected) {

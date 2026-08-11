@@ -33,6 +33,9 @@ export const DEFAULT_SWEEP_BATCH = 8;
  * row is retried on every sweep forever, crowding out festivals that could still succeed. */
 export const MAX_GEOCODE_ATTEMPTS = 4;
 
+/* How many candidate matches an interactive lookup shows a human to choose from. */
+export const MAX_LOOKUP_CANDIDATES = 5;
+
 function constantTimeSecretMatches(provided, expected) {
   if (!provided || !expected) return false;
   const left = createHash("sha256").update(provided).digest();
@@ -108,6 +111,52 @@ export async function geocodeFestival(festival, { repository, fetchImpl = fetch,
     geocode_failure_reason: null,
   });
   return result;
+}
+
+async function requestGeocodeCandidates(query, fetchImpl) {
+  const url = new URL(NOMINATIM_URL);
+  url.searchParams.set("q", query);
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("limit", String(MAX_LOOKUP_CANDIDATES));
+  url.searchParams.set("countrycodes", "us");
+
+  const response = await fetchImpl(url, { headers: { "User-Agent": USER_AGENT, Accept: "application/json" } });
+  if (!response.ok) return { ok: false };
+  const results = await response.json();
+  return { ok: true, results: Array.isArray(results) ? results : [] };
+}
+
+/**
+ * Interactive, human-triggered address lookup for a producer or editor to confirm — never called
+ * from a save path. One click here is exactly one Nominatim request, same "singular, triggered by
+ * a person, not a batch" reasoning that makes the on-demand `geocodeFestival` button acceptable
+ * inline (see the module comment above).
+ *
+ * Unlike `geocodeFestival`, this never writes anything. It only helps a human produce a `location`
+ * string that will actually resolve; the existing sweep or on-demand button then geocodes it
+ * normally once saved, so coordinates keep exactly one writer.
+ */
+export async function searchLocationCandidates({ location, city, state }, { fetchImpl = fetch } = {}) {
+  const query = buildGeocodeQuery({ location, city, state });
+  if (query === null) return { query: null, candidates: [] };
+
+  let response;
+  try {
+    response = await requestGeocodeCandidates(query, fetchImpl);
+  } catch (error) {
+    console.error("[GEOCODE] Candidate lookup failed.", error?.message);
+    return { query, candidates: [] };
+  }
+  if (!response.ok) return { query, candidates: [] };
+
+  const candidates = [];
+  for (const result of response.results) {
+    const classified = classifyGeocodeResult(result);
+    if (!classified.ok) continue;
+    candidates.push({ label: result.display_name || query, latitude: classified.latitude, longitude: classified.longitude });
+    if (candidates.length >= MAX_LOOKUP_CANDIDATES) break;
+  }
+  return { query, candidates };
 }
 
 /**

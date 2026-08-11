@@ -1,5 +1,5 @@
 const WINDOW_MS = 60_000;
-const LIMITS = Object.freeze({ create: 10, patch: 60, submit: 10, upload: 20 });
+const LIMITS = Object.freeze({ create: 10, patch: 60, submit: 10, upload: 20, location_lookup: 20 });
 const buckets = new Map();
 const MAX_BUCKETS = 5_000;
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
