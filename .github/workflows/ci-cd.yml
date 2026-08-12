@@ -83,8 +83,11 @@ jobs:
         run: docker compose -f apps/n8n/config/compose.yaml -f apps/n8n/config/compose.production.yaml config --quiet
       - name: Build Next.js application
         run: pnpm exec nx run save-philly-festivals:build --outputStyle=static
-      - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
+      # Must cover every project in playwright.config.js. Installing only chromium while the
+      # config listed five projects is what made the e2e step fail: firefox and webkit died on
+      # "Executable doesn't exist" in ~2ms each.
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium firefox
       - name: Run browser end-to-end smoke tests
         run: pnpm exec nx run save-philly-festivals:e2e --outputStyle=static
       - name: Upload Playwright artifacts on failure

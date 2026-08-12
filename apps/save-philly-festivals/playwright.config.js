@@ -7,16 +7,18 @@ const baseURL = `http://localhost:${port}`;
 const producerE2ESecret = process.env.PRODUCER_E2E_SECRET || randomBytes(32).toString("hex");
 process.env.PRODUCER_E2E_SECRET = producerE2ESecret;
 
-/* The release browser matrix is Chromium, Firefox, and WebKit at desktop and mobile widths.
- * WebKit additionally needs host packages installed with `pnpm exec playwright install-deps`.
- * E2E_BROWSERS narrows the run for environments that cannot install them; CI must run the
- * full matrix so Safari/Firefox regressions cannot reach a release. */
+/* The release browser matrix is Chromium and Firefox at desktop widths.
+ *
+ * WebKit and the mobile projects were removed deliberately: WebKit needs host packages
+ * (`playwright install-deps`) that neither this host nor the CI runner installs, so those projects
+ * only ever produced launch failures rather than coverage. Keep this list in step with the
+ * `playwright install` argument list in .github/workflows/ci-cd.yml — a project here with no
+ * matching installed browser fails in milliseconds with "Executable doesn't exist".
+ *
+ * E2E_BROWSERS narrows the run further for a quick local pass. */
 const allProjects = [
   { name: "chromium", use: { ...devices["Desktop Chrome"] } },
   { name: "firefox", use: { ...devices["Desktop Firefox"] } },
-  { name: "webkit", use: { ...devices["Desktop Safari"] } },
-  { name: "mobile-chromium", use: { ...devices["Pixel 5"] } },
-  { name: "mobile-safari", use: { ...devices["iPhone 13"] } },
 ];
 
 const requestedBrowsers = (process.env.E2E_BROWSERS || "")

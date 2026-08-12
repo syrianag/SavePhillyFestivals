@@ -32,7 +32,7 @@ pnpm run check          # lint + typecheck across all projects
 pnpm run build          # nx run-many -t build --all
 pnpm run test           # all projects: web vitest + n8n workflow contract tests
 pnpm run test:coverage
-pnpm run e2e            # Playwright, full 5-browser matrix
+pnpm run e2e            # Playwright, Chromium + Firefox
 pnpm run verify         # the full gate: prisma validate + audit + coverage + n8n test/validate + lint + build
 ```
 
@@ -49,7 +49,9 @@ pnpm exec nx run save-philly-festivals:test --args="tests/unit/social-feed-servi
 cd apps/save-philly-festivals && ../../node_modules/.bin/vitest run --config vitest.config.js tests/unit/social-feed-service.test.js
 ```
 
-Single E2E spec / one browser (WebKit and Firefox need `pnpm exec playwright install-deps`; `E2E_BROWSERS` narrows the matrix, but CI must run all five):
+The browser matrix is **Chromium and Firefox**. WebKit and the mobile projects were removed: neither this host nor the CI runner installs the WebKit host packages, so those projects only ever failed to launch. The project list in `playwright.config.js` must stay in step with the `playwright install` argument list in `.github/workflows/ci-cd.yml` — a project with no installed browser fails in about 2ms with `Executable doesn't exist`, which reads as a test failure rather than a setup gap.
+
+Single E2E spec / one browser (`E2E_BROWSERS` narrows the run):
 
 ```sh
 pnpm exec nx run save-philly-festivals:e2e --args="e2e/smoke.spec.js"

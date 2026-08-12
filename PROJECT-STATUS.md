@@ -89,8 +89,8 @@ Tests never contact Resend, Google Drive, Curator.io/Flockler, organizer ESPs, G
 
 | # | Item | Why it matters |
 |---|---|---|
-| E-1 | **Safari/WebKit verification** | Browser engines are installed and configured, but the host lacks `libevent-2.1-7t64` and `libavif16`, which need `sudo pnpm exec playwright install-deps`. **This release is not Safari-verified.** CI must run the full matrix. |
-| E-2 | **Run the full browser matrix in CI** | `.github/workflows/ci-cd.yml` should run without `E2E_BROWSERS` so Chromium, Firefox, WebKit, mobile Chromium, and mobile Safari all gate merges. |
+| E-1 | **Safari/WebKit verification** | WebKit and the mobile projects were removed from the matrix on 2026-08-12: the host lacks `libevent-2.1-7t64` and `libavif16`, the CI runner installed only Chromium, and the WebKit/mobile projects therefore never launched — they reported `Executable doesn't exist`, not coverage. **This release is not Safari-verified, and nothing in CI checks Safari.** Restoring it means installing the host packages and adding the project back to both `playwright.config.js` and the `playwright install` list. |
+| E-2 | ~~**Run the full browser matrix in CI**~~ | Resolved for the agreed matrix. `.github/workflows/ci-cd.yml` installs Chromium and Firefox and runs without `E2E_BROWSERS`, so both gate merges (116 tests). The matrix is deliberately two browsers, not five. |
 | E-3 | **Production environment provisioning** | Hosting, DNS/TLS, secret manager, database, backup destination, and approved RPO/RTO are not yet configured. The deploy workflow is intentionally manual and environment-gated until they are. |
 
 ### 4.2 Engineering — recommended before launch
@@ -168,8 +168,8 @@ pnpm run test                # unit + contract tests
 pnpm run test:coverage       # with coverage
 pnpm run lint
 pnpm run build
-pnpm run e2e                 # full browser matrix
-E2E_BROWSERS=chromium,firefox,mobile-chromium pnpm run e2e   # narrowed run
+pnpm run e2e                 # Chromium + Firefox
+E2E_BROWSERS=chromium pnpm run e2e                           # narrowed run
 pnpm run n8n:test && pnpm run n8n:validate
 ```
 
@@ -225,7 +225,7 @@ DATABASE_URL=postgresql://tester:tester@127.0.0.1:55432/save_philly_festivals_te
 
 ## 9. Suggested next steps
 
-1. Install WebKit host packages and run the full browser matrix; record the result (E-1, E-2).
+1. Decide whether Safari coverage is required before launch; if so, install the WebKit host packages and add the project back to both `playwright.config.js` and the CI `playwright install` list (E-1).
 2. Schedule the CSV history purge and access review (Owner action 1).
 3. Route legal copy for `/privacy`, `/terms`, and consent wording to approval (Owner action 2).
 4. Begin quarantine review with the data owner (Owner action 3).
