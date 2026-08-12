@@ -20,6 +20,9 @@ describe("UI components contract", () => {
       "src/features/producer-access/AdminProducerRequests.jsx",
       "src/features/producer-access/AdminEmailTemplates.jsx",
       "src/features/producer-access/ProducerAccessPanel.jsx",
+      "src/features/our-festivals/AdminOurFestivalsList.jsx",
+      "src/features/navigation/AdminNavigationLinks.jsx",
+      "src/features/schedules/AdminFestivalSchedule.jsx",
     ];
 
     for (const file of files) {

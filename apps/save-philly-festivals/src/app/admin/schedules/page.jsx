@@ -1,67 +1,66 @@
-import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth-helpers";
-import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { scheduleRepository } from "@/features/schedules/schedule-repository";
+import { listScheduleOverview } from "@/features/schedules/schedule-service";
+import { requireAdmin } from "@/lib/auth-helpers";
+
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Programmes - Save Philly Festivals" };
+
+/**
+ * An index, not an editor.
+ *
+ * This was a flat list of the 50 most recent entries across all festivals, which is not a unit
+ * anyone works in — a programme belongs to one festival, and that is where it is edited. It also
+ * called `new Date(start_time).toLocaleDateString()` unguarded on a nullable column, so every
+ * all-day or undated entry rendered "Invalid Date".
+ */
 export default async function AdminSchedulesPage() {
   await requireAdmin();
-
-  const schedules = await prisma.schedule.findMany({
-    orderBy: { created_at: "desc" },
-    take: 50,
-    select: {
-      id: true,
-      title: true,
-      location: true,
-      start_time: true,
-      end_time: true,
-      performer: true,
-      festival: { select: { name: true } },
-    },
-  });
+  const { festivals } = await listScheduleOverview({ repository: scheduleRepository });
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-heading font-bold">Schedules</h1>
-        <p className="text-muted-foreground">All performance schedules</p>
+        <h1 className="font-heading text-3xl font-bold">Programmes</h1>
+        <p className="text-muted-foreground">
+          Festivals with a published line-up. Open a festival to add or edit its entries.
+        </p>
       </div>
 
       <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto"><table className="w-full min-w-3xl">
-            <thead>
-              <tr className="border-b text-left text-sm font-medium text-muted-foreground">
-                <th className="px-4 py-3">Festival</th>
-                <th className="px-4 py-3">Title</th>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3">Time</th>
-                <th className="px-4 py-3">Performer</th>
-              </tr>
-            </thead>
-            <tbody>
-              {schedules.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                    No schedules yet.
-                  </td>
-                </tr>
-              ) : (
-                schedules.map((s) => (
-                  <tr key={s.id} className="border-b last:border-0 hover:bg-muted/50">
-                    <td className="px-4 py-3 font-medium">{s.festival?.name ?? "—"}</td>
-                    <td className="px-4 py-3">{s.title}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(s.start_time).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(s.start_time).toLocaleTimeString()} – {new Date(s.end_time).toLocaleTimeString()}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{s.performer ?? "—"}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table></div>
+        <CardHeader><CardTitle>Festivals with a programme</CardTitle></CardHeader>
+        <CardContent>
+          {festivals.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No festival has a programme yet. Open any festival and use the Programme section to
+              add performers and set times.
+            </p>
+          ) : (
+            <ul className="divide-y">
+              {festivals.map((festival) => (
+                <li key={festival.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <Link href={`/admin/festivals/${festival.id}`} className="font-medium text-slate-900 hover:underline">
+                      {festival.name}
+                    </Link>
+                    <p className="text-sm text-muted-foreground">
+                      {/* `start_date` is nullable — imported and all-day festivals often carry
+                        * none, which is what produced "Invalid Date" here before. */}
+                      {festival.start_date
+                        ? new Date(festival.start_date).toISOString().slice(0, 10)
+                        : "No date recorded"}
+                      {" · "}
+                      {festival._count.schedules} {festival._count.schedules === 1 ? "entry" : "entries"}
+                    </p>
+                  </div>
+                  <Badge variant="outline">{festival.workflow_state}</Badge>
+                </li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
     </div>
