@@ -326,3 +326,71 @@ This applies globally, not just to this workspace.
 ### Resources
 
 - [Zed auto-save settings](https://zed.dev/docs/configuring-zed#autosave)
+
+## 10. `pnpm run dev` failed with `Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'`
+
+### Symptom
+
+The dev server starts and reports `Ready in ...`, but **every** page returns HTTP 500. The terminal
+repeats, once per font face:
+
+```
+⨯ [next]/internal/font/google/dm_sans_d0a60276.module.css:7:8
+Error: Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'
+Import trace:
+  Server Component:
+    ./apps/save-philly-festivals/src/app/layout.js
+```
+
+Interleaved with it:
+
+```
+⚠ Warning: Error while requesting resource
+Received response with status 404 when requesting https://fonts.gstatic.com/s/dmsans/v17/...woff2
+```
+
+`pnpm run build` can keep succeeding while this happens, which makes it look like a source error.
+
+### Cause
+
+Not a missing package and not an offline machine. `@vercel/turbopack-next/internal/font/google/font`
+is a virtual module Turbopack synthesises *after* it downloads the font file; when the download
+fails the virtual module is never created, and the failure surfaces as an unresolved import.
+
+The download fails because `.next` holds font CSS cached from an earlier run, Google has since
+rotated the hashed `.woff2` filenames, and the cached URLs now 404. Confirm the difference rather
+than guessing — fetch the CSS fresh and compare:
+
+```sh
+curl -s -o /dev/null -w '%{http_code}\n' '<the 404ing gstatic URL from the log>'   # 404
+curl -s -o /dev/null -w '%{http_code}\n' 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400&display=swap'   # 200
+```
+
+A 200 on the CSS endpoint next to a 404 on the file URL is the signature: the network is fine and
+the cache is stale. `src/app/layout.js` loads six Google families, so any one of them can trigger it.
+
+### Remedy
+
+```sh
+rm -rf apps/save-philly-festivals/.next
+pnpm run dev:web
+```
+
+`.next` is a build artifact and is gitignored, so deleting it costs only the next compile.
+
+### Verification
+
+Every public route returns 200 and the log is free of `Module not found`:
+
+```sh
+for u in / /our-festivals /calendar /map /login /producer; do
+  printf '%s %s\n' "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:3000$u")" "$u"
+done
+```
+
+Admin routes correctly answer `307` (redirect to `/login`) when signed out.
+
+### Resources
+
+- [next/font/google](https://nextjs.org/docs/app/api-reference/components/font)
+- [Next.js "Module not found"](https://nextjs.org/docs/messages/module-not-found)

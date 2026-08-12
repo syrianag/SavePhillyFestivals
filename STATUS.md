@@ -727,14 +727,474 @@ festival will always show an empty "Schedule & program" section.
 
 ---
 
+## Part 10 — Bulk publish, editable navigation, Schedules authoring, and defects
+
+Four workstreams from the approved plan. **483 tests pass**; lint, typecheck and build all pass.
+
+### 1. Bulk publish — `scripts/festival-publish-batch.mjs`
+
+**The catalog could not have been published without a code change.** All ~405 imported festivals
+sit in `unpublished`, and the script deliberately refused that state:
+*"a festival taken down on purpose must not be silently republished by a bulk job."*
+
+- `--batch-id` is now optional; without it the whole catalog is in scope.
+- `--since-days` (default **45**) bounds selection, built on `getDiscoveryDateRange` +
+  `buildDateOverlapFilter` rather than a hand-rolled comparison. That is load-bearing: imported
+  festivals store dates in `all_day_start`/`all_day_end` with `start_date` NULL, and those columns
+  are `@db.Date`, where a zoned instant shifts the boundary by a day. `--all-dates` opts out.
+- Festivals with **no dates at all** match neither branch, so they are now **reported** as
+  `skipped, no dates recorded` instead of vanishing from the run.
+- `--include-unpublished` (default **off**) restores the takedown guard as a conscious act, and
+  gives `unpublished` its own single-hop path. Folding it into `PUBLISH_PATH` would not work:
+  `indexOf` returns -1 for it, so the resume loop would attempt the illegal
+  `unpublished → pending_review`. Extracted to `publish-path.js` so it is testable.
+- `rejected` is never published — no opt-in. A human declined it.
+
+**Notification safety, which was only half-covered.** Nothing sends during a run (no provider is
+passed), but each hop leaves a `failed` outbox row addressed to the organizer's imported address,
+and `AdminFestivalDetail` has a working retry button. One click months later would have emailed
+hundreds of organizers. Rows created by a bulk run are now stamped `bulk_publish_suppressed` with
+`attempts` at the cap, and `retryWorkflowNotification` refuses that code outright.
+
+**The same hole existed in `festival-unpublish-batch.mjs`** and is now closed there too — beyond
+the plan, but leaving an identical hole while claiming the risk was handled would have been false.
+
+⚠️ **Live risk in production:** the earlier unpublish of ~405 festivals ran *before* this fix, so
+production likely holds ~405 **retryable** rows pointing at real organizer addresses. One-line
+remediation, but it is a production data change so it is yours to approve:
+`UPDATE "FestivalWorkflowNotification" SET delivery_status='failed', failure_code='bulk_publish_suppressed', attempts=5 WHERE failure_code='provider_unconfigured';`
+
+*Verified live:* dry-run counts reconcile; `--since-days 0` correctly drops out-of-window
+festivals; dateless festival reported; 8/8 published; `rejected` untouched; every notification row
+`bulk_publish_suppressed` with **zero deliverable rows**; default run refuses 8 unpublished with a
+hint, `--include-unpublished` republishes them in one hop.
+
+### 2. Editable public navigation (CMS phase A)
+
+`NavigationLink` model + migration, and a full `src/features/navigation/` slice modelled on the
+EmailTemplate precedent. Admin screen at **/admin/navigation**: add, edit, hide, delete, reorder
+by drag **or** keyboard. Header and footer both editable; footer links group into titled columns.
+
+**The security guard moved.** It used to be a source-text test reading the hardcoded arrays. Once
+links became editable that test could no longer see what renders, so `isPrivateHref` now rejects
+`/admin*` and `/producer/` **on write** (schema) and filters again **on read** (service) — the
+second pass covers a row that predates a rule change or arrives by direct database edit. The
+public `/producer` marketing page still works; `/producer/dashboard` does not.
+
+**Failure behaviour is the point.** `navigation-source.js` follows `sponsor-source.js`: `cache()`
+per request, falling back to the shipped defaults on an empty table *or* a thrown query. Read in
+`PublicLayout`, never the root layout — `layout-contract.test.js` keeps per-request lookups off
+the root.
+
+*Verified live:* empty table renders the shipped menu; `ensureDefaults` seeds 13 links and is
+idempotent; a rename and a hide both reach the public shape; a private link inserted directly
+into the database is still filtered out; reorder persists. **With the database stopped entirely,
+navigation still renders the full menu.**
+
+`navigation-policy-contract.test.js` rewritten against the schema and service (18 tests).
+
+### 3. Schedules authoring
+
+The whole `src/features/schedules/` directory was orphaned — zero importers — and stale against
+the schema. Deleted and rebuilt as a proper slice. Programme entries are authored **per festival**
+from the festival editor, because `festival_id` is effectively immutable once an occurrence is
+attached. `/admin/schedules` is now an index of festivals with programmes that links into each.
+
+**Trigger contracts respected, not fought:**
+- `calendar_sequence` and `calendar_published_at` are trigger-owned and the API refuses them.
+- `time_zone` is CHECK-pinned to `America/New_York`, so it is not a form field.
+- The database permits a `timed` row with no end time, but `calendar-export-repository.js` drops
+  such a row from the ICS feed — it would render on the page and silently vanish from every
+  subscription. **The schema requires both bounds**, which is stricter than the database on purpose.
+- Updates are merged over the stored row and re-validated whole, because the interval rules span
+  several fields — clearing `end_time` is valid for an all-day entry and invalid for a timed one.
+
+Also fixed: the old overview called `new Date(start_time).toLocaleDateString()` on a nullable
+column, so every all-day or undated row rendered `Invalid Date`.
+
+*Verified live:* on create the trigger assigned `calendar_sequence: 0`, stamped
+`calendar_published_at`, and set the pinned time zone — none client-supplied. A material change
+(`location`) bumped the sequence 0 → 1; a non-material one (`performer`) left it at 1.
+
+### 4. Defects closed
+
+| Defect | Fix |
+|---|---|
+| Empty `PATCH` unpublished a sponsor | Defaults moved off the shared field definitions into `createSponsorSchema` only. The dead `.refine(length > 0)` guard now fires. |
+| `/api/auth/register` leaked whether an email was registered | Returns a fixed `{registered: true}`, matching the application endpoint. |
+| Seeded festivals could never be published | `seedFestivals` now upserts one primary occurrence per festival. `security-contract.test.js`'s exact-substring assertions on `seed.js` were left untouched. |
+| Comments cited a non-existent trigger | `verify_festival_revision_audit` → the real `validate_festival_audit_at_commit`. My error from an earlier session. |
+
+### 5. Firewall rules — staged, not published
+
+Both log-mode rules are edited to `rate_limit` and **staged as drafts**. Publishing puts them in
+front of every request, so that step stays yours:
+
+```sh
+npx vercel firewall diff
+npx vercel firewall publish --yes
+pnpm run ops:firewall:verify
+```
+
+---
+
+## Part 13 — Local development now has its own database
+
+### Why local login was impossible
+
+There was no seeded account to log in with. `LOCAL_ADMIN_EMAIL` and `LOCAL_ADMIN_PASSWORD` were
+never set, and `prisma/seed.js` refuses to run without them — so the seed had never run in this
+environment. The six accounts in the database were production accounts with production passwords.
+
+The auth stack was never at fault, and this was checked rather than assumed: `AUTH_SECRET` is set,
+`/api/auth/csrf` issues a token, and posting a deliberately wrong password to the credentials
+callback returns `CredentialsSignin` — the correct rejection, not a configuration error. All six
+accounts were `active` with valid bcrypt hashes.
+
+### There are three databases, not one
+
+Part 12 said there was one. Investigating the login turned up a third, so the full picture is:
+
+| Environment | Host | Now configured in |
+|---|---|---|
+| Production | a hosted Neon endpoint | `.env.production.local` |
+| UAT | a different hosted Neon endpoint | `.env.uat.local` (also `.env.staging`) |
+| Local dev | `127.0.0.1:5434` (`save_philly_festivals_dev`) | root `.env` **and** app `.env.local` |
+
+(Endpoint hostnames and database names are deliberately not written down here — this repository is
+public. Read them from the env files above when you need them.)
+
+**Nx's precedence order is what decides which one wins**, and it is not obvious: `.env`, then
+`.env.local`, then `apps/<project>/.env`, then `apps/<project>/.env.local` — *last wins*. The app's
+own `.env.local` therefore overrides the workspace-root `.env`. This is worth remembering, because
+it is what makes the answer to "which database am I talking to?" non-local to any single file.
+
+Both remote URLs were **moved, not copied**, into gitignored files that nothing loads
+automatically. Use them deliberately:
+
+```sh
+node --env-file=.env.production.local node_modules/prisma/build/index.js migrate status \
+  --config apps/save-philly-festivals/prisma.config.ts
+```
+
+### What was set up
+
+- A dedicated container: `docker run -d --name save-philly-festivals-dev-postgres -e POSTGRES_USER=dev
+  -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=save_philly_festivals_dev -p 127.0.0.1:5434:5432 postgres:16`
+- All 22 migrations applied to it.
+- Seeded: 2 users, 6 categories, 5 tags, 10 festivals, 17 schedules — all 10 with a primary
+  occurrence, so they can actually be published (the Part 10 seed fix).
+- Published 9 of them with `festival:publish-batch`, so the local site has real content.
+
+Local sign-in accounts are `admin@localhost.test` and `producer@localhost.test`. Their passwords are
+`LOCAL_ADMIN_PASSWORD` and `LOCAL_PRODUCER_PASSWORD` in
+`apps/save-philly-festivals/.env.local` — not repeated here, because this repository is public.
+
+The `@localhost.test` addresses are deliberate rather than the production ones, so it is never
+ambiguous which environment a session belongs to.
+
+### The seed had no safety guard — it does now
+
+`prisma/seed.js` read `DATABASE_URL` and proceeded. Its user upsert replaces `password_hash` **and
+`role`** for any matching email, and it then writes categories, tags, festivals and schedules. Aimed
+at production it would rotate real credentials, potentially escalate an ordinary account to admin,
+and inject demo festivals into the live catalogue — and the usual reason to run it is "my local
+login does not work", which is exactly when the environment is misconfigured.
+
+`assertSafeSeedDatabaseUrl` in `src/lib/database-safety.js` now refuses any non-loopback host, and
+any database whose name is not marked `dev`/`local`/`test`/`ci`. It is a **separate** function from
+`assertSafeTestDatabaseUrl`, which stays stricter (test/ci only) because migration testing drops and
+recreates the public schema.
+
+**It caught a real incident on its first run.** The seed was pointed at the UAT database — the app's
+`.env.local` had acquired a `DATABASE_URL` for the UAT database, which outranks the root
+`.env`. Without the guard that run would have overwritten UAT user passwords and roles and seeded
+demo festivals into the UAT catalogue.
+
+Ten regression tests in `tests/unit/database-safety.test.js` cover it, including named cases for the
+real production and UAT URLs, a remote host with a `dev` name, and a loopback host with a production
+name. The guard was also proved load-bearing end-to-end by pointing the seed at a production-named
+local database and confirming `pnpm run db:seed` refused.
+
+`festival-publish-batch.mjs` and `festival-unpublish-batch.mjs` had the same naming problem from the
+other direction: their `local`/`test` branch demanded a *test/ci* name and so refused a legitimate
+`dev` database. Both now use the seed-class guard. Loopback-only and name-gating are unchanged, and
+the staging/production paths are untouched.
+
+### Consequences worth having
+
+Routine local commands can no longer reach production or UAT. `pnpm run dev`, `pnpm run e2e`,
+`pnpm run db:seed` and the publish/unpublish scripts all now target the local container by default.
+The E2E suite in particular no longer drives a browser against the production database — the hazard
+recorded in Part 12.
+
+### Verified
+
+- End-to-end HTTP sign-in for both seeded accounts: session returns the right email and role
+  (`admin`, `producer`), and a wrong password is rejected with `CredentialsSignin`.
+- `pnpm run db:verify-admin` passes, which does a real `bcrypt.compare` against the stored hash.
+- Public pages 200 against local data; home shows **8 festivals found**, and `?q=Caribbean` narrows
+  to **2** — search demonstrably working, which it could not do against the empty production catalogue.
+- Gates: lint, typecheck, **496 unit tests**, **116 E2E** (Chromium + Firefox), uncached build.
+
+### One thing left alone
+
+`scripts/verify-seeded-admin.mjs:26` falls back to a default password when `LOCAL_ADMIN_PASSWORD` is
+unset, which sits oddly beside the no-fallback contract that `security-contract.test.js` enforces on
+`prisma/seed.js`. It is far less dangerous there — the worst case is a confusing failure rather than
+a credential write — so it is flagged, not changed.
+
+---
+
+## Part 12 — Two migrations are pending on the shared database
+
+The `[NAVIGATION] Link lookup failed` console error in `pnpm dev` is **not a bug**. It is the
+fallback announcing itself, correctly, because `public.NavigationLink` does not exist yet. The site
+keeps working — that is what the fallback is for — but it logs on every render.
+
+Verified read-only against the live database:
+
+```
+NavigationLink table exists: false
+total migrations recorded: 19
+most recent applied:        20260811120000_password_reset_tokens
+```
+
+`prisma migrate status` reports **three** pending migrations — 22 on disk, 19 applied:
+
+| Migration | Feature | Committed? |
+|---|---|---|
+| `20260812090000_our_festivals_gallery` | Digital Our Festivals | yes |
+| `20260812093000_producer_application_festival` | Producer application flow | yes (`c533754`), file since edited |
+| `20260812140000_editable_navigation_links` | Editable public navigation | no, still untracked |
+
+So navigation is not the only feature whose schema is absent — the Our Festivals gallery and the
+producer application flow are in the same position. Navigation is simply the one that says so out
+loud, because it is the only one that runs on every page and logs when it falls back.
+
+### The operational fact behind this
+
+**There is one database.** The workspace-root `.env` holds the only `DATABASE_URL` in the repo, Nx
+loads it into every target, and it points at the remote Neon instance. Local dev, `pnpm run e2e`,
+and production therefore all share it.
+
+Consequences worth holding onto:
+
+- Running `prisma migrate deploy` "locally" **is** a production schema change. That is why the
+  pending migrations were left for you rather than applied.
+- `scripts/festival-publish-batch.mjs` run locally likewise acts on production data. Its
+  `--allow-controlled-target` and `--confirmation` gates are the only thing standing between a
+  routine-looking local command and a live catalogue change — worth keeping.
+- The E2E suite drives a real browser against that same database. It is safe today only because
+  every mutating feature it touches is fixture-swapped. Adding an unfixtured mutating feature to a
+  page the suite visits would write to production; the navigation fixture added in Part 11 is an
+  instance of exactly this hazard, caught by a console-error assertion rather than by design.
+
+Separating dev from production is a larger change than this session should make unasked, but it is
+the recommendation.
+
+### Resolving it
+
+`deploy.yml:47` already runs `prisma migrate deploy`, so **your deployment applies all three**
+and the error disappears on its own. Nothing further is needed if you are deploying shortly.
+
+To clear it in local dev sooner — remembering this writes to the production schema:
+
+```sh
+# read-only, shows what would be applied
+node --env-file=.env node_modules/prisma/build/index.js migrate status \
+  --config apps/save-philly-festivals/prisma.config.ts
+
+# applies them
+node --env-file=.env node_modules/prisma/build/index.js migrate deploy \
+  --config apps/save-philly-festivals/prisma.config.ts
+```
+
+Two details make this uglier than it should be, both verified rather than assumed:
+
+- `--env-file=.env` is needed because `apps/save-philly-festivals/prisma.config.ts` loads only the
+  *app's* env files, and the `DATABASE_URL` lives in the **root** `.env`. On CI and Vercel the
+  platform exports it, which is why `deploy.yml` needs no prefix. Do not reach for
+  `DATABASE_URL="$(grep …)"` — that prints the credential into the process table and shell history.
+- `node_modules/prisma/build/index.js`, not `node_modules/.bin/prisma`: the latter is a shell
+  wrapper that Node cannot execute directly.
+
+All three migrations are additive — new tables and columns — so applying them ahead of the deploy
+does not alter existing rows.
+
+### Applied — 2026-08-12, on Rob's explicit authorisation
+
+`migrate deploy` applied all three. `migrate status` now reports **"Database schema is up to date"**
+(22 of 22). Verified directly:
+
+| Object | State |
+|---|---|
+| `NavigationLink` table | exists, 0 rows |
+| `OurFestivalItem` table | exists, 0 rows |
+| `ProducerAccessRequest.proposed_festival`, `.festival_id` | both present |
+
+Zero rows in `NavigationLink` is correct, not a partial apply. The public menu keeps rendering the
+shipped defaults until an admin first opens `/admin/navigation`, where `ensureDefaults()` seeds the
+13 links — deliberately, so a fresh environment never shows an empty menu, and so re-seeding cannot
+resurrect links an admin has deleted.
+
+Symptom confirmed gone against a fresh dev server: `/`, `/our-festivals`, `/calendar`, `/map`,
+`/login`, `/producer` and `/producer/apply` all return 200, admin routes 307 to login, and the log
+contains **zero** `[NAVIGATION]` lines where before there was one per render.
+
+---
+
+## Part 11 — Answering "did we test?"
+
+Honestly: **partly.** Unit tests, lint, typecheck and build were run and passing throughout Part 10.
+**The E2E suite was not run.** That was the gap, and it was the wrong one to leave — E2E is the only
+gate that drives a real browser, and Part 10 changed the public layout, which every page renders.
+
+Running it found **three regressions, all introduced by this session's work**. All three are fixed
+and the full Chromium + Firefox matrix is now green: **116 passed, 0 failed** (it was 111 passed,
+5 failed). Each of these passed on Chromium in the last CI run, so each was a genuine regression
+rather than a pre-existing failure.
+
+### 1. Navigation read had no E2E fixture — 4 of the 5 failures
+
+`festival-map.spec.js` asserts a page produces **no console errors**. It was seeing, on every render:
+
+```
+[NAVIGATION] Link lookup failed; falling back to the built-in menu.
+The table `public.NavigationLink` does not exist in the current database.
+```
+
+The fallback worked — the menu rendered — but the error was logged on every page in the suite.
+
+**Correction to an earlier version of this section.** I first wrote that this was a local database
+split — that `playwright.config.js` falls back to its own `save_philly_festivals_e2e` database. That
+was wrong, and the truth is more important:
+
+- Nx loads the **workspace-root `.env`** into the environment of every target, so `DATABASE_URL` is
+  already set when `playwright.config.js` is evaluated and its fallback never applies. The fallback
+  is not even usable — connecting to it fails authentication (`28P01`).
+- That root `.env` points at the **remote Neon database**, and it is the *only* `DATABASE_URL` in the
+  repo. `apps/save-philly-festivals/.env.local` does not define one and `apps/…/.env` does not exist.
+
+So **local dev, the E2E suite, and production all talk to the same database.** The table was missing
+for the plainest possible reason: the migration has never been applied to it.
+
+I verified the E2E runs did **not** write to it — the only row touched in the surrounding six hours
+is a genuine `approved → published` editorial transition by `admin@savephillyfestivals.org`, whose
+notification failed as `provider_unconfigured` (the real production path, not the bulk script's
+`bulk_publish_suppressed`). The suite's own mutations are absorbed by the existing fixtures.
+
+CI is unaffected either way: it exports its own `DATABASE_URL` and runs `migrate-test` before the
+E2E step, so the table exists there.
+
+Fixed the way this repo already handles it: `navigation-e2e-fixture.js`, gated on
+`NAVIGATION_E2E_FIXTURE=1` and refusing to activate when `NODE_ENV=production`, set in
+`playwright.config.js` next to the existing fixture flags. It returns the shipped defaults as
+ordinary rows, so `toPublicNavigation`'s mapping and private-href filtering stay under test rather
+than being short-circuited.
+
+Three unit tests cover the new flag, and I verified they are load-bearing by weakening the guard to
+`if (!value)` and confirming both fail-closed tests failed, then restoring it.
+
+### 2. The same error was also corrupting the home page — the surprising one
+
+`smoke.spec.js:26` failed with a strict-mode violation: `0 festivals found` matched **two** elements.
+
+This looked unrelated and it was not. One copy was the live counter; the other was still sitting in
+React's hidden Suspense staging div (`<div hidden id="S:0">`), which the client normally swaps into
+place and empties. The server-side navigation error was disrupting that, so both copies persisted —
+for the full five-second timeout, not as a race.
+
+Fixing the fixture fixed this test too, with no change to the home page. Worth recording because the
+symptom (a duplicated live region) pointed nowhere near the cause (a database table in the layout).
+
+### 3. A stale test, not a broken page — `/producer`
+
+The spec clicked a link named **"Start or resume a submission"**. That CTA no longer exists: when the
+producer application flow landed it was deliberately split into **"Become a producer & submit your
+event"** (`/producer/apply`) and **"Resume a submission"** (`/producer/submit`). The page is right;
+the test was stale.
+
+Updated it to follow "Resume a submission" — the returning-producer path the test is actually about.
+Nothing covered the split, so I also added assertions that both entry points exist and point where
+they claim; renaming or re-pointing either one was previously free.
+
+### The CI failure you saw is a different thing, and it is already fixed
+
+The red run is **31517883884 on `f00ca86`**, from 2026-08-11. Only one step failed: the browser
+smoke tests. The error was not a test failure:
+
+```
+Error: browserType.launch: Executable doesn't exist at .../ms-playwright/firefox-1538/firefox/firefox
+```
+
+At that commit `playwright.config.js` declared five projects (chromium, firefox, webkit,
+mobile-chromium, mobile-safari) while CI installed only chromium, so 58 of 116 tests died in ~2ms
+each. Chromium passed throughout — a setup gap wearing a test failure's clothes.
+
+**Commit `31cbbfe`, "fix(ci): install every browser the Playwright matrix declares", already fixes
+it — it has just never been pushed.** `HEAD` is 4 commits ahead of `origin/main`; nothing from the
+last two days is on the remote. Pushing is what turns CI green; there is no further code to write.
+
+### `pnpm dev` "Module not found" — a stale font cache, not your code
+
+Every route returned 500 with:
+
+```
+Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'
+```
+
+That module is synthesised by Turbopack *after* it downloads the font, so an unresolved import means
+the download failed. The log showed why — a **404** from `fonts.gstatic.com`, not a connection
+failure. Probing directly: the CSS endpoint answers `200` and the URLs it returns *now* fetch fine,
+while the URL Next asked for is a stale one Google has since rotated away. `.next` was holding font
+CSS from an earlier run.
+
+```sh
+rm -rf apps/save-philly-festivals/.next && pnpm run dev:web
+```
+
+Verified after clearing: `/`, `/our-festivals`, `/calendar`, `/map`, `/login`, `/producer` all return
+200, admin routes correctly 307 to login, and the log is free of `Module not found`. Written up as
+**§10 of `training-guide.md`** with the diagnostic that separates a stale cache from a real outage,
+because it will recur whenever Google rotates those filenames.
+
+Note this failure is invisible to `pnpm run build` — the build kept succeeding while every dev route
+was broken.
+
+### Gates, re-run after every fix above
+
+| Gate | Result |
+|---|---|
+| `pnpm run check` (lint + typecheck) | pass |
+| `pnpm run test` | **486 passed**, 0 failed (55 files) + 15 N8N contract tests |
+| `pnpm run e2e` (Chromium + Firefox) | **116 passed**, 0 failed |
+| `pnpm exec nx run save-philly-festivals:build --skip-nx-cache` | pass |
+
+The unit count moved 483 → 486 for the three new fail-closed tests on the fixture flag. One of those
+three runs went red on the way: `env-example-contract.test.js` — added earlier this session —
+correctly refused to let `NAVIGATION_E2E_FIXTURE` exist in code without being documented in
+`.env.example`. It is now listed with the other fixture flags.
+
+Builds were re-run with `--skip-nx-cache`, since Nx replays a cached build's stdout verbatim and a
+cached pass is not evidence.
+
+---
+
 ## Open items for Rob
 
-1. **Redeploy production** so the corrected flag values attach to a deployment. This is the last
-   step blocking publishing. *(Part 6)*
-2. **Publish the festivals.** Production has zero published festivals, which is why search,
-   filters, the calendar and the grid all look empty. Nothing in the UI can be judged until this
-   is done: `pnpm run festival:publish-batch` (dry-run first). *(Part 7)*
-3. **Send the error text for Producer Access / Sponsors** if they still fail — every admin route
+1. **Redeploy production** so the corrected flag values *and* all of Part 10 go live. You said you
+   are handling the deployment. *(Part 6)*
+2. **Publish the catalog, after that deploy.** Dry-run first, then apply — note
+   `--include-unpublished` is required, since the ~405 imported festivals are in `unpublished`:
+   ```sh
+   pnpm run festival:publish-batch --args="dry-run --since-days 45 --include-unpublished --environment production --allow-controlled-target"
+   ```
+   Then swap `dry-run` for `apply --operator-user-id <your-uuid> --confirmation publish-festival-batch`. *(Part 10)*
+3. **Decide on the ~405 stale retryable notification rows** in production — see the one-line
+   remediation in Part 10. They predate the suppression fix and can still be delivered. *(Part 10)*
+4. **Publish the staged firewall rules** to close the log-mode gap. *(Part 10)*
+5. **Send the error text for Producer Access / Sponsors** if they still fail — every admin route
    returned 200 locally, so I could not reproduce it. *(Part 7)*
 2. **Decide on the two log-mode rules** — finish enforcing them, or accept the gap knowingly
    while you watch the traffic. *(Part 4)*
@@ -833,3 +1293,8 @@ you want it.
 | 2026-08-12 | Six UI issues addressed. Search and filters proven correct against seeded data — the cause is that production has zero published festivals, plus a real bug where the featured row ignored the active query. Our Festivals rebuilt around festivals ended in the last 90 days. Discover default bounded to three months. Admin nav given a way back to the public site; Producer Access and Sponsors removed on request, with the reviewer-UI consequence flagged. 439 tests pass. |
 | 2026-08-12 | Navigation link visibility written down as a policy and enforced by `navigation-policy-contract.test.js`: public links public, private links private, "Discover Festivals" the one global exception. Portal entry moved to the session controls. Deleted the unreachable `staffLinks` array and `/admin` branch from `NavBar`. 446 tests pass. |
 | 2026-08-12 | Documented what admin → Schedules is (Part 9). No code change — read-only festival programmes that nothing in the app can author, distinct from the localStorage Schedule Builder on /calendar. |
+
+| 2026-08-12 | Part 10 shipped: bulk publish by date window with an opt-in for `unpublished` and notification-retry suppression (both scripts); editable public navigation with the private-route guard moved from source text to the schema and service; Schedules authoring rebuilt per festival against the live trigger contracts; four defects closed. 483 tests pass. Firewall rules staged, not published. |
+| 2026-08-12 | Local login was impossible because no seeded account existed — `LOCAL_ADMIN_*` was never set, so the seed had never run. Gave local dev its own Postgres container, migrated, seeded and published into it, and moved the production and UAT URLs into gitignored files nothing loads automatically. Added the missing safety guard to `prisma/seed.js`, which immediately caught the seed pointed at UAT. Discovered a third database and Nx's env precedence in the process. 496 unit tests, 116 E2E, all gates green. See Part 13. |
+| 2026-08-12 | Traced the `[NAVIGATION]` console error to three unapplied migrations, and in doing so found that local dev, E2E and production all share one Neon database (Nx loads the workspace-root `.env`). Corrected Part 11, which had wrongly attributed the E2E failure to a separate local database. Applied all three migrations with Rob's authorisation; schema now up to date and the error is gone. See Part 12. |
+| 2026-08-12 | Ran the E2E suite, which Part 10 had not been checked against. It found three regressions, all from this session's work; all three are fixed. Gates now: 486 unit tests, 116 E2E across Chromium and Firefox, lint, typecheck and an uncached build — all green. Also diagnosed the red CI (a browser-install gap already fixed in unpushed commit `31cbbfe`) and the dev-server "Module not found" (a stale font cache in `.next`, now §10 of `training-guide.md`). Neither was what it looked like. See Part 11. |
