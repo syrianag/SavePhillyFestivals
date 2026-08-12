@@ -109,7 +109,10 @@ describe("New York date ranges and interval overlap", () => {
     const range = getDiscoveryDateRange(parseDiscoveryParams({}), new Date("2026-08-10T12:00:00.000Z"));
     expect(range.start.toISOString()).toBe("2026-08-01T04:00:00.000Z");
     expect(range.startDay.toISOString()).toBe("2026-08-01T00:00:00.000Z");
-    expect(range.end).toBeNull();
+    /* The default now closes three months out rather than running forever, so the upper bound
+     * has to carry the same zoned/calendar-day split as the lower one. */
+    expect(range.end.toISOString()).toBe("2026-11-01T04:00:00.000Z");
+    expect(range.endDay.toISOString()).toBe("2026-11-01T00:00:00.000Z");
   });
 
   it("defaults to the current month forward and opts out with date=all", () => {

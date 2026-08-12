@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { DiscoveryControls } from "@/components/shared/DiscoveryControls";
 import { FeaturedFestivalCard } from "@/components/shared/FeaturedFestivalCard";
-import { formatFestivalDate, parseDiscoveryParams } from "@/features/festivals/discovery";
+import { formatFestivalDate, hasActiveDiscoveryFilters, parseDiscoveryParams } from "@/features/festivals/discovery";
 import { getDiscoveryFacets, getFeaturedFestivals } from "@/features/festivals/public-discovery";
 import { FestivalResults, FestivalResultsSkeleton } from "@/features/festivals/FestivalResults";
 import { articles } from "@/lib/festivals";
@@ -23,8 +23,19 @@ export default async function Home({ searchParams }) {
   /* Editor-curated promotions; `getFeaturedFestivals` falls back to the soonest upcoming
    * festivals when nothing is flagged, so the row is never empty. */
   let featured = [];
+
+  /* The featured row ignores the active query by design — it is editorial, not a result set.
+   * That made search look broken: searching "Caribbean" still showed a promoted art walk above
+   * the results, and a search with no matches still showed two unrelated festivals next to
+   * "No festivals match your search". Once the visitor is filtering, the page should answer the
+   * question they asked, so the row is suppressed until they clear the filters. */
+  const isBrowsingUnfiltered = !hasActiveDiscoveryFilters(filters);
+
   try {
-    [facets, featured] = await Promise.all([getDiscoveryFacets(), getFeaturedFestivals(2)]);
+    [facets, featured] = await Promise.all([
+      getDiscoveryFacets(),
+      isBrowsingUnfiltered ? getFeaturedFestivals(2) : [],
+    ]);
   } catch (error) {
     console.error("Homepage shell data failed to load", error);
   }

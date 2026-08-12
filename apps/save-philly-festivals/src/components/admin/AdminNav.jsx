@@ -11,14 +11,28 @@ import { cn } from "@/lib/utils";
 /* `/admin/pending` is a shortcut that redirects to the festivals list pre-filtered to
  * pending_review, so it earns its place. `/admin/submit` was dropped: it redirected to the
  * plain festivals list, which is a dead end rather than a destination. */
+/**
+ * Private, role-based links only — see the policy comment in `NavBar.jsx`.
+ *
+ * Every entry here must be an `/admin` route. Public destinations do not belong in this list:
+ * the single global exception is "Discover Festivals", rendered separately below as the way
+ * back to the public site.
+ *
+ * `/admin/producer-requests` and `/admin/sponsors` were removed on request after both were
+ * reported as breaking when opened from the admin view. The routes still exist and still work
+ * when reached directly. Producer access approval is the only way to act on a submitted
+ * producer application, so `/admin/producer-requests` has to come back before that flow can be
+ * operated from the UI.
+ */
 const navLinks = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/festivals", label: "Festivals" },
   { href: "/admin/pending", label: "Pending Review" },
   { href: "/admin/imports", label: "Imports" },
-  { href: "/admin/producer-requests", label: "Producer Access" },
-  { href: "/admin/sponsors", label: "Sponsors" },
-  { href: "/admin/our-festivals", label: "Our Festivals" },
+  /* "Gallery", not "Our Festivals": the public page of that name now lists festivals that ended
+   * in the last 90 days automatically, and this screen only curates the optional Highlights
+   * images shown above them. Sharing the label implied editing one produced the other. */
+  { href: "/admin/our-festivals", label: "Gallery" },
   { href: "/admin/email-templates", label: "Email Templates" },
   { href: "/admin/schedules", label: "Schedules" },
   { href: "/admin/settings", label: "Settings" },
@@ -53,8 +67,11 @@ export default function AdminNav({ user }) {
       <div className="mx-auto max-w-[1440px] px-4 md:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-8">
-            <Link href="/admin" className="font-heading text-lg font-bold text-slate-900">
-              Admin
+            {/* The way back to the public site. This was "Admin" pointing at /admin, which
+              * duplicated the "Dashboard" entry beside it and left an editor with no link out
+              * of the admin portal at all. */}
+            <Link href="/" className="font-heading text-lg font-bold text-slate-900">
+              Discover Festivals
             </Link>
             <div className="hidden items-center gap-6 md:flex">
               {navLinks.map((link) => (

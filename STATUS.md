@@ -464,10 +464,278 @@ the other two opaque values are worth a look since I deliberately did not read t
 
 ---
 
+## Part 6 — "still can't publish" investigation
+
+### What was ruled out, with evidence
+
+| Hypothesis | Verdict |
+|---|---|
+| Code never deployed | ❌ ruled out — `/our-festivals` and `/producer/apply` both 200 |
+| Alias still on the old build | ❌ ruled out — `vercel inspect` shows the canonical alias on the newest deployment |
+| Env vars not reaching the runtime at all | ❌ ruled out — `/api/auth/csrf` 200 (needs `AUTH_SECRET`, which throws at import when absent) and `/api/categories` 200 (needs `DATABASE_URL`) |
+| Origin mismatch (403) | ❌ ruled out — the gate returns 503, which is *after* the origin check |
+| Flag inlined at build time | ❌ ruled out — `process.env.PRODUCER_EDGE_RATE_LIMIT_VERIFIED` survives verbatim in the emitted server chunk, so it is a **runtime** lookup. (`NODE_ENV` *is* inlined, as the literal `"production"`.) |
+
+### What remains
+
+The gate is `nodeEnv !== "production" || value === "1"` — a strict comparison. Demonstrated
+against the real module:
+
+```
+"1"      -> true
+"1\n"    -> false      ← a trailing newline is enough
+"\"1\""  -> false      ← wrapping quotes are enough
+" 1"     -> false
+"true"   -> false
+"yes"    -> false
+```
+
+I could **not** read the previously stored values to confirm which of these it was: `vercel env
+pull` returns `[SENSITIVE]` for every value on this project, so the stored value is unreadable by
+design. That is a limit of the evidence, not a conclusion — I removed it as a variable instead of
+proving it.
+
+### What I changed
+
+Removed and re-added all three flags in the production environment, piping the value with
+`printf '1'` so there is no trailing newline, no quotes, and no surrounding whitespace:
+
+```sh
+npx vercel env rm  <FLAG> production --yes
+printf '1' | npx vercel env add <FLAG> production
+```
+
+This is not a new decision — it re-sets the value Rob already chose, with guaranteed encoding.
+
+### Still required: a redeploy
+
+Vercel attaches environment variables to a deployment, so the corrected values do not reach the
+running functions until the next one. Release SHA is `8eb6fc1`, tree clean, on `main`.
+
+If the redeploy does **not** clear it, the cause is not the value, and the next step is a
+temporary diagnostic endpoint reporting whether the runtime sees the flag at all — the one thing
+none of the checks above can observe from outside.
+
+---
+
+## Part 7 — UI issues raised 2026-08-12
+
+Reproduced locally against a seeded database with 9 published festivals. All six addressed;
+**one is not a code fix and needs an operational decision.**
+
+### 1 & 2 — Search and filters "disconnected from events"
+
+**Two separate causes, one of them not a bug.**
+
+**Cause A — nothing is published (the dominant one).** Production returns
+`{"festivals":[]}` from `/api/festivals`: there are **zero published festivals**.
+`publishedDiscoveryWhere` matches `workflow_state: "published"` only, and `approved` is not
+`published`. Search and filters are wired correctly and return exactly what the database holds:
+nothing. `scripts/festival-publish-batch.mjs` states the same symptom in its own header —
+*"search, the calendar, and the festival grid all return nothing until each festival is
+transitioned through to published."* No code change can fix this; the festivals must be
+published. See the open items.
+
+**Cause B — the featured row ignored the query (a real bug, fixed).** Searching *Caribbean*
+returned the two matching festivals **plus** a promoted "Spruce Street Harbor Park Art Walk",
+and a search with no matches still displayed two unrelated festivals directly above
+"No festivals match your search". The row is editorial and never consulted the filters.
+
+Fixed in `(public)/page.js`: the featured row is suppressed whenever the visitor has narrowed
+the view. The predicate lives in `discovery.js` as `hasActiveDiscoveryFilters()` so it is
+testable and reusable rather than buried in the page. Paging and sorting deliberately do **not**
+count as narrowing — otherwise the row would flicker in and out while paging.
+
+Verified: `?q=Caribbean` 3 festivals → 2 (both genuinely Caribbean); no-match search 2 → 0.
+
+### 3 — Our Festivals
+
+The page was not erroring — it returned 200 and rendered its empty state. What was wrong is that
+it showed a hand-curated gallery rather than recent festivals.
+
+Rebuilt around `getRecentlyEndedFestivals()` (new, in `public-discovery.js`): published festivals
+that ended within the last 90 days, most recently ended first. `RECENTLY_ENDED_WINDOW_DAYS` is
+exported so the copy on the page and the query cannot drift apart. Single-day festivals with a
+null `end_date` fall back to `start_date` rather than being dropped.
+
+The curated gallery built earlier is **kept, not discarded** — it renders as a "Highlights"
+section only when items exist, so it is invisible today and no admin work is lost.
+
+Verified: shows exactly the 2 festivals that ended within 90 days, excludes the 7 upcoming ones.
+
+### 4 — Default Discover window
+
+`getDiscoveryDateRange` defaulted to *current month forward, unbounded*, so festivals a year out
+sat beside this weekend's. Now current month + next two (`DEFAULT_DISCOVERY_MONTHS = 3`).
+
+Verified at 2026-08-12: window is `2026-08-01` → `2026-11-01`. `date=all` stays unbounded and
+`this-month` is untouched, so nothing becomes unreachable.
+
+### 5 — No way back to the public site from admin
+
+`AdminNav` had a brand link reading **"Admin" → `/admin`** sitting next to a **"Dashboard" →
+`/admin`** entry: two links to the same page, and no link out of the admin portal at all. The
+brand link is now **"Discover Festivals" → `/`**.
+
+### 6 — Producer Access and Sponsors removed from admin nav
+
+Both removed from `AdminNav`. The routes still exist and still work when reached directly.
+
+**I could not reproduce the breakage.** Logged in as a seeded admin, every admin route returned
+200, including `/admin/producer-requests` and `/admin/sponsors`. If the failure is a server error
+rather than a failed action, I need the message to chase it — my best guess is that the *page*
+loads and an action on it returns the 503 from Part 6.
+
+⚠️ **Consequence worth knowing:** approving a producer application is only possible from
+`/admin/producer-requests`. With it out of the nav, the one-step onboarding flow has no reachable
+reviewer UI — an admin has to type the URL. Flagging rather than silently leaving that flow
+un-operable.
+
+### Also found, not fixed (out of scope)
+
+`prisma/seed.js` creates **no `FestivalOccurrence` rows**, and
+`editorial-repository.transition()` refuses any move to `published` unless exactly one primary
+occurrence exists. Seeded festivals therefore **cannot be published at all** — a fresh local
+environment can never demonstrate the public site. The CSV importer *does* create occurrences, so
+production imports are unaffected. I worked around it locally rather than changing the seed,
+because `security-contract.test.js` asserts on that file.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| `pnpm run check` | Pass |
+| `pnpm run test` | 51 files, **439 tests pass** (+15 new, 1 existing updated) |
+| `pnpm run build` | Pass |
+| Live: discover default | 8 of 9 festivals (July one correctly outside the window) |
+| Live: `?q=Caribbean` | 2, both matching |
+| Live: no-match search | 0 |
+| Live: `?date=all` | 9 |
+| Live: `/our-festivals` | 2 recently ended |
+| Live: admin nav | "Discover Festivals" → `/` present; producer-requests and sponsors absent; both routes still 200 |
+
+`tests/unit/discovery.test.js` had one assertion (`range.end` is null) that encoded the old
+unbounded default. Updated to assert the new upper bound on *both* `end` and `endDay`, which
+strengthens what that test was actually protecting — the zoned-instant vs calendar-day split.
+
+---
+
+## Part 8 — Navigation link visibility policy
+
+The nav had been patched three times without a stated rule, so the rule is now written down,
+enforced by a test, and applied in both directions.
+
+### The policy
+
+| Kind | Where it may appear |
+|---|---|
+| **Public links** (`/`, `/calendar`, `/our-festivals`, `/about`, `/tours`, `/producer`) | The public NavBar only — same list for everyone, signed in or not |
+| **Private links** (`/admin/*`, `/producer/*`) | That portal's own navigation only. Never in the public list |
+| **The one exception** — "Discover Festivals" (`/`) | Global. Allowed in every navigation, including admin, so there is always a way back to the public site |
+
+A signed-in editor still needs a way *into* their portal. That link now sits with the **session
+controls** beside account and sign-out, not among the public links — it is a property of who you
+are, not of where you can browse, and that conflation is what kept blurring the boundary.
+`PORTAL_BY_ROLE` maps `admin`/`super_admin` → `/admin` and `producer` → `/producer/dashboard`.
+
+### What changed
+
+- **`publicLinks` is now the list for everyone.** It previously swapped in a different array per
+  role and appended `Admin Portal` / `Producer Portal` directly into the public links.
+- **Deleted `staffLinks` and the `/admin` pathname branch** from `NavBar.jsx`. Both were
+  **unreachable**: `admin/layout.jsx` renders `AdminNav`, not `NavBar`, so that array had not
+  been displayed anywhere while still reading like live admin configuration — including a
+  `Dashboard` entry that actually pointed at the public homepage.
+- **Admin nav "Our Festivals" → "Gallery".** The public page of that name now lists recently
+  ended festivals automatically; this screen only curates the optional Highlights images above
+  them. Sharing a label implied editing one produced the other.
+
+### Enforced, not just documented
+
+`tests/unit/navigation-policy-contract.test.js` (7 tests) fails if:
+
+- any `/admin/*` or `/producer/*` route is added to `publicLinks`
+- the public *marketing* page `/producer` is lost, or `/producer/dashboard` is added in its place
+  *(a one-character difference between public and private, so it gets its own assertion)*
+- a non-`/admin` route appears in the admin navigation
+- the admin portal loses its "Discover Festivals" way back
+- Producer Access or Sponsors return to the admin nav — re-adding either should be a decision,
+  not an accident
+- an unreachable `/admin` branch or `staffLinks` array reappears in `NavBar`
+
+### Verification
+
+| View | Result |
+|---|---|
+| Public nav, signed out | 6 public links, nothing else |
+| Public nav, signed in as admin | Same 6 public links; **zero `/admin/*` links leaked** |
+| Admin nav | "Discover Festivals" + 8 private `/admin` links; no Calendar/About/Tours; no Sponsors/Producer Access |
+| Portal link ships to the browser | "Admin portal" and "Producer portal" both present in the client bundle; the old `Admin Portal` label gone |
+
+The portal link renders client-side via `useSession`, so it is not in the server HTML — I
+verified it through the built client bundle rather than by fetching a page.
+
+Gates: lint, typecheck, **446 tests**, and build all pass.
+
+---
+
+## Part 9 — What "Schedules" is (answer, no code change)
+
+**Two unrelated things share the word "schedule" in this codebase.** That is most of the
+confusion.
+
+### 1. `Schedule` — a festival's programme (what admin → Schedules shows)
+
+A row is one item in a festival's line-up: title, performer, genre, stage/location, start and
+end time, and an `is_headliner` flag. It belongs to a festival (`festival_id`) and optionally to
+a specific occurrence.
+
+- **Where the public sees it:** the festival detail page, under the "Schedule & program"
+  heading. If a festival has no rows, that section simply doesn't appear.
+- **What the admin screen does:** `/admin/schedules` lists the 50 most recent rows across all
+  festivals — festival, title, date, time, performer. Read-only.
+
+**Nothing in the application can create, edit, or delete one.** `schedule-queries.js` exports
+`createSchedule`, `updateSchedule` and `deleteSchedule`, but they have **no callers** — no API
+route and no UI. The only programme rows that exist came from `prisma/seed.js`. So today the
+admin screen is a window onto data the product has no way to author.
+
+### 2. The Schedule Builder — the public `/calendar` page
+
+Unrelated to the model above. A visitor browses the calendar, adds festivals to a personal
+list, and emails it to themselves. That list lives in the **browser's localStorage** under
+`savePhillySchedule` — no account, no database row.
+
+`/api/schedules/email` sends it. `/api/schedules/calendar` returns an `.ics` download.
+
+The `SavedSchedule` table (email + schedule id) is the **retired** server-side version of this:
+`/api/schedules/save` and `/api/schedules/saved` both return `410 Gone`, and
+`getSavedSchedules`/`removeSavedSchedule` have no callers.
+
+### The decision this leaves you
+
+Admin → Schedules is honest but inert: a read-only table of data nobody can enter. Three ways
+forward, none of them started — you asked for the explanation only:
+
+1. **Build authoring** — let admins add programme entries per festival. The public detail page
+   already renders them, so the data has somewhere to go.
+2. **Hide it** — same treatment as Producer Access and Sponsors, until authoring exists.
+3. **Leave it** — harmless, and useful once imports or producers start supplying programmes.
+
+Worth knowing either way: **festival programmes are not part of the CSV import**, so an imported
+festival will always show an empty "Schedule & program" section.
+
+---
+
 ## Open items for Rob
 
-1. **Redeploy production.** The flags are set but the running deployment predates them, so
-   publishing is still blocked. This also ships Our Festivals and `/api/producer/apply`. *(Part 4)*
+1. **Redeploy production** so the corrected flag values attach to a deployment. This is the last
+   step blocking publishing. *(Part 6)*
+2. **Publish the festivals.** Production has zero published festivals, which is why search,
+   filters, the calendar and the grid all look empty. Nothing in the UI can be judged until this
+   is done: `pnpm run festival:publish-batch` (dry-run first). *(Part 7)*
+3. **Send the error text for Producer Access / Sponsors** if they still fail — every admin route
+   returned 200 locally, so I could not reproduce it. *(Part 7)*
 2. **Decide on the two log-mode rules** — finish enforcing them, or accept the gap knowingly
    while you watch the traffic. *(Part 4)*
 3. **Decide on the publish-gate coupling** — leave as-is, improve the message, or decouple
@@ -561,3 +829,7 @@ you want it.
 | 2026-08-12 | Added `tools/scripts/vercel-firewall-ops.mjs` (`ops:firewall:verify` / `plan` / `stage`) so the attestation can be checked rather than remembered. Verified by running it — it caught all three outstanding problems and exits non-zero. |
 | 2026-08-12 | `.env.example` expanded from 16 to 40 variables, derived by scanning source rather than copying any real env file. Added `env-example-contract.test.js` to stop it drifting; proved it fails in both directions. Suite now 424 tests. |
 | 2026-08-12 | Found the root `.env.example` holds a real `VERCEL_OIDC_TOKEN`. Git history verified clean — nothing was ever committed. Reverted a `.gitignore` negation I had added minutes earlier that would have made that file stageable. |
+| 2026-08-12 | Publishing still blocked after Rob's deploy. Ruled out missing code, stale alias, origin mismatch, absent runtime env, and build-time inlining — each with a specific check. Narrowed to the stored flag value, which Vercel will not reveal. Re-added all three flags with `printf '1'` for exact encoding; a redeploy is now the test. |
+| 2026-08-12 | Six UI issues addressed. Search and filters proven correct against seeded data — the cause is that production has zero published festivals, plus a real bug where the featured row ignored the active query. Our Festivals rebuilt around festivals ended in the last 90 days. Discover default bounded to three months. Admin nav given a way back to the public site; Producer Access and Sponsors removed on request, with the reviewer-UI consequence flagged. 439 tests pass. |
+| 2026-08-12 | Navigation link visibility written down as a policy and enforced by `navigation-policy-contract.test.js`: public links public, private links private, "Discover Festivals" the one global exception. Portal entry moved to the session controls. Deleted the unreachable `staffLinks` array and `/admin` branch from `NavBar`. 446 tests pass. |
+| 2026-08-12 | Documented what admin → Schedules is (Part 9). No code change — read-only festival programmes that nothing in the app can author, distinct from the localStorage Schedule Builder on /calendar. |

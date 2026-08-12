@@ -1,6 +1,8 @@
 export const DISCOVERY_TIME_ZONE = "America/New_York";
 export const DISCOVERY_PAGE_SIZE = 24;
 export const DISCOVERY_MAX_PAGE_SIZE = 48;
+/* How many months the unfiltered discovery view covers, counting the current one. */
+export const DEFAULT_DISCOVERY_MONTHS = 3;
 
 /* "all" opts out of the default current-month-forward bound so past festivals stay reachable
  * from discovery, not just from their detail page. */
@@ -58,6 +60,18 @@ export function parseDiscoveryParams(input = {}) {
     sort,
     page,
   };
+}
+
+/**
+ * Has the visitor narrowed the view at all?
+ *
+ * Used to suppress editorial surfaces that ignore the query — chiefly the homepage featured
+ * row, which otherwise sits above "No festivals match your search" showing festivals that do
+ * not match, making search look broken. Deliberately covers every narrowing input, not just
+ * `q`: a category or date filter creates exactly the same contradiction.
+ */
+export function hasActiveDiscoveryFilters(filters = {}) {
+  return Boolean(filters.q || filters.category || filters.location || filters.date || filters.start || filters.end);
 }
 
 export function datePartsInTimeZone(date, timeZone = DISCOVERY_TIME_ZONE) {
@@ -157,9 +171,13 @@ export function getDiscoveryDateRange(filters, now = new Date()) {
   if (filters.date === "this-month") return rangeFor({ ...today, day: 1 }, monthStart(today, 1));
   if (filters.date === "next-month") return rangeFor(monthStart(today, 1), monthStart(today, 2));
 
-  /* Default: current month forward, with no upper bound. Public views lead with what is still
-   * ahead; past festivals remain reachable by direct link and via `date=all`. */
-  return rangeFor({ ...today, day: 1 }, null);
+  /* Default: the current month plus the next two — roughly "what's on soon".
+   *
+   * Previously this was current-month-forward with no upper bound, which surfaced festivals a
+   * year out alongside this weekend's, so the default view read as an undifferentiated dump
+   * rather than a season. Anything past the window stays reachable through the date filters and
+   * `date=all`; past festivals additionally have their own retrospective on /our-festivals. */
+  return rangeFor({ ...today, day: 1 }, monthStart(today, DEFAULT_DISCOVERY_MONTHS));
 }
 
 function monthStart(parts, monthsAhead) {

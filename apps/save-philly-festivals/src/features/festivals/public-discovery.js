@@ -160,6 +160,51 @@ export async function getFeaturedFestivals(limit = 2, { now = new Date() } = {})
   return items.slice(0, limit);
 }
 
+export const RECENTLY_ENDED_WINDOW_DAYS = 90;
+
+/**
+ * Festivals that finished within the last `days`, most recently ended first.
+ *
+ * This is what the public "Our Festivals" page is: a look back at what the city has just been
+ * doing. It is deliberately *not* the discovery query — `getDiscoveryDateRange` bounds results
+ * to the current month forward, so every festival here is one discovery has stopped showing.
+ *
+ * Only `published` festivals appear. A festival that was never published has no public page to
+ * link to, so listing it would produce a grid of dead ends.
+ */
+export async function getRecentlyEndedFestivals({ days = RECENTLY_ENDED_WINDOW_DAYS, now = new Date(), limit = 48 } = {}) {
+  const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+
+  /* `end_date` is null for a single-day timed festival, so fall back to `start_date` rather
+   * than dropping those from the retrospective entirely. All-day festivals are covered by the
+   * backfill migration that mirrors their dates onto the timed columns. */
+  const endedWithinWindow = {
+    OR: [
+      { end_date: { lt: now, gte: cutoff } },
+      { end_date: null, start_date: { lt: now, gte: cutoff } },
+    ],
+  };
+
+  if (process.env.DISCOVERY_E2E_FIXTURE === "1") {
+    const { DISCOVERY_E2E_FESTIVALS } = await import("./discovery-e2e-fixture");
+    return DISCOVERY_E2E_FESTIVALS
+      .filter((festival) => {
+        const ended = festival.end_date ?? festival.start_date;
+        return ended && new Date(ended) < now && new Date(ended) >= cutoff;
+      })
+      .sort((a, b) => new Date(b.end_date ?? b.start_date) - new Date(a.end_date ?? a.start_date))
+      .slice(0, limit);
+  }
+
+  const { prisma } = await import("@/lib/db");
+  return prisma.festival.findMany({
+    where: { AND: [publishedDiscoveryWhere, endedWithinWindow] },
+    select: PUBLIC_DISCOVERY_SELECT,
+    orderBy: [{ end_date: { sort: "desc", nulls: "last" } }, { start_date: { sort: "desc", nulls: "last" } }, { name: "asc" }],
+    take: limit,
+  });
+}
+
 /**
  * Filter facets for the discovery controls.
  *

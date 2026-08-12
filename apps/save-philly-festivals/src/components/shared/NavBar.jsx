@@ -8,6 +8,23 @@ import { Menu, X, LogOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 
+/**
+ * Link visibility policy — one rule, applied in both directions.
+ *
+ *   Public links   render only in this public navigation, for everyone, signed in or not.
+ *   Private links  (anything under /admin or /producer) render only inside that portal's own
+ *                  navigation, never in this list.
+ *   The exception  "Discover Festivals" (`/`) is global: it is the one link allowed in every
+ *                  navigation, including the admin portal, so there is always a way back to
+ *                  the public site.
+ *
+ * A signed-in editor still needs a way *into* their portal, so that link lives with the
+ * session controls (beside the account and sign-out actions) rather than among the public
+ * links. It is a property of who you are, not of where you can browse — which is exactly the
+ * distinction that kept getting blurred when it sat in this array.
+ *
+ * Do not add an /admin or /producer entry to `publicLinks`.
+ */
 const publicLinks = [
   { href: "/", label: "Discover Festivals" },
   { href: "/calendar", label: "Calendar" },
@@ -17,19 +34,12 @@ const publicLinks = [
   { href: "/producer", label: "For Producers" },
 ];
 
-const staffLinks = [
-  { href: "/", label: "Dashboard" },
-  { href: "/admin/festivals", label: "Festivals" },
-  { href: "/admin/view-festivals", label: "View Festivals" },
-  { href: "/admin/pending", label: "Pending Review" },
-  { href: "/admin/submit", label: "Submit Festival" },
-  { href: "/admin/settings", label: "Settings" },
-];
-
-const producerLinks = [
-  { href: "/producer/dashboard", label: "Dashboard" },
-  { href: "/producer/submit", label: "Submit Festival" },
-];
+/* Where each role's portal lives. Rendered as a session control, never as a public link. */
+const PORTAL_BY_ROLE = {
+  admin: { href: "/admin", label: "Admin portal" },
+  super_admin: { href: "/admin", label: "Admin portal" },
+  producer: { href: "/producer/dashboard", label: "Producer portal" },
+};
 
 export function NavBar() {
   const pathname = usePathname();
@@ -40,29 +50,14 @@ export function NavBar() {
 
   const isSignedIn = Boolean(session?.user);
   const isStaff = session?.user?.role === "admin" || session?.user?.role === "super_admin";
-  const isProducer = session?.user?.role === "producer";
   const isProducerArea = pathname.startsWith("/producer/");
 
-  let navLinks = publicLinks;
-  if (pathname.startsWith("/admin")) {
-    navLinks = staffLinks;
-  } else if (pathname.startsWith("/producer/")) {
-    navLinks = producerLinks;
-  } else {
-    // We are on public pages.
-    // If the user is logged in, append the respective portal link.
-    if (isStaff) {
-      navLinks = [
-        ...publicLinks.filter((link) => link.href !== "/producer"),
-        { href: "/admin/festivals", label: "Admin Portal" }
-      ];
-    } else if (isProducer) {
-      navLinks = [
-        ...publicLinks.filter((link) => link.href !== "/producer"),
-        { href: "/producer/dashboard", label: "Producer Portal" }
-      ];
-    }
-  }
+  /* Always the public set, whoever is looking. The previous version swapped in a different
+   * array per pathname, including an `/admin` branch that could never run — `admin/layout.jsx`
+   * renders `AdminNav` instead of this component, so those entries were unreachable while
+   * still reading like the admin navigation. */
+  const navLinks = publicLinks;
+  const portal = PORTAL_BY_ROLE[session?.user?.role];
 
 
 
@@ -130,6 +125,17 @@ export function NavBar() {
               style={{ letterSpacing: "-0.15px" }}
             >
               My account
+            </Link>
+          )}
+          {/* A session control, deliberately outside `navLinks`: it is private and role-based,
+            * so it must not sit among the public links. Styled as a button to read as an entry
+            * point rather than another page in the public site. */}
+          {portal && (
+            <Link
+              href={portal.href}
+              className="flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 font-ui text-sm font-semibold text-indigo-700 transition-all hover:bg-indigo-100 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-500"
+            >
+              {portal.label}
             </Link>
           )}
           {isSignedIn && (
@@ -211,6 +217,17 @@ export function NavBar() {
                 <span className="block py-1.5 font-ui text-xs font-bold text-slate-500">
                   {session.user.email}
                 </span>
+                {/* Same rule as the desktop bar: private, role-based, grouped with the session
+                  * controls rather than listed as a public destination. */}
+                {portal && (
+                  <Link
+                    href={portal.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="mt-1 flex w-full items-center justify-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 py-2 font-ui text-sm font-bold text-indigo-700 transition-colors hover:bg-indigo-100"
+                  >
+                    {portal.label}
+                  </Link>
+                )}
                 <button
                   onClick={() => {
                     setMobileOpen(false);
