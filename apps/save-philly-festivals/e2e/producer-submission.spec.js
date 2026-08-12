@@ -32,6 +32,10 @@ test.describe("F-07 producer submission", () => {
     await page.goto("/producer");
     await expect(page.getByRole("heading", { name: /Showcase your festival/i })).toBeVisible();
 
+    /* Both entry points, and each pointing where it claims. Nothing covered the split when the
+     * application flow replaced the single CTA, so renaming or re-pointing either one was free. */
+    await expect(page.getByRole("link", { name: /Become a producer/i })).toHaveAttribute("href", "/producer/apply");
+    await expect(page.getByRole("link", { name: "Resume a submission" })).toHaveAttribute("href", "/producer/submit");
   });
 
   test("fixture login fails closed and never accepts an external callback", async ({ page }) => {
@@ -44,7 +48,11 @@ test.describe("F-07 producer submission", () => {
 
   test("verified producer creates, resumes, uploads, submits once, and sees read-only pending state", async ({ page }) => {
     await page.goto("/producer");
-    await page.getByRole("link", { name: "Start or resume a submission" }).click();
+    /* The single "Start or resume a submission" CTA was deliberately split in two when the
+     * producer application flow landed: newcomers get "Become a producer …" (/producer/apply),
+     * returning producers get "Resume a submission" (/producer/submit). This test is about the
+     * returning-producer path, so it follows the latter. */
+    await page.getByRole("link", { name: "Resume a submission" }).click();
     await expect(page).toHaveURL((url) => url.pathname === "/login" && url.searchParams.get("callbackUrl") === "/producer/submit");
     await fixtureSignIn(page);
     await expect(page.getByText("producer-a@example.test")).toBeVisible();
