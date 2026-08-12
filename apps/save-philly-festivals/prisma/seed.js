@@ -9,6 +9,7 @@ import {
   buildFestivalRevisionSnapshot,
   FESTIVAL_REVISION_SNAPSHOT_SELECT,
 } from "../src/features/editorial-workflow/festival-revision-snapshot.js";
+import { assertSafeSeedDatabaseUrl } from "../src/lib/database-safety.js";
 
 const prismaDirectory = dirname(fileURLToPath(import.meta.url));
 
@@ -22,6 +23,12 @@ const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   throw new Error("DATABASE_URL is not configured");
 }
+
+/* Seeding is destructive to accounts: the upsert below replaces `password_hash` and `role` for
+ * every matching email, and the festival seeds land in whatever catalogue this points at. Refuse
+ * anything that is not a local development database. */
+const seedTarget = assertSafeSeedDatabaseUrl(connectionString);
+console.log(`Seeding local database ${seedTarget.databaseName} on ${seedTarget.hostname}.`);
 
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
@@ -738,6 +745,38 @@ async function ensureFestivalAudit(transaction, festival, actor) {
   }
 }
 
+/**
+ * The one primary occurrence a festival needs before it can ever be published.
+ *
+ * `FestivalOccurrence_valid_interval` requires a timed occurrence to carry both `start_at` and
+ * `end_at` with `end_at > start_at`, and both all-day columns null. Seeded festivals are all
+ * timed with real dates, so mirroring them satisfies it; the `end_at` fallback covers a
+ * single-day fixture that carries no explicit end.
+ */
+async function ensurePrimaryOccurrence(festival) {
+  const startAt = festival.start_date;
+  if (!startAt) return;
+  const endAt = festival.end_date && festival.end_date > startAt
+    ? festival.end_date
+    : new Date(new Date(startAt).getTime() + 60 * 60 * 1000);
+
+  const occurrence = {
+    is_primary: true,
+    calendar_date_type: "timed",
+    time_zone: festival.time_zone ?? "America/New_York",
+    start_at: startAt,
+    end_at: endAt,
+    all_day_start: null,
+    all_day_end: null,
+  };
+
+  await prisma.festivalOccurrence.upsert({
+    where: { festival_id_source_key: { festival_id: festival.id, source_key: "seed-primary" } },
+    update: occurrence,
+    create: { id: randomUUID(), festival_id: festival.id, source_key: "seed-primary", ...occurrence },
+  });
+}
+
 async function seedFestivals(actor) {
   for (const f of festivals) {
     const slug = generateSlug(f.name);
@@ -759,6 +798,13 @@ async function seedFestivals(actor) {
       await ensureFestivalAudit(transaction, created, actor);
       return created;
     });
+
+    /* Every seeded festival needs exactly one primary occurrence, or it can never be published:
+     * `editorial-repository.transition()` refuses any move to `published` unless exactly one
+     * exists, so without this a fresh local database can never demonstrate the public site.
+     * Upserted on the existing (festival_id, source_key) unique so re-seeding is idempotent and
+     * cannot trip `FestivalOccurrence_one_primary_per_festival`. */
+    await ensurePrimaryOccurrence(festival);
 
     // ── Festival-Category links ─────────────────────────────
     for (const catSlug of f.categorySlugs) {
