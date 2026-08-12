@@ -9,7 +9,7 @@ import { producerAccessRepository } from "@/features/producer-access/producer-ac
 /**
  * Guards the database's audit contract for approving a combined producer application.
  *
- * `verify_festival_revision_audit` rejects the festival insert outright unless the same
+ * `validate_festival_audit_at_commit` rejects the festival insert outright unless the same
  * transaction also writes a matching `FestivalTransition` and — because the festival has an
  * owner and the actor is an admin — exactly one producer-audience `FestivalWorkflowNotification`.
  * Those writes are enforced by triggers, not convention, so a refactor that drops one turns

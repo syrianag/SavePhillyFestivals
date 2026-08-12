@@ -1,7 +1,7 @@
 -- Combined "become a producer and submit an event" flow.
 --
 -- The application carries its event as submitted JSON, not as a `Festival` row:
--- `verify_festival_revision_audit` only accepts a festival insert whose transition actor is an
+-- `validate_festival_audit_at_commit` only accepts a festival insert whose transition actor is an
 -- owning `producer` or an admin, and an applicant is neither until approved. The real festival
 -- is created on approval, with the deciding admin as the actor, and linked back via
 -- `festival_id`. Both columns are nullable — the original two-step flow carries neither.

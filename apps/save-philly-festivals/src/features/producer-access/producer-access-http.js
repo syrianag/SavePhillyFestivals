@@ -126,7 +126,12 @@ export async function handleRegister(request, injected) {
     }
     const parsed = await parseJson(request, registrationSchema); if (parsed.response) return parsed.response;
     const repository = injected?.repository || producerAccessRepository;
-    return json(await registerAccount(parsed.data, { repository }), 201);
+    await registerAccount(parsed.data, { repository });
+    /* A fixed body, deliberately dropping the service's `created` flag. Returning it
+     * distinguished "new account" from "address already registered" and handed back exactly the
+     * account-enumeration oracle that `registerAccount`'s duplicate-tolerant path exists to
+     * avoid — the service was correct and this layer undid it. */
+    return json({ registered: true }, 201);
   } catch (error) { return handled(error); }
 }
 

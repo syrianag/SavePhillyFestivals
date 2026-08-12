@@ -17,11 +17,17 @@ const httpsUrl = z.string().url().max(2000).refine(
   "Use an https:// URL"
 ).nullable();
 
+/* Declared without `.default()` so the update variant can distinguish "field omitted" from
+ * "field set to its default". While the defaults lived here, `.default(x).optional()` still
+ * supplied `x` for an absent key, so `updateSponsorSchema.parse({})` produced
+ * `{status:"draft", sort_order:0}` — an empty or partial PATCH silently unpublished an active
+ * sponsor and reset its position, and the "at least one field" refine below could never fire
+ * because the parsed object was never empty. Defaults are applied only in `createSponsorSchema`. */
 const sponsorFields = {
   name: z.string().trim().min(1).max(200),
   slot: sponsorSlotSchema,
-  status: sponsorStatusSchema.default("draft"),
-  sort_order: z.number().int().min(0).max(9999).default(0),
+  status: sponsorStatusSchema,
+  sort_order: z.number().int().min(0).max(9999),
   href: httpsUrl.optional(),
   alt_text: nullableText(500).optional(),
   image_url: httpsUrl.optional(),
@@ -44,7 +50,11 @@ const renderable = (value, context) => {
   }
 };
 
-export const createSponsorSchema = z.object(sponsorFields).strict().superRefine(renderable);
+export const createSponsorSchema = z.object({
+  ...sponsorFields,
+  status: sponsorStatusSchema.default("draft"),
+  sort_order: z.number().int().min(0).max(9999).default(0),
+}).strict().superRefine(renderable);
 
 export const updateSponsorSchema = z.object({
   ...Object.fromEntries(Object.entries(sponsorFields).map(([key, schema]) => [key, schema.optional()])),

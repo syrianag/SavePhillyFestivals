@@ -92,7 +92,7 @@ export const producerAccessRepository = {
    * is reachable without credentials, so it must not grant submission rights; the role is
    * granted only by `decideRequest` after a human approves.
    *
-   * No `Festival` row is written here. `verify_festival_revision_audit` only accepts a festival
+   * No `Festival` row is written here. `validate_festival_audit_at_commit` only accepts a festival
    * insert whose transition actor is an owning `producer` or an admin, and an applicant is
    * neither. The event is stored as submitted JSON and materialised on approval, which also
    * keeps a spam application from inserting festivals through a public endpoint.
@@ -177,7 +177,7 @@ export const producerAccessRepository = {
         }
 
         /* Materialise the applicant's proposed event now that a human has approved it. The
-         * deciding admin is the transition actor, which is what `verify_festival_revision_audit`
+         * deciding admin is the transition actor, which is what `validate_festival_audit_at_commit`
          * requires — the applicant could not have created this row themselves.
          *
          * Created directly as `pending_review` so it lands in the existing review queue rather
@@ -234,7 +234,7 @@ export const producerAccessRepository = {
               snapshot: buildFestivalRevisionSnapshot(created),
             },
           });
-          /* `verify_festival_revision_audit` requires exactly one producer-audience notification
+          /* `validate_festival_audit_at_commit` requires exactly one producer-audience notification
            * for every owned festival an editor touches, so the applicant is always told their
            * event exists. Also enforced, not merely conventional. */
           await transaction.festivalWorkflowNotification.create({
