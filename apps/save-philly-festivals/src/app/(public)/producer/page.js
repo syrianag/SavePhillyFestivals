@@ -10,10 +10,10 @@ export const metadata = {
  * already created the account for you — there was no way to register at all. */
 const SUBMISSION_STEPS = [
   {
-    href: "/signup",
-    title: "1. Sign up",
-    body: "Create an account, then request producer access. Our team reviews each request and emails you the decision.",
-    action: "Create an account",
+    href: "/producer/apply",
+    title: "1. Apply",
+    body: "One form creates your account and submits your event. Our team reviews both together and emails you the decision.",
+    action: "Become a producer",
   },
   {
     href: "/producer/submit",
@@ -36,7 +36,12 @@ export default function ProducerIntroductionPage() {
         <p className="font-ui text-sm font-bold uppercase tracking-widest text-[#F6C847]">For festival producers</p>
         <h1 className="mt-4 max-w-3xl font-heading text-4xl font-bold leading-tight sm:text-6xl">Showcase your festival for free across Philadelphia</h1>
         <p className="mt-6 max-w-2xl font-body text-lg leading-relaxed text-blue-50">Create a private draft, provide accurate festival and contact details, and submit it to the Save Philly Festivals team for review. Submissions do not become public automatically.</p>
-        <Link href="/producer/submit" className="mt-8 inline-flex min-h-12 items-center justify-center rounded-xl bg-black px-6 py-3 font-ui font-bold text-white hover:bg-slate-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">Start or resume a submission</Link>
+        {/* Two entry points, because they serve different people: newcomers have no account
+          * and want one form, while returning producers just want their draft back. */}
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link href="/producer/apply" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-black px-6 py-3 font-ui font-bold text-white hover:bg-slate-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">Become a producer &amp; submit your event</Link>
+          <Link href="/producer/submit" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-white/10 px-6 py-3 font-ui font-bold text-white ring-1 ring-white/40 hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">Resume a submission</Link>
+        </div>
       </section>
       <section className="grid gap-6 py-12 sm:grid-cols-3" aria-label="Submission process">
         {SUBMISSION_STEPS.map((step) => (

@@ -17,7 +17,15 @@ describe("F-04 persistence and security contract", () => {
     expect(schema).toContain("model ScheduleEmailItem");
     expect(schema).toMatch(/idempotency_key\s+String\s+@unique/);
     expect(schema).toMatch(/items\s+ScheduleEmailItem\[\]/);
-    expect(schema).not.toMatch(/ScheduleEmailRequest[\s\S]*?Json/);
+    /* The contract is that *this* model keeps its items normalized into `ScheduleEmailItem[]`
+     * rather than collapsing them into a Json blob. Scoped to the model block, matching how
+     * `SavedSchedule` is asserted below: the previous `/ScheduleEmailRequest[\s\S]*?Json/` was
+     * positional, so it banned Json in every model declared later in the file. The four Json
+     * columns that already exist (`prepared_counts`, `normalized_data`, `safe_details`,
+     * `snapshot`) passed only because they happen to sit earlier in the schema. */
+    const scheduleEmailRequest = schema.match(/model ScheduleEmailRequest \{[\s\S]*?\n\}/)?.[0];
+    expect(scheduleEmailRequest).toBeDefined();
+    expect(scheduleEmailRequest).not.toContain("Json");
     expect(migration).toContain('CREATE UNIQUE INDEX "ScheduleEmailRequest_idempotency_key_key"');
     expect(migration).toContain('ON DELETE CASCADE');
     expect(migration).not.toMatch(/RESEND|API_KEY|credential|email_body/i);

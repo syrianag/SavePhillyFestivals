@@ -238,6 +238,8 @@ model Festival {
   import_target_rows FestivalImportRow[] @relation("FestivalImportTarget")
   import_matched_rows FestivalImportRow[] @relation("FestivalImportMatch")
   import_prepared_matched_rows FestivalImportRow[] @relation("FestivalImportPreparedMatch")
+  our_festival_items OurFestivalItem[]
+  producer_access_request ProducerAccessRequest? @relation("ProducerAccessFestival")
 
   @@unique([owner_user_id, submission_key])
   @@index([owner_user_id, workflow_state, updated_at])
@@ -1068,6 +1070,45 @@ model Sponsor {
 }
 
 
+// ─── Digital "Our Festivals" gallery ───────────────────────
+// An editor-curated visual gallery that is deliberately independent of the festival workflow:
+// an item can tell a story about a past or upcoming festival without that festival being
+// `published`, and can exist with no linked festival at all. Publication is therefore governed
+// by this model's own `status`, NOT by `publicationPolicy`/`publishedDiscoveryWhere`.
+
+enum OurFestivalItemStatus {
+  draft
+  published
+  archived
+}
+
+model OurFestivalItem {
+  id           String                @id @default(uuid())
+  title        String
+  caption      String?
+  // Optional. A gallery item may reference a festival for a "read more" link, but curators also
+  // add retrospective imagery with no matching festival row, so this stays nullable.
+  festival_id  String?
+  image_url    String
+  image_width  Int?
+  image_height Int?
+  // Required rather than optional: the gallery is entirely imagery, so a missing alt text makes
+  // the page unusable with a screen reader rather than merely degraded.
+  alt_text     String
+  status       OurFestivalItemStatus @default(draft)
+  // Curator-controlled display order. Ties break on created_at so ordering is always total.
+  sort_order   Int                   @default(0)
+  created_by_user_id String?
+  created_at   DateTime              @default(now())
+  updated_at   DateTime              @updatedAt
+
+  festival     Festival?             @relation(fields: [festival_id], references: [id], onDelete: SetNull)
+
+  @@index([status, sort_order, created_at])
+  @@index([festival_id])
+}
+
+
 // ─── Producer access requests ──────────────────────────────
 // Self-serve signup creates a `public` account, which grants nothing. Becoming a producer is a
 // separate, reviewed step so an open registration endpoint cannot hand out submission rights.
@@ -1086,6 +1127,16 @@ model ProducerAccessRequest {
   organization   String?
   festival_name  String?
   message        String?
+  // The event details captured by the combined "become a producer and submit an event" flow,
+  // held as submitted data rather than as a `Festival` row.
+  //
+  // A festival cannot be created here: `verify_festival_revision_audit` only accepts a festival
+  // insert whose transition actor is an owning `producer` or an admin, and an applicant is
+  // neither until approved. Holding the details as JSON also means a spam application cannot
+  // insert `Festival` rows through a public endpoint.
+  proposed_festival Json?
+  // The festival created from `proposed_festival` when the application was approved.
+  festival_id    String?                     @unique
   decided_by_user_id String?
   decided_at     DateTime?
   decision_reason String?
@@ -1094,6 +1145,7 @@ model ProducerAccessRequest {
 
   user       User @relation("ProducerAccessRequester", fields: [user_id], references: [id], onDelete: Cascade)
   decided_by User? @relation("ProducerAccessDecider", fields: [decided_by_user_id], references: [id], onDelete: SetNull)
+  festival   Festival? @relation("ProducerAccessFestival", fields: [festival_id], references: [id], onDelete: SetNull)
 
   // One open request per account: re-requesting while a decision is pending would queue
   // duplicates for the reviewer.

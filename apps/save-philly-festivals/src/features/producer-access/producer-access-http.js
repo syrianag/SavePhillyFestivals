@@ -1,10 +1,11 @@
 import { Buffer } from "node:buffer";
+import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { authorizeEditor } from "@/features/editorial-workflow/editorial-authorization";
 import { editorialRepository } from "@/features/editorial-workflow/editorial-repository";
 import { EditorialPolicyError } from "@/features/editorial-workflow/editorial-transition-policy";
-import { enforceProducerMutationOrigin } from "@/features/producer-submission/producer-request-security";
+import { enforceProducerMutationOrigin, producerEdgeRateLimitVerified } from "@/features/producer-submission/producer-request-security";
 import { producerAccessRepository, ProducerAccessError } from "./producer-access-repository";
 import {
   accessDecisionSchema,
@@ -14,6 +15,7 @@ import {
   PRODUCER_ACCESS_JSON_BODY_LIMIT,
   registrationSchema,
 } from "./producer-access-schema";
+import { PRODUCER_APPLICATION_JSON_BODY_LIMIT, producerApplicationSchema } from "./producer-application-schema";
 import {
   createEmailTemplate,
   decideAccessRequest,
@@ -22,6 +24,7 @@ import {
   listEmailTemplates,
   registerAccount,
   requestProducerAccess,
+  submitProducerApplication,
   updateEmailTemplate,
 } from "./producer-access-service";
 
@@ -53,12 +56,30 @@ function consumeRegistration(key) {
   return current.count <= REGISTRATION_LIMIT;
 }
 
-async function parseJson(request, schema) {
+/* The combined application creates a user *and* a festival in one unauthenticated call, so it
+ * gets a bucket stricter than registration's rather than sharing it. Separate map: sharing one
+ * would let cheap registration attempts exhaust the budget for genuine applications. */
+const applicationBuckets = new Map();
+const APPLICATION_LIMIT = 3;
+const APPLICATION_WINDOW_MS = 15 * 60_000;
+
+function consumeApplication(key) {
+  const now = Date.now();
+  const current = applicationBuckets.get(key);
+  if (!current || current.resetAt <= now) {
+    applicationBuckets.set(key, { count: 1, resetAt: now + APPLICATION_WINDOW_MS });
+    return true;
+  }
+  current.count += 1;
+  return current.count <= APPLICATION_LIMIT;
+}
+
+async function parseJson(request, schema, limit = PRODUCER_ACCESS_JSON_BODY_LIMIT) {
   if (request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() !== "application/json") {
     return { response: json({ error: "Content-Type must be application/json." }, 415) };
   }
   const bytes = new Uint8Array(await request.arrayBuffer());
-  if (bytes.byteLength > PRODUCER_ACCESS_JSON_BODY_LIMIT) return { response: json({ error: "Request body is too large." }, 413) };
+  if (bytes.byteLength > limit) return { response: json({ error: "Request body is too large." }, 413) };
   let body;
   try { body = JSON.parse(Buffer.from(bytes).toString("utf8")); }
   catch { return { response: json({ error: "Request body must be valid JSON." }, 400) }; }
@@ -106,6 +127,41 @@ export async function handleRegister(request, injected) {
     const parsed = await parseJson(request, registrationSchema); if (parsed.response) return parsed.response;
     const repository = injected?.repository || producerAccessRepository;
     return json(await registerAccount(parsed.data, { repository }), 201);
+  } catch (error) { return handled(error); }
+}
+
+/**
+ * The combined "become a producer and submit an event" application.
+ *
+ * Unauthenticated by design — the whole point is that an applicant needs no prior account. It
+ * therefore carries the full public-write guard stack: origin enforcement, an IP-keyed bucket,
+ * and the production edge-rate-limit attestation. The last one is applied because this endpoint
+ * *creates* a festival, and `docs/PRODUCER-SUBMISSION-OPERATIONS.md` fails creates closed in
+ * production until `PRODUCER_EDGE_RATE_LIMIT_VERIFIED=1`.
+ *
+ * The response never reveals whether an account already existed; see `submitProducerApplication`.
+ */
+export async function handleProducerApplication(request, injected) {
+  try {
+    const gate = originGate(request); if (gate) return gate;
+    if (!(injected?.edgeRateLimitVerified ?? producerEdgeRateLimitVerified())) {
+      return json({
+        error: "Producer applications are unavailable until edge rate limiting is verified. Set PRODUCER_EDGE_RATE_LIMIT_VERIFIED=1 in the production environment once identity/IP-aware rate limiting is enabled at the deployment edge.",
+        code: "edge_rate_limit_unverified",
+      }, 503);
+    }
+    if (!consumeApplication(clientKey(request))) {
+      return json({ error: "Too many applications. Try again later." }, 429);
+    }
+    const parsed = await parseJson(request, producerApplicationSchema, PRODUCER_APPLICATION_JSON_BODY_LIMIT);
+    if (parsed.response) return parsed.response;
+    const repository = injected?.repository || producerAccessRepository;
+    const randomSuffix = injected?.randomSuffix || (() => randomBytes(4).toString("hex"));
+    await submitProducerApplication(parsed.data, { repository, randomSuffix });
+    /* A fixed body, deliberately dropping the service's `created` flag. Returning it would
+     * distinguish "new account" from "address already registered" and hand back exactly the
+     * enumeration oracle the duplicate-tolerant service path exists to avoid. */
+    return json({ submitted: true }, 201);
   } catch (error) { return handled(error); }
 }
 

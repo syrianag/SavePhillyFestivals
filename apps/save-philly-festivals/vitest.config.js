@@ -6,6 +6,7 @@ export default defineConfig({
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
+    envDir: "../..",
   },
   test: {
     environment: "node",
@@ -22,6 +23,10 @@ export default defineConfig({
         "src/features/festivals/geocoding.js",
         "src/features/schedule/schedule-storage.js",
         "src/features/sponsors/sponsor-placements.js",
+        "src/features/our-festivals/our-festivals-schema.js",
+        "src/features/our-festivals/our-festivals-service.js",
+        "src/features/producer-access/producer-application-schema.js",
+        "src/features/producer-access/producer-access-service.js",
         "src/features/schedule-email/schedule-email-content.js",
         "src/features/schedule-email/schedule-email-resolution.js",
         "src/features/schedule-email/schedule-email-schema.js",

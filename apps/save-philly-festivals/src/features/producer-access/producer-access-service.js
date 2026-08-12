@@ -22,6 +22,73 @@ export async function registerAccount(input, { repository }) {
   return { registered: true, created: true };
 }
 
+/**
+ * Slug for a festival created by a public application.
+ *
+ * A random suffix rather than a name-uniqueness lookup: `slug` is unique, two applicants can
+ * legitimately propose the same festival name, and a check-then-insert would race on a public
+ * endpoint. Collisions are not retried because 8 hex characters make one vanishingly unlikely.
+ */
+export function producerApplicationSlug(name, suffix) {
+  const base = String(name || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/gu, "")
+    .replace(/[^a-z0-9]+/gu, "-")
+    .replace(/^-+|-+$/gu, "")
+    .slice(0, 180)
+    .replace(/-+$/u, "") || "festival";
+  return `${base}-${suffix}`;
+}
+
+/**
+ * The combined "become a producer and submit an event" application.
+ *
+ * Like `registerAccount`, this always reports success even when the address is already
+ * registered. The endpoint is public, so distinguishing the two would turn it into an
+ * account-enumeration oracle for a site that also hosts the admin portal.
+ *
+ * No producer role is granted here. The account is created as `public` and the festival as a
+ * draft; both stay inert until an admin approves the request. That preserves the invariant
+ * recorded in `schema.prisma` — an open endpoint must not be able to hand out submission rights.
+ */
+export async function submitProducerApplication(input, { repository, randomSuffix }) {
+  const existing = await repository.findUserByEmail(input.email);
+  if (existing) return { submitted: true, created: false };
+
+  const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
+
+  /* Plain JSON, not Date objects: this is stored in a `Json` column, so anything not
+   * JSON-representable would round-trip as a string of a different shape. The approval path
+   * reconstructs the Dates. The slug is chosen now so the applicant's proposed name is what
+   * gets slugified, not whatever an editor renames it to later. */
+  await repository.createApplication({
+    name: input.name,
+    email: input.email,
+    passwordHash,
+    organization: input.organization || null,
+    bio: input.bio || null,
+    proposedFestival: {
+      name: input.festival_name,
+      slug: producerApplicationSlug(input.festival_name, randomSuffix()),
+      description: input.festival_description || null,
+      location: input.festival_location || null,
+      city: input.festival_city || null,
+      zip_code: input.festival_zip_code || null,
+      website_url: input.festival_website_url || null,
+      start_date: input.festival_start_date || null,
+      end_date: input.festival_end_date || null,
+      contact_name: input.name,
+      contact_email: input.email,
+      contact_phone: input.contact_phone || null,
+      bio: input.bio || null,
+      acknowledged_at: new Date().toISOString(),
+    },
+  });
+
+  return { submitted: true, created: true };
+}
+
 export async function requestProducerAccess(input, { repository, user }) {
   if (user.role === "producer" || user.role === "admin" || user.role === "super_admin") {
     throw new ProducerAccessError("This account already has submission access.", 409, "already_granted");

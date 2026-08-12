@@ -57,7 +57,10 @@
     "n8n:stop": "nx run n8n:stop",
     "n8n:logs": "nx run n8n:logs",
     "ops:validate": "nx run-many -t validate --all",
-    "ops:health": "nx run-many -t health --all"
+    "ops:health": "nx run-many -t health --all",
+    "ops:firewall:verify": "node tools/scripts/vercel-firewall-ops.mjs verify",
+    "ops:firewall:plan": "node tools/scripts/vercel-firewall-ops.mjs plan",
+    "ops:firewall:stage": "node tools/scripts/vercel-firewall-ops.mjs stage"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

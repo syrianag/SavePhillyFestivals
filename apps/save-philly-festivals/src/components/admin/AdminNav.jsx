@@ -18,6 +18,7 @@ const navLinks = [
   { href: "/admin/imports", label: "Imports" },
   { href: "/admin/producer-requests", label: "Producer Access" },
   { href: "/admin/sponsors", label: "Sponsors" },
+  { href: "/admin/our-festivals", label: "Our Festivals" },
   { href: "/admin/email-templates", label: "Email Templates" },
   { href: "/admin/schedules", label: "Schedules" },
   { href: "/admin/settings", label: "Settings" },

@@ -98,6 +98,30 @@ export default function AdminProducerRequests({ initialRequests, emailsEnabled }
                     {request.organization && <p className="mt-1 text-sm text-slate-600">Organization: {request.organization}</p>}
                     {request.festival_name && <p className="text-sm text-slate-600">Festival: {request.festival_name}</p>}
                     {request.message && <p className="mt-1 text-sm text-slate-600">{request.message}</p>}
+                    {/* Applications from the combined flow carry their event as submitted data;
+                      * the real festival only exists after approval. Showing it here is what
+                      * lets the reviewer judge applicant and event together. */}
+                    {request.proposed_festival && (
+                      <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                          Submitted event{request.festival ? ` · ${request.festival.workflow_state}` : " · awaiting approval"}
+                        </p>
+                        <p className="mt-1 font-medium text-slate-900">{request.proposed_festival.name}</p>
+                        {request.proposed_festival.description && (
+                          <p className="mt-1 line-clamp-3 text-sm text-slate-600">{request.proposed_festival.description}</p>
+                        )}
+                        {(request.proposed_festival.location || request.proposed_festival.city) && (
+                          <p className="mt-1 text-sm text-slate-600">
+                            {[request.proposed_festival.location, request.proposed_festival.city].filter(Boolean).join(", ")}
+                          </p>
+                        )}
+                        {!request.festival && (
+                          <p className="mt-2 text-xs text-slate-500">
+                            Approving creates this event and places it in the review queue.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <Button type="button" size="sm" onClick={() => open(request, "approved")}>

@@ -8,8 +8,11 @@ const publicPaths = ["/login", "/api/auth", "/api/health"];
 export async function proxy(request) {
   const { pathname, search } = request.nextUrl;
 
-  // The producer marketing page is public; management descendants are not.
-  if (pathname === "/producer" || publicPaths.some((p) => pathname.startsWith(p))) {
+  /* The producer marketing page is public; management descendants are not. `/producer/apply` is
+   * the exception among the descendants: the combined "become a producer and submit an event"
+   * flow exists precisely for people who have no account yet, so requiring a session here would
+   * redirect every genuine applicant to a login they cannot complete. */
+  if (pathname === "/producer" || pathname === "/producer/apply" || publicPaths.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
