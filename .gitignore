@@ -76,6 +76,12 @@ apps/n8n/local-files/*
 docs/Festivals_Postgres_Export.csv
 *.festival-source.csv
 .vercel
+# Catches every env file, INCLUDING ones named `.env.example`. Do not add a
+# `!.env.example` negation: the root `.env.example` in this working tree is not a
+# template — it holds a real VERCEL_OIDC_TOKEN written by the Vercel CLI — so
+# un-ignoring that name would stage a credentials file. The committed template is
+# apps/save-philly-festivals/.env.example, which git already tracks; ignore rules
+# do not apply to files that are already tracked, so it keeps working.
 .env*
 
 # Client call recordings and transcripts. Third-party conversation material — never commit.

@@ -409,6 +409,61 @@ confirmation variable, and an unknown action errors.
 
 ---
 
+## Part 5 — `.env.example` made comprehensive
+
+`apps/save-philly-festivals/.env.example` now documents **every** variable the code reads. The
+list was derived by scanning source for `process.env.*`, never by copying a real env file, so no
+live value could reach a committed template.
+
+It went from 16 documented variables to 40, grouped by purpose: required-to-boot, the three edge
+rate limit attestation flags, transactional email, bearer secrets for internal endpoints, social
+feed providers, Google Drive uploads, festival import review, proxy hop handling, local seed
+credentials, demo toggles, E2E fixtures, local tooling, and a closing section for
+platform-injected variables that must *not* go in an env file — including the standing
+`NODE_ENV` warning, since Next rejects `NODE_ENV=production` in an env file outright.
+
+### Guarded against future drift
+
+`tests/unit/env-example-contract.test.js` (4 tests) checks both directions:
+
+- every `process.env.*` the code reads is documented (or listed as platform-managed)
+- nothing documented has stopped being read — a stale entry is worse than a missing one, because
+  it reads as required and someone will hunt for a value that changes nothing
+- the template contains no real-looking secret (Resend key, PEM body, non-local database URL)
+- `AUTH_SECRET` is still marked required, since `src/lib/auth.js` throws at import without it
+
+Verified by breaking it deliberately in both directions: adding `process.env.ZZ_FAKE_UNDOCUMENTED`
+to a source file fails the first test, and adding `# ZZ_STALE_VAR=1` to the template fails the
+second. Both restored; suite is green at **424 tests**.
+
+### ⚠️ The root `.env.example` is a credentials file, not a template
+
+While doing this I found `.env.example` **in the repo root** contains a real, JWT-shaped
+`VERCEL_OIDC_TOKEN` (written by the Vercel CLI) plus two other long opaque values. It is a live
+env file wearing a template's name.
+
+**Nothing leaked, and the git history is clean.** I checked every commit that touched that path:
+the committed versions held 2 placeholder variables, no token, no credentials, no remote database
+host. The file was later untracked, and the real values exist only in your local working copy,
+which `.env*` ignores.
+
+I nearly made this worse and want to be explicit about it. Seeing a root template that could
+never be committed, I added a `!.env.example` negation to `.gitignore` so example files could
+reach new developers. That was correct in general and wrong here — it would have made this
+specific credentials file stageable. I caught it by inspecting the file before leaving it in that
+state, and **reverted the negation**. The only remaining `.gitignore` change is a comment
+explaining why that negation must not be re-added; I verified ignore behaviour is byte-identical
+before and after.
+
+**Recommended:** rename the root `.env.example` to `.env.local`, or delete it. As long as it
+carries a template's name it invites exactly the mistake I just made. I did not touch it — it's
+your file and it holds live values.
+
+The Vercel OIDC token is short-lived and auto-refreshed by the CLI, so rotation is not urgent;
+the other two opaque values are worth a look since I deliberately did not read them.
+
+---
+
 ## Open items for Rob
 
 1. **Redeploy production.** The flags are set but the running deployment predates them, so
@@ -419,7 +474,9 @@ confirmation variable, and an unknown action errors.
    admin publishing. *(Part 1)*
 4. **Native image upload for gallery items** — not built; confirm whether URL references are
    sufficient for Monica's team.
-5. **Review the contract-test change and two out-of-scope bugs below.**
+5. **Rename or delete the root `.env.example`** — it holds live credentials under a template's
+   name. Nothing leaked, but it is a standing trap. *(Part 5)*
+6. **Review the contract-test change and two out-of-scope bugs below.**
 
 ---
 
@@ -502,3 +559,5 @@ you want it.
 | 2026-08-12 | Final state: lint, typecheck, 420 tests, and build all pass. Migrations verified against blank Postgres with zero drift. Test containers removed. |
 | 2026-08-12 | Rob configured the Vercel firewall and set all three attestation flags. Verified against the live project: 3 rules live, but two still in log mode, and production still returns `edge_rate_limit_unverified` because the deployment predates the flags. Redeploy outstanding. |
 | 2026-08-12 | Added `tools/scripts/vercel-firewall-ops.mjs` (`ops:firewall:verify` / `plan` / `stage`) so the attestation can be checked rather than remembered. Verified by running it — it caught all three outstanding problems and exits non-zero. |
+| 2026-08-12 | `.env.example` expanded from 16 to 40 variables, derived by scanning source rather than copying any real env file. Added `env-example-contract.test.js` to stop it drifting; proved it fails in both directions. Suite now 424 tests. |
+| 2026-08-12 | Found the root `.env.example` holds a real `VERCEL_OIDC_TOKEN`. Git history verified clean — nothing was ever committed. Reverted a `.gitignore` negation I had added minutes earlier that would have made that file stageable. |
