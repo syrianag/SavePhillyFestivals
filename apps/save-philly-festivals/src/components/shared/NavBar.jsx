@@ -7,13 +7,15 @@ import { usePathname } from "next/navigation";
 import { Menu, X, LogOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
+import { DEFAULT_HEADER_LINKS } from "@/features/navigation/navigation-defaults";
 
 /**
  * Link visibility policy — one rule, applied in both directions.
  *
  *   Public links   render only in this public navigation, for everyone, signed in or not.
- *   Private links  (anything under /admin or /producer) render only inside that portal's own
- *                  navigation, never in this list.
+ *                  They are admin-editable and arrive as the `links` prop from `PublicLayout`.
+ *   Private links  (anything under /admin or /producer/) render only inside that portal's own
+ *                  navigation, never here.
  *   The exception  "Discover Festivals" (`/`) is global: it is the one link allowed in every
  *                  navigation, including the admin portal, so there is always a way back to
  *                  the public site.
@@ -21,18 +23,12 @@ import { useSession, signOut } from "next-auth/react";
  * A signed-in editor still needs a way *into* their portal, so that link lives with the
  * session controls (beside the account and sign-out actions) rather than among the public
  * links. It is a property of who you are, not of where you can browse — which is exactly the
- * distinction that kept getting blurred when it sat in this array.
+ * distinction that kept getting blurred when it sat in the link array.
  *
- * Do not add an /admin or /producer entry to `publicLinks`.
+ * The private-route rule is now enforced in `navigation-schema.js` (`isPrivateHref`) on write
+ * and again in `navigation-service.js` on read, because the links are editable at runtime and a
+ * source-text check can no longer see them.
  */
-const publicLinks = [
-  { href: "/", label: "Discover Festivals" },
-  { href: "/calendar", label: "Calendar" },
-  { href: "/our-festivals", label: "Our Festivals" },
-  { href: "/about", label: "About" },
-  { href: "/tours", label: "Tours" },
-  { href: "/producer", label: "For Producers" },
-];
 
 /* Where each role's portal lives. Rendered as a session control, never as a public link. */
 const PORTAL_BY_ROLE = {
@@ -41,7 +37,7 @@ const PORTAL_BY_ROLE = {
   producer: { href: "/producer/dashboard", label: "Producer portal" },
 };
 
-export function NavBar() {
+export function NavBar({ links }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuButtonRef = useRef(null);
@@ -55,8 +51,11 @@ export function NavBar() {
   /* Always the public set, whoever is looking. The previous version swapped in a different
    * array per pathname, including an `/admin` branch that could never run — `admin/layout.jsx`
    * renders `AdminNav` instead of this component, so those entries were unreachable while
-   * still reading like the admin navigation. */
-  const navLinks = publicLinks;
+   * still reading like the admin navigation.
+   *
+   * Falls back to the shipped defaults when rendered without props, matching what
+   * `navigation-source.js` returns when the table is empty or unreachable. */
+  const navLinks = links?.length ? links : DEFAULT_HEADER_LINKS;
   const portal = PORTAL_BY_ROLE[session?.user?.role];
 
 

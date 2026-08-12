@@ -3,31 +3,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { AdSlot } from "@/components/shared/AdSlot";
 import { SPONSOR_SLOTS } from "@/features/sponsors/sponsor-placements";
+import { DEFAULT_FOOTER_SECTIONS } from "@/features/navigation/navigation-defaults";
 
-const footerSections = [
-  {
-    title: "Explore",
-    links: [
-      { href: "/", label: "Discover Festivals" },
-      { href: "/calendar", label: "Calendar" },
-      { href: "/tours", label: "Tours" },
-    ],
-  },
-  {
-    title: "Producers",
-    links: [{ href: "/producer", label: "Submit Festivals" }],
-  },
-  {
-    title: "Company",
-    links: [
-      { href: "/about", label: "About us" },
-      { href: "/privacy", label: "Privacy" },
-      { href: "/terms", label: "Terms" },
-    ],
-  },
-];
-
-export function Footer({ className, ...props }) {
+/**
+ * Footer link columns are admin-editable; `sections` arrives from `PublicLayout`.
+ *
+ * The built-in defaults remain the fallback for any caller that renders this without props —
+ * `navigation-source.js` already degrades to the same constants, so both paths produce the same
+ * menu rather than two shapes that can drift.
+ */
+export function Footer({ className, sections, ...props }) {
+  const footerSections = sections?.length ? sections : DEFAULT_FOOTER_SECTIONS;
   return (
     <footer
       className={cn("bg-brand-dark font-footer text-sm text-white/80", className)}

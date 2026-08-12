@@ -29,6 +29,7 @@ const navLinks = [
   { href: "/admin/festivals", label: "Festivals" },
   { href: "/admin/pending", label: "Pending Review" },
   { href: "/admin/imports", label: "Imports" },
+  { href: "/admin/navigation", label: "Navigation" },
   /* "Gallery", not "Our Festivals": the public page of that name now lists festivals that ended
    * in the last 90 days automatically, and this screen only curates the optional Highlights
    * images shown above them. Sharing the label implied editing one produced the other. */

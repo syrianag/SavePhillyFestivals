@@ -3,6 +3,7 @@ import { Footer } from "@/components/shared/Footer";
 import { SkipLink } from "@/components/shared/SkipLink";
 import { SponsorRail } from "@/components/shared/SponsorRail";
 import { SPONSOR_SLOTS } from "@/features/sponsors/sponsor-placements";
+import { resolvePublicNavigation } from "@/features/navigation/navigation-source";
 
 /**
  * Chrome for visitor-facing pages: public navigation, sponsor rails, and the footer.
@@ -13,11 +14,16 @@ import { SPONSOR_SLOTS } from "@/features/sponsors/sponsor-placements";
  * navigation bars on admin and producer screens, and it silently dropped the footer and sponsor
  * placements whenever an editor browsed the public site.
  */
-export function PublicLayout({ children }) {
+export async function PublicLayout({ children }) {
+  /* Read here rather than in the root layout: `layout-contract.test.js` keeps the root free of
+   * per-request lookups because it runs for every route including static ones. `cache()` inside
+   * the source dedupes this single read across the header and the footer. */
+  const navigation = await resolvePublicNavigation();
+
   return (
     <div className="flex min-h-screen flex-col">
       <SkipLink />
-      <NavBar />
+      <NavBar links={navigation.header} />
       {/* Rails flank the content on wide screens only. They are a sibling of <main> rather
         * than inside it so page containers keep their own max-width, and they collapse to
         * nothing below 2xl — where the footer renders the same sponsors instead. */}
@@ -30,7 +36,7 @@ export function PublicLayout({ children }) {
       </div>
       {/* The footer band carries footer sponsors at every width, plus the rail sponsors
         * below 2xl so a rail advertiser is relocated rather than dropped on mobile. */}
-      <Footer />
+      <Footer sections={navigation.footer} />
     </div>
   );
 }

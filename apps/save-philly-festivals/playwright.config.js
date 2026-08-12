@@ -59,6 +59,7 @@ export default defineConfig({
       AUTH_SECRET: process.env.AUTH_SECRET || "application-e2e-secret-not-for-production",
       AUTH_TRUST_HOST: "true",
       DISCOVERY_E2E_FIXTURE: "1",
+      NAVIGATION_E2E_FIXTURE: "1",
       PRODUCER_E2E_FIXTURE: "1",
       PASSWORD_RESET_E2E_FIXTURE: "1",
       PRODUCER_E2E_SECRET: producerE2ESecret,

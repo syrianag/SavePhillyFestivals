@@ -1109,6 +1109,37 @@ model OurFestivalItem {
 }
 
 
+// ─── Editable public navigation ────────────────────────────
+// The public header and footer link lists, so an admin can rename, reorder, hide or add a menu
+// entry without a deploy. Seeded from the hardcoded defaults on first read, and those same
+// defaults remain the fallback if this table is empty or unreachable — navigation renders on
+// every public page, so it must never depend on a successful query.
+
+enum NavigationPlacement {
+  header
+  footer
+}
+
+model NavigationLink {
+  id           String              @id @default(uuid())
+  placement    NavigationPlacement
+  // Footer links are grouped into titled columns ("Explore", "Company"). Null for header links,
+  // which are a single flat row.
+  section      String?
+  label        String
+  href         String
+  sort_order   Int                 @default(0)
+  // Hidden rather than deleted: taking a link out of the menu for a season should not lose the
+  // label and URL someone chose.
+  visible      Boolean             @default(true)
+  created_by_user_id String?
+  created_at   DateTime            @default(now())
+  updated_at   DateTime            @updatedAt
+
+  @@index([placement, visible, sort_order])
+}
+
+
 // ─── Producer access requests ──────────────────────────────
 // Self-serve signup creates a `public` account, which grants nothing. Becoming a producer is a
 // separate, reviewed step so an open registration endpoint cannot hand out submission rights.
@@ -1130,7 +1161,7 @@ model ProducerAccessRequest {
   // The event details captured by the combined "become a producer and submit an event" flow,
   // held as submitted data rather than as a `Festival` row.
   //
-  // A festival cannot be created here: `verify_festival_revision_audit` only accepts a festival
+  // A festival cannot be created here: `validate_festival_audit_at_commit` only accepts a festival
   // insert whose transition actor is an owning `producer` or an admin, and an applicant is
   // neither until approved. Holding the details as JSON also means a spam application cannot
   // insert `Festival` rows through a public endpoint.
