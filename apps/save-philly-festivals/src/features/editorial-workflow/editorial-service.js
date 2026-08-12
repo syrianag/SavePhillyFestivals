@@ -1,7 +1,7 @@
 import { allDayTimedMirror } from "@/features/festivals/discovery";
-import { assertEditorialTransition, validTransitions } from "./editorial-transition-policy";
+import { assertEditorialTransition, EditorialPolicyError, validTransitions } from "./editorial-transition-policy";
 import { EditorialConflictError, EditorialNotFoundError } from "./editorial-repository";
-import { deliverWorkflowNotification } from "./editorial-notifications";
+import { deliverWorkflowNotification, WORKFLOW_NOTIFICATION_SUPPRESSED_CODE } from "./editorial-notifications";
 
 export async function listEditorialFestivals(input, { repository }) {
   return repository.list(input);
@@ -118,6 +118,15 @@ export async function retryWorkflowNotification(festivalId, notificationId, depe
   const { repository, now = () => new Date() } = dependencies;
   const pending = await repository.findNotificationForRetry({ festivalId, notificationId });
   if (!pending) throw new EditorialNotFoundError("Workflow notification not found.");
+  /* Bulk-published festivals carry the organizer's address from the imported spreadsheet, and
+   * they were published without their consent to be emailed. Refused explicitly rather than
+   * relying on the attempts cap alone, so the reason is legible at the call site. */
+  if (pending.failureCode === WORKFLOW_NOTIFICATION_SUPPRESSED_CODE) {
+    throw new EditorialPolicyError(
+      "This notification was created by a bulk publish and is not deliverable.",
+      "notification_suppressed",
+    );
+  }
   const notification = await deliverWorkflowNotification({
     festival: pending.festival,
     transition: { toState: pending.transition.to_state, producerMessage: pending.transition.producer_message },

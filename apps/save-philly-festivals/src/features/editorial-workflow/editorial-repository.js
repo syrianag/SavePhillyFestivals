@@ -280,7 +280,7 @@ export const editorialRepository = {
   async findNotificationForRetry({ festivalId, notificationId }) {
     const notification = await prisma.festivalWorkflowNotification.findFirst({
       where: { id: notificationId, festival_id: festivalId, audience: "producer" },
-      select: { id: true, workflow_revision: true, recipient_email: true },
+      select: { id: true, workflow_revision: true, recipient_email: true, failure_code: true },
     });
     if (!notification) return null;
     const [transition, revision] = await Promise.all([
@@ -297,6 +297,7 @@ export const editorialRepository = {
       festival: revision.snapshot,
       transition,
       recipientEmail: notification.recipient_email,
+      failureCode: notification.failure_code,
     } : null;
   },
   markNotificationSent({ id, attemptToken, providerMessageId, sentAt }) {

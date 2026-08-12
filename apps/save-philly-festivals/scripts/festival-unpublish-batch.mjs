@@ -92,8 +92,10 @@ function required(options, name) {
 
 async function assertEnvironmentSafety(environment, options, mode) {
   if (["local", "test"].includes(environment)) {
-    const { assertSafeTestDatabaseUrl } = await import("../src/lib/database-safety.js");
-    assertSafeTestDatabaseUrl(process.env.DATABASE_URL);
+    /* Matches the publish script: a developer's own `dev`/`local` database is a legitimate target
+     * for a data operation. Loopback-only and name-gated still apply. */
+    const { assertSafeSeedDatabaseUrl } = await import("../src/lib/database-safety.js");
+    assertSafeSeedDatabaseUrl(process.env.DATABASE_URL);
     return;
   }
   if (!CONTROLLED_ENVIRONMENTS.includes(environment)) {
@@ -163,12 +165,16 @@ async function main() {
 
   const { editorialRepository } = await import("../src/features/editorial-workflow/editorial-repository.js");
   const { transitionFestival } = await import("../src/features/editorial-workflow/editorial-service.js");
+  const { WORKFLOW_NOTIFICATION_MAX_ATTEMPTS, WORKFLOW_NOTIFICATION_SUPPRESSED_CODE } = await import(
+    "../src/features/editorial-workflow/editorial-notifications.js"
+  );
   const user = { id: operator.id, role: operator.role };
   /* Not required by policy for `unpublished`, but recorded so the history says why a festival
    * left the public site rather than leaving a bare state change behind. */
   const reason = options.reason || DEFAULT_REASON;
 
   let unpublished = 0;
+  let suppressed = 0;
   const failures = [];
 
   for (const festival of festivals) {
@@ -185,10 +191,23 @@ async function main() {
       failures.push({ festival, error });
       console.error(`  FAILED: ${festival.name} — ${error.code || "error"}: ${error.message}`);
     }
+    /* Not sending during the run is only half the protection. Each hop leaves a `failed` outbox
+     * row addressed to the organizer's imported address, and the admin retry button would
+     * deliver it. Stamped unclaimable here for the same reason the publish script does it. */
+    suppressed += (await prisma.festivalWorkflowNotification.updateMany({
+      where: { festival_id: festival.id, audience: "producer", workflow_revision: { gt: festival.revision } },
+      data: {
+        delivery_status: "failed",
+        failure_code: WORKFLOW_NOTIFICATION_SUPPRESSED_CODE,
+        attempts: WORKFLOW_NOTIFICATION_MAX_ATTEMPTS,
+        attempt_token: null,
+        attempt_started_at: null,
+      },
+    }).catch(() => ({ count: 0 }))).count;
   }
 
   console.log(`\nUnpublished ${unpublished}/${festivals.length}. Failures: ${failures.length}.`);
-  console.log("No organizer emails were sent; workflow notifications are recorded as provider_unconfigured.");
+  console.log(`No organizer emails were sent. ${suppressed} workflow notification(s) marked non-deliverable.`);
   if (failures.length > 0) {
     console.log("Re-run this command to retry the failures; already-unpublished festivals are out of scope.");
     process.exitCode = 1;

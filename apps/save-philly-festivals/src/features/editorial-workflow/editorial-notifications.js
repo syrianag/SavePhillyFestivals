@@ -3,6 +3,17 @@ import { randomUUID } from "node:crypto";
 export const WORKFLOW_NOTIFICATION_LEASE_MS = 5 * 60 * 1000;
 export const WORKFLOW_NOTIFICATION_MAX_ATTEMPTS = 5;
 
+/**
+ * Stamped on outbox rows created by a bulk publish, which must never be delivered.
+ *
+ * A bulk run transitions hundreds of imported festivals whose `contact_email` is the organizer's
+ * real address from the source spreadsheet. The rows are still written so the audit trail stays
+ * complete, but the admin retry button would otherwise turn one click into hundreds of
+ * unsolicited emails months later. `retryWorkflowNotification` refuses this code outright, and
+ * the rows also carry `attempts` at the cap so `claimNotification` cannot lease them.
+ */
+export const WORKFLOW_NOTIFICATION_SUPPRESSED_CODE = "bulk_publish_suppressed";
+
 export function escapeEditorialHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
