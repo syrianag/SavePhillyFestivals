@@ -39,8 +39,8 @@ jobs:
         options: >-
           --health-cmd="pg_isready -U postgres -d save_philly_festivals_ci"
           --health-interval=10s
-          --timeout=5s
-          --retries=5
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
       - name: Checkout repository
