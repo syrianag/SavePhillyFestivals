@@ -6,9 +6,9 @@ import { auth } from "@/lib/auth";
 export async function POST(request) {
   try {
     const session = await auth();
-    
-    if (!session || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
-      throw new ForbiddenError("Admin access required");
+
+    if (!session) {
+      throw new ForbiddenError("Authentication required");
     }
 
     const formData = await request.formData();

@@ -13,7 +13,7 @@ export const createFestivalSchema = z.object({
   image_url: z.string().url().optional().or(z.literal("")),
   submitted_by: z.string().optional(),
   contact_name: z.string().optional(),
-  contact_email: z.string().email().optional().or(z.literal("")),
+  contact_email: z.string().email("A valid contact email is required"),
   contact_phone: z.string().optional(),
   story: z.string().optional(),
   mission: z.string().optional(),

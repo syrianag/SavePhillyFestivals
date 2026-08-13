@@ -62,6 +62,7 @@ export default async function FestivalDetailPage({ params }) {
             alt={festival.name}
             fill
             priority
+            unoptimized
             className="object-cover"
           />
         </div>

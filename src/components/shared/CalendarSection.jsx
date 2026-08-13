@@ -8,19 +8,17 @@ import { useSchedule } from "@/features/schedule/schedule-context";
 import { downloadICS } from "@/lib/ics";
 import { Download } from "lucide-react";
 
-function formatDateKey(dateStr) {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function parseLocalDate(value) {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value));
+  if (!match) return null;
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
-function groupByDate(list) {
-  const map = {};
-  list.forEach((f) => {
-    const key = formatDateKey(f.rawDate);
-    if (!map[key]) map[key] = [];
-    map[key].push(f);
-  });
-  return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
+function formatDateKey(dateStr) {
+  const d = parseLocalDate(dateStr);
+  if (!d) return "";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 const monthNames = [
@@ -29,7 +27,8 @@ const monthNames = [
 ];
 
 function formatDisplayDate(dateStr) {
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
+  if (!d) return "";
   return `${monthNames[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
@@ -37,7 +36,7 @@ export function CalendarSection({ festivals }) {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
-  const [selectedDay, setSelectedDay] = useState(now.getDate());
+  const [selectedDay, setSelectedDay] = useState(null);
 
   const {
     savedIds,
@@ -61,7 +60,34 @@ export function CalendarSection({ festivals }) {
 
   const festivalDates = useMemo(() => festivals.map((f) => f.rawDate), [festivals]);
 
-  const grouped = useMemo(() => groupByDate(festivals), [festivals]);
+  function handleSelectDay(day) {
+    setSelectedDay((prev) => (prev === day ? null : day));
+  }
+
+  function changeMonth(nextYear, nextMonth) {
+    setYear(nextYear);
+    setMonth(nextMonth);
+    setSelectedDay(null);
+  }
+
+  const grouped = useMemo(() => {
+    const monthKeys = festivals
+      .map((f) => formatDateKey(f.rawDate))
+      .filter((key) => {
+        const [fy, fm, fd] = key.split("-").map(Number);
+        if (fy !== year || fm !== month + 1) return false;
+        return selectedDay === null || fd === selectedDay;
+      });
+    const byDate = {};
+    festivals.forEach((f) => {
+      const key = formatDateKey(f.rawDate);
+      if (monthKeys.includes(key)) {
+        if (!byDate[key]) byDate[key] = [];
+        byDate[key].push(f);
+      }
+    });
+    return Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b));
+  }, [festivals, year, month, selectedDay]);
 
   return (
     <>
@@ -72,21 +98,19 @@ export function CalendarSection({ festivals }) {
             month={month}
             festivalDates={festivalDates}
             selectedDay={selectedDay}
-            onSelectDay={setSelectedDay}
+            onSelectDay={handleSelectDay}
             onPrevMonth={() => {
               if (month === 0) {
-                setMonth(11);
-                setYear(year - 1);
+                changeMonth(year - 1, 11);
               } else {
-                setMonth(month - 1);
+                changeMonth(year, month - 1);
               }
             }}
             onNextMonth={() => {
               if (month === 11) {
-                setMonth(0);
-                setYear(year + 1);
+                changeMonth(year + 1, 0);
               } else {
-                setMonth(month + 1);
+                changeMonth(year, month + 1);
               }
             }}
           />
@@ -132,10 +156,22 @@ export function CalendarSection({ festivals }) {
 
         <main className="flex min-w-0 flex-1 flex-col gap-6">
           {grouped.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-16">
+            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border bg-card py-16">
               <p className="font-body text-lg text-brand-text-muted">
-                No festivals found.
+                {selectedDay !== null
+                  ? `No festivals found on ${formatDisplayDate(
+                      `${year}-${String(month + 1).padStart(2, "0")}-${String(selectedDay).padStart(2, "0")}`
+                    )}.`
+                  : `No festivals found in ${monthNames[month]} ${year}.`}
               </p>
+              {selectedDay !== null && (
+                <button
+                  onClick={() => setSelectedDay(null)}
+                  className="font-body text-sm font-semibold text-brand-text-gray underline-offset-4 hover:underline"
+                >
+                  Show all festivals this month
+                </button>
+              )}
             </div>
           ) : (
             grouped.map(([dateKey, items]) => (

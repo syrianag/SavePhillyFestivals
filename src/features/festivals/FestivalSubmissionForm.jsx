@@ -38,6 +38,20 @@ const ORG_TYPE_OPTIONS = [
   { value: "other", label: "Other" },
 ];
 
+function toIsoOrUndefined(value) {
+  if (!value) return undefined;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d.toISOString();
+}
+
+function formatReviewDate(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString();
+}
+
 export default function FestivalSubmissionForm() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
@@ -104,7 +118,7 @@ export default function FestivalSubmissionForm() {
   }
 
   function prevStep() {
-    setCurrentStep((prev) => Math.max(prev - 1, steps.length));
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
   }
 
   async function onSubmit() {
@@ -139,12 +153,8 @@ export default function FestivalSubmissionForm() {
       festival_age: values.festival_age || undefined,
       festival_age_details: values.festival_age_details || undefined,
       org_type: values.org_type || undefined,
-      start_date: values.start_date
-        ? new Date(values.start_date).toISOString()
-        : undefined,
-      end_date: values.end_date
-        ? new Date(values.end_date).toISOString()
-        : undefined,
+      start_date: toIsoOrUndefined(values.start_date),
+      end_date: toIsoOrUndefined(values.end_date),
     };
 
     try {
@@ -188,6 +198,13 @@ export default function FestivalSubmissionForm() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function onSubmitInvalid(validationErrors) {
+    const first = Object.values(validationErrors || {}).find((e) => e?.message);
+    setSubmitError(
+      first?.message || "Please fix the highlighted fields before submitting."
+    );
   }
 
   return (
@@ -561,13 +578,11 @@ export default function FestivalSubmissionForm() {
               <div className="p-4 bg-muted rounded-lg space-y-4">
                 <h3 className="font-medium">{formData.name || "Untitled Festival"}</h3>
                 <div className="grid gap-2 text-sm text-muted-foreground">
-                  {formData.start_date && (
+                  {formatReviewDate(formData.start_date) && (
                     <p>
                       <strong>Dates:</strong>{" "}
-                      {new Date(formData.start_date).toLocaleDateString()} -{" "}
-                      {formData.end_date
-                        ? new Date(formData.end_date).toLocaleDateString()
-                        : "TBD"}
+                      {formatReviewDate(formData.start_date)} -{" "}
+                      {formatReviewDate(formData.end_date) || "TBD"}
                     </p>
                   )}
                   {formData.location && (
@@ -655,7 +670,7 @@ export default function FestivalSubmissionForm() {
                 Next
               </Button>
             ) : (
-              <Button type="button" onClick={handleSubmit(onSubmit)} disabled={loading}>
+              <Button type="button" onClick={handleSubmit(onSubmit, onSubmitInvalid)} disabled={loading}>
                 {loading ? "Submitting..." : "Submit Festival"}
               </Button>
             )}

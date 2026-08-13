@@ -5,6 +5,13 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+function parseLocalDate(value) {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value));
+  if (!match) return null;
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
 function getMonthGrid(year, month) {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
@@ -47,10 +54,12 @@ export function CalendarWidget({
   const monthLabel = `${monthNames[month]} ${year}`;
 
   const festivalDaySet = new Set(
-    festivalDates.map((d) => {
-      const dt = new Date(d);
-      return dt.getDate();
-    })
+    festivalDates
+      .map((d) => {
+        const dt = parseLocalDate(d);
+        return dt ? `${dt.getFullYear()}-${dt.getMonth()}-${dt.getDate()}` : null;
+      })
+      .filter(Boolean)
   );
 
   const today = new Date();
@@ -104,7 +113,7 @@ export function CalendarWidget({
             }
 
             const isToday = isCurrentMonth && day === today.getDate();
-            const hasFestival = festivalDaySet.has(day);
+            const hasFestival = festivalDaySet.has(`${year}-${month}-${day}`);
             const isSelected = day === selectedDay;
 
             return (

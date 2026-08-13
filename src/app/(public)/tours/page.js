@@ -121,7 +121,7 @@ export default function ToursPage() {
                       <Button
                         variant="outline"
                         className="mt-6 w-fit border-foreground bg-transparent font-body text-base font-bold text-foreground hover:bg-muted"
-                        render={<Link href="/tours" />}
+                        render={<Link href="/contact" />}
                       >
                         Book now ({tour.price})
                       </Button>

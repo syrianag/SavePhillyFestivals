@@ -31,7 +31,11 @@ export default function LoginPage() {
     } else {
       const params = new URLSearchParams(window.location.search);
       const callbackUrl = params.get("callbackUrl") || "/";
-      router.push(callbackUrl);
+      const isSafe =
+        callbackUrl.startsWith("/") &&
+        !callbackUrl.startsWith("//") &&
+        !callbackUrl.startsWith("/\\");
+      router.push(isSafe ? callbackUrl : "/");
       router.refresh();
     }
   }

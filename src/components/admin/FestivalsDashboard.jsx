@@ -41,8 +41,14 @@ function formatDate(dateStr) {
   });
 }
 
+function getTabFromUrl() {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  return params.get("tab") === "submit" ? "submit" : "view";
+}
+
 export default function FestivalsDashboard({ initialTab = "view" }) {
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTab, setActiveTab] = useState(() => getTabFromUrl() || initialTab);
   const [festivals, setFestivals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -51,12 +57,20 @@ export default function FestivalsDashboard({ initialTab = "view" }) {
 
   const switchTab = useCallback((tab) => {
     setActiveTab(tab);
-    window.history.replaceState(
+    window.history.pushState(
       null,
       "",
       tab === "submit" ? "/admin/festivals?tab=submit" : "/admin/festivals"
     );
   }, []);
+
+  useEffect(() => {
+    const onPopState = () => {
+      setActiveTab(getTabFromUrl() || initialTab);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [initialTab]);
 
   useEffect(() => {
     let ignore = false;

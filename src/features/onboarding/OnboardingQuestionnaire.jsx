@@ -23,6 +23,13 @@ function validateStep(step, answers) {
     if (!answers.festivalDuration) errors.festivalDuration = true;
     if (answers.festivalType.length === 0) errors.festivalType = true;
   }
+  if (step === 4) {
+    if (answers.challenges.length === 0) errors.challenges = true;
+  }
+  if (step === 5) {
+    if (!answers.heardOfSpf) errors.heardOfSpf = true;
+    if (!answers.marketingTool) errors.marketingTool = true;
+  }
   return errors;
 }
 

@@ -23,8 +23,8 @@ export async function GET(request, { params }) {
 export async function PATCH(request, { params }) {
   try {
     const session = await auth();
-    if (!session || (session.user.role !== "admin" && session.user.role !== "super_admin")) {
-      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    if (!session) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -41,6 +41,15 @@ export async function PATCH(request, { params }) {
     const existing = await getFestivalById(id);
     if (!existing) {
       throw new NotFoundError("Festival not found");
+    }
+
+    const isAdmin = session.user.role === "admin" || session.user.role === "super_admin";
+    const isOwner = existing.submitted_by === session.user.email;
+    if (!isAdmin && !isOwner) {
+      return NextResponse.json(
+        { error: "You do not have permission to update this festival" },
+        { status: 403 }
+      );
     }
 
     const festival = await updateFestival(id, result.data);
